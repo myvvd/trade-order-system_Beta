@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>订单详情</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/@arco-design/web-vue/dist/arco.css">
+</head>
+<body>
+<div id="app">
+    <a-card>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>订单详情：<?php echo $order->order_no; ?></h3>
+            <div>
+                <a-button @click="goBack">返回</a-button>
+            </div>
+        </div>
+
+        <a-row :gutter="16" style="margin-top:12px;">
+            <a-col :span="8">
+                <a-card>
+                    <p><strong>客户：</strong><?php echo $order->customer->company_name ?? '-'; ?></p>
+                    <p><strong>状态：</strong><?php echo $order->status_text; ?></p>
+                    <p><strong>总金额：</strong><?php echo $order->total_amount; ?></p>
+                    <p><strong>创建时间：</strong><?php echo $order->create_time; ?></p>
+                </a-card>
+            </a-col>
+            <a-col :span="16">
+                <a-card>
+                    <h4>货品明细</h4>
+                    <a-table :data="<?php echo json_encode($order->items, JSON_UNESCAPED_UNICODE); ?>" :pagination="false">
+                        <a-table-column title="货品">
+                            <template #cell="{ record }">{{ record.goods_id }}</template>
+                        </a-table-column>
+                        <a-table-column title="规格">
+                            <template #cell="{ record }">{{ record.sku_id }}</template>
+                        </a-table-column>
+                        <a-table-column title="数量">
+                            <template #cell="{ record }">{{ record.quantity }}</template>
+                        </a-table-column>
+                        <a-table-column title="单价">
+                            <template #cell="{ record }">{{ record.price }}</template>
+                        </a-table-column>
+                        <a-table-column title="金额">
+                            <template #cell="{ record }">{{ (record.quantity * record.price).toFixed(2) }}</template>
+                        </a-table-column>
+                    </a-table>
+                </a-card>
+
+                <a-card style="margin-top:12px;">
+                    <h4>派单记录</h4>
+                    <?php foreach($order->dispatches as $d): ?>
+                        <div style="padding:8px 0; border-bottom:1px solid #f0f0f0;">
+                            派单 #<?php echo $d->id; ?> — 状态：<?php echo \app\model\OrderDispatch::getStatusText($d->status ?? null); ?>
+                        </div>
+                    <?php endforeach; ?>
+                </a-card>
+
+                <a-card style="margin-top:12px;">
+                    <h4>状态日志</h4>
+                    <a-list :data="<?php echo json_encode($order->statusLogs->toArray() ?? [], JSON_UNESCAPED_UNICODE); ?>" size="small">
+                        <template #renderItem="{ item }">
+                            <a-list-item>
+                                <div>{{ item.create_time }} - {{ item.status }} - {{ item.remark }}</div>
+                            </a-list-item>
+                        </template>
+                    </a-list>
+                </a-card>
+            </a-col>
+        </a-row>
+    </a-card>
+</div>
+
+<script src="https://unpkg.com/vue@3"></script>
+<script src="https://unpkg.com/@arco-design/web-vue/dist/arco-vue.js"></script>
+<script>
+const { createApp } = Vue;
+createApp({ methods: { goBack(){ location.href='/admin/order/list'; } } }).use(window.Arco).mount('#app');
+</script>
+</body>
+</html>

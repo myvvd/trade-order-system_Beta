@@ -1,0 +1,264 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<style>
+.item-input { width: 100%; }
+.goods-option { display: flex; align-items: center; gap: 8px; }
+.goods-option img { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+.goods-option-info { line-height: 1.2; }
+.goods-option-name { font-weight: 600; }
+.goods-option-meta { font-size: 12px; color: #86909c; }
+</style>
+
+<div id="orderFormApp">
+    <div class="page-header">
+        <div class="page-header-title">{{ isEdit ? '编辑订单' : '新建订单' }}</div>
+        <a-space :size="12">
+            <a-button @click="goBack">返回</a-button>
+            <a-button type="primary" @click="handleSubmit">保存</a-button>
+        </a-space>
+    </div>
+
+    <a-card>
+        <a-form :model="form" layout="vertical">
+            <a-form-item label="客户" required>
+                <a-select v-model="form.customer_id" placeholder="选择客户" style="width: 360px;" allow-search>
+                    <a-option v-for="c in customers" :key="c.id" :value="c.id">{{ c.company_name }}</a-option>
+                </a-select>
+                <a-button type="text" @click="openNewCustomer" style="margin-left: 8px;">+ 快速新建</a-button>
+            </a-form-item>
+
+            <a-form-item label="货品明细">
+                <a-table :data="form.items" :pagination="false" size="small" :bordered="{cell:true}">
+                    <template #columns>
+                        <a-table-column title="货品" :width="280">
+                            <template #cell="{ record, rowIndex }">
+                                <a-select v-model="record.goods_id" placeholder="搜索货品" allow-search @search="(q) => searchGoods(q, rowIndex)" @change="(val) => onGoodsChange(val, rowIndex)">
+                                    <a-option v-for="g in record._goodsOptions || []" :key="g.id" :value="g.id">
+                                        <div class="goods-option">
+                                            <img v-if="g.image" :src="g.image" />
+                                            <div class="goods-option-info">
+                                                <div class="goods-option-name">{{ g.name }}</div>
+                                                <div class="goods-option-meta">{{ g.goods_no }} · ¥{{ g.sale_price }}</div>
+                                            </div>
+                                        </div>
+                                    </a-option>
+                                </a-select>
+                                <div style="font-size: 12px; color: #86909c; margin-top: 4px;" v-if="record.goods_name">
+                                    {{ record.goods_name }} <span v-if="record.goods_no">/ {{ record.goods_no }}</span>
+                                </div>
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="规格" :width="160">
+                            <template #cell="{ record }">
+                                <a-select v-model="record.sku_id" placeholder="选择规格" allow-clear>
+                                    <a-option v-for="s in record._skuOptions || []" :key="s.id" :value="s.id">{{ s.sku_name }}</a-option>
+                                </a-select>
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="数量" :width="100">
+                            <template #cell="{ record }">
+                                <a-input-number v-model="record.quantity" :min="1" />
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="单价" :width="120">
+                            <template #cell="{ record }">
+                                <a-input-number v-model="record.price" :min="0" :precision="2" />
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="金额" :width="100" align="right">
+                            <template #cell="{ record }">¥{{ (record.quantity * record.price).toFixed(2) }}</template>
+                        </a-table-column>
+                        <a-table-column title="备注" :width="150">
+                            <template #cell="{ record }">
+                                <a-input v-model="record.remark" placeholder="备注" />
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="操作" :width="80">
+                            <template #cell="{ rowIndex }">
+                                <a-button type="text" status="danger" size="small" @click="removeItem(rowIndex)">删除</a-button>
+                            </template>
+                        </a-table-column>
+                    </template>
+                </a-table>
+                <a-button style="margin-top: 12px;" @click="addItem">+ 添加明细</a-button>
+            </a-form-item>
+
+            <a-row :gutter="24">
+                <a-col :span="8">
+                    <a-form-item label="交货日期">
+                        <a-date-picker v-model="form.delivery_date" style="width: 100%;" />
+                    </a-form-item>
+                </a-col>
+                <a-col :span="8">
+                    <a-form-item label="总金额">
+                        <div style="font-size: 24px; font-weight: 600; color: #165dff;">¥{{ totalAmount.toFixed(2) }}</div>
+                    </a-form-item>
+                </a-col>
+            </a-row>
+
+            <a-form-item label="备注">
+                <a-textarea v-model="form.remark" placeholder="订单备注" :max-length="500" show-word-limit />
+            </a-form-item>
+        </a-form>
+    </a-card>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+const { ref, reactive, computed } = Vue;
+
+window.createPageApp({
+    setup() {
+        const orderData = <?php echo json_encode($order ?? null, JSON_UNESCAPED_UNICODE); ?>;
+        const customersData = <?php echo json_encode($customers ?? [], JSON_UNESCAPED_UNICODE); ?>;
+        
+        const isEdit = ref(!!orderData);
+        const customers = ref(customersData);
+
+        const defaultItem = () => ({
+            goods_id: null,
+            sku_id: null,
+            goods_name: '',
+            goods_no: '',
+            quantity: 1,
+            price: 0,
+            remark: '',
+            _goodsOptions: [],
+            _skuOptions: []
+        });
+
+        const form = reactive({
+            customer_id: orderData?.customer_id || null,
+            items: orderData?.items?.length ? orderData.items.map(it => ({
+                ...it,
+                _goodsOptions: [],
+                _skuOptions: []
+            })) : [defaultItem()],
+            delivery_date: orderData?.delivery_date || '',
+            remark: orderData?.remark || ''
+        });
+
+        const totalAmount = computed(() => {
+            return form.items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
+        });
+
+        const addItem = () => {
+            form.items.push(defaultItem());
+        };
+
+        const removeItem = (index) => {
+            form.items.splice(index, 1);
+        };
+
+        let searchTimers = {};
+        const searchGoods = (query, rowIndex) => {
+            if (!query) return;
+            if (searchTimers[rowIndex]) clearTimeout(searchTimers[rowIndex]);
+            searchTimers[rowIndex] = setTimeout(() => {
+                fetch('/admin/goods/search?q=' + encodeURIComponent(query))
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.code == 1 || res.success) {
+                            form.items[rowIndex]._goodsOptions = (res.data || []).map(d => ({
+                                id: d.id,
+                                name: d.name,
+                                goods_no: d.goods_no || '',
+                                sale_price: d.sale_price || 0,
+                                image: d.image || ''
+                            }));
+                        }
+                    }).catch(() => {});
+            }, 300);
+        };
+
+        const onGoodsChange = async (val, rowIndex) => {
+            const item = form.items[rowIndex];
+            if (!val) return;
+            const found = (item._goodsOptions || []).find(g => g.id == val);
+            if (found) {
+                item.goods_name = found.name;
+                item.goods_no = found.goods_no;
+                item.price = found.sale_price || item.price || 0;
+            }
+            // 加载 SKU
+            try {
+                const res = await fetch('/admin/goods/skuList/' + val);
+                const json = await res.json();
+                if (json.code == 1 || json.success) {
+                    item._skuOptions = json.data || [];
+                    if (item._skuOptions.length === 1) {
+                        item.sku_id = item._skuOptions[0].id;
+                    }
+                }
+            } catch (e) { console.error(e); }
+        };
+
+        const openNewCustomer = () => {
+            window.open('/admin/customer/create', '_blank');
+        };
+
+        const goBack = () => {
+            location.href = '/admin/order/list';
+        };
+
+        const handleSubmit = () => {
+            if (!form.customer_id) {
+                ArcoMessage.warning('请选择客户');
+                return;
+            }
+            if (form.items.length === 0 || !form.items.some(it => it.goods_id)) {
+                ArcoMessage.warning('请添加货品明细');
+                return;
+            }
+
+            const payload = {
+                customer_id: form.customer_id,
+                items: form.items.filter(it => it.goods_id).map(it => ({
+                    goods_id: it.goods_id,
+                    sku_id: it.sku_id,
+                    quantity: it.quantity,
+                    price: it.price,
+                    remark: it.remark
+                })),
+                delivery_date: form.delivery_date,
+                remark: form.remark,
+                total_amount: totalAmount.value
+            };
+
+            const url = isEdit.value ? '/admin/order/update/<?php echo $order["id"] ?? 0; ?>' : '/admin/order/save';
+            
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(r => r.json()).then(ret => {
+                if (ret.code == 1 || ret.success) {
+                    ArcoMessage.success('保存成功');
+                    location.href = '/admin/order/list';
+                } else {
+                    ArcoMessage.error(ret.msg || '保存失败');
+                }
+            }).catch(() => {
+                ArcoMessage.error('网络错误');
+            });
+        };
+
+        return {
+            isEdit,
+            customers,
+            form,
+            totalAmount,
+            addItem,
+            removeItem,
+            searchGoods,
+            onGoodsChange,
+            openNewCustomer,
+            goBack,
+            handleSubmit
+        };
+    }
+}, 'orderFormApp');
+</script>
+{/block}

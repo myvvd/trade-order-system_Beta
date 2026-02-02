@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>派单详情</title>
+    <link rel="stylesheet" href="https://unpkg.com/@arco-design/web-vue/dist/arco.css">
+</head>
+<body>
+<div id="app">
+    <a-card>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>派单 #<?php echo $dispatch->id; ?></h3>
+            <div>
+                <a-button @click="goBack">返回</a-button>
+            </div>
+        </div>
+
+        <a-row :gutter="16" style="margin-top:12px;">
+            <a-col :span="8">
+                <a-card>
+                    <p><strong>订单号：</strong><?php echo $dispatch->order->order_no ?? ''; ?></p>
+                    <p><strong>供应商：</strong><?php echo $dispatch->supplier->name ?? ''; ?></p>
+                    <p><strong>状态：</strong><?php echo $dispatch->status_text ?? \app\model\OrderDispatch::getStatusText($dispatch->status ?? null); ?></p>
+                    <p><strong>创建时间：</strong><?php echo $dispatch->create_time ?? ''; ?></p>
+                </a-card>
+            </a-col>
+            <a-col :span="16">
+                <a-card>
+                    <h4>派单明细</h4>
+                    <a-table :data="<?php echo json_encode($dispatch->items->toArray() ?? [], JSON_UNESCAPED_UNICODE); ?>" :pagination="false">
+                        <a-table-column title="货品">
+                            <template #cell="{ record }">{{ record.goods_id }}</template>
+                        </a-table-column>
+                        <a-table-column title="规格">
+                            <template #cell="{ record }">{{ record.sku_id }}</template>
+                        </a-table-column>
+                        <a-table-column title="数量">
+                            <template #cell="{ record }">{{ record.quantity }}</template>
+                        </a-table-column>
+                    </a-table>
+                </a-card>
+
+                <a-card style="margin-top:12px;">
+                    <h4>状态日志</h4>
+                    <ul>
+                        <?php foreach($dispatch->order->statusLogs as $log): ?>
+                            <li><?php echo $log->create_time; ?> - <?php echo $log->status; ?> - <?php echo $log->remark; ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </a-card>
+            </a-col>
+        </a-row>
+    </a-card>
+</div>
+
+<script src="https://unpkg.com/vue@3"></script>
+<script src="https://unpkg.com/@arco-design/web-vue/dist/arco-vue.js"></script>
+<script>
+const { createApp } = Vue;
+createApp({ methods: { goBack(){ location.href='/admin/order_dispatch/list'; } } }).use(window.Arco).mount('#app');
+</script>
+</body>
+</html>

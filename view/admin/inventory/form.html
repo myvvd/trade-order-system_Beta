@@ -1,0 +1,24 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div>
+    <h2>创建盘点单</h2>
+    <form id="form">
+        <div style="margin-bottom:8px;"><label>范围：
+            <select name="range" id="range">
+                <option value="all">全部货品</option>
+                <option value="category">指定分类</option>
+                <option value="goods">指定货品</option>
+            </select>
+        </label></div>
+        <div style="margin-bottom:8px;" id="goodsBox" style="display:none;"><label>货品ID（逗号分隔）：<input name="goods_ids" /></label></div>
+        <div style="margin-bottom:8px;"><label>备注：<input name="remark" /></label></div>
+        <div><button type="button" id="submitBtn">创建</button></div>
+    </form>
+    <script>
+    document.getElementById('range').addEventListener('change', function(e){ document.getElementById('goodsBox').style.display = e.target.value==='goods' ? 'block' : 'none'; });
+    document.getElementById('submitBtn').addEventListener('click', function(){ const data = new URLSearchParams(new FormData(document.getElementById('form'))); fetch('/admin/inventory/save', {method:'POST', body: data}).then(r=>r.json()).then(j=>{ if(j.code==200){ alert(j.msg||'已创建'); location.href='/admin/inventory/list'; } else alert(j.msg||'失败'); }); });
+    </script>
+</div>
+
+{/block}

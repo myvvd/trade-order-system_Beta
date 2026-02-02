@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 外贸订单管理系统</title>
+
+    <!-- Arco Design CSS -->
+    <link rel="stylesheet" href="/static/libs/arco/arco-vue.min.css">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; }
+        body {
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+        .login-container {
+            width: 420px;
+            padding: 40px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f2f5;
+        }
+        .login-header h1 {
+            font-size: 26px;
+            color: #2c1f4c;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .login-header p {
+            color: #86909c;
+            font-size: 14px;
+        }
+        .login-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            color: #fff;
+            font-size: 24px;
+        }
+        .login-form .form-item {
+            margin-bottom: 20px;
+        }
+        .login-form .form-item label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4e5969;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .login-form .form-input {
+            width: 100%;
+            height: 44px;
+            padding: 0 16px;
+            border: 1px solid #e5e6eb;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: #f9f9f9;
+        }
+        .login-form .form-input:focus {
+            border-color: #667eea;
+            background: #fff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .login-btn {
+            width: 100%;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 8px;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .login-btn:active {
+            transform: translateY(0);
+        }
+        .login-btn:disabled {
+            background: #c9cdd4;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            color: #86909c;
+            font-size: 13px;
+        }
+        .login-footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .message {
+            padding: 14px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .message.success {
+            background: #e6fffb;
+            color: #00b42a;
+            border-left: 4px solid #00b42a;
+        }
+        .message.error {
+            background: #fff7e8;
+            color: #ff7d00;
+            border-left: 4px solid #ff7d00;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="login-container">
+        <div class="login-header">
+            <div class="login-icon">🏭</div>
+            <h1>供应商登录</h1>
+            <p>Supplier Portal</p>
+        </div>
+
+        <!-- 提示信息 -->
+        <div v-if="message" :class="['message', messageType]">
+            {{ message }}
+        </div>
+
+        <form class="login-form" @submit.prevent="handleLogin">
+            <div class="form-item">
+                <label>登录账号</label>
+                <input type="text" class="form-input" v-model="form.login_account" placeholder="请输入登录账号" autocomplete="username">
+            </div>
+
+            <div class="form-item">
+                <label>密码</label>
+                <input type="password" class="form-input" v-model="form.login_password" placeholder="请输入密码" autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="login-btn" :disabled="loading">
+                {{ loading ? '登录中...' : '登录' }}
+            </button>
+        </form>
+
+        <div class="login-footer">
+            <p>如忘记密码，请联系管理员重置</p>
+        </div>
+    </div>
+</div>
+
+<!-- Vue 3 -->
+<script src="/static/libs/vue/vue.global.prod.js"></script>
+
+<script>
+const { createApp, ref, reactive, onMounted } = Vue;
+
+createApp({
+    setup() {
+        const loading = ref(false);
+        const message = ref('');
+        const messageType = ref('');
+        const form = reactive({
+            login_account: '',
+            login_password: ''
+        });
+
+        // 显示消息
+        const showMessage = (msg, type = 'success') => {
+            message.value = msg;
+            messageType.value = type;
+            setTimeout(() => {
+                message.value = '';
+            }, 3000);
+        };
+
+        // 处理登录
+        const handleLogin = async () => {
+            if (loading.value) return;
+
+            // 表单验证
+            if (!form.login_account) {
+                showMessage('请输入登录账号', 'error');
+                return;
+            }
+            if (!form.login_password) {
+                showMessage('请输入密码', 'error');
+                return;
+            }
+
+            loading.value = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('login_account', form.login_account);
+                formData.append('login_password', form.login_password);
+
+                const response = await fetch('/supplier/login/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('登录成功，正在跳转...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/supplier';
+                    }, 500);
+                } else {
+                    showMessage(result.msg || '登录失败', 'error');
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', 'error');
+            } finally {
+                loading.value = false;
+            }
+        };
+
+        // 页面加载时检查提示信息
+        onMounted(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            const success = urlParams.get('success');
+
+            if (success) {
+                showMessage(decodeURIComponent(success), 'success');
+            } else if (error) {
+                showMessage(decodeURIComponent(error), 'error');
+            }
+
+            // 回车键登录
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleLogin();
+                }
+            });
+
+            // 自动聚焦第一个输入框
+            const firstInput = document.querySelector('.form-input');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        });
+
+        return {
+            loading,
+            message,
+            messageType,
+            form,
+            handleLogin
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>

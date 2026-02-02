@@ -1,0 +1,27 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div>
+  <h2>{if condition="$ship"}编辑出货单#{ $ship.id }{else/}新建出货单{/if}</h2>
+  <form id="shipForm">
+    <div>客户：<select name="customer_id">{volist name="customers" id="c"}<option value="{$c.id}">{$c.name}</option>{/volist}</select></div>
+    <div>选择订单：<!-- 简化：前端可实现按客户过滤订单 --> <input name="order_search" placeholder="输入订单号搜索" /></div>
+    <div id="items">
+      <!-- 货品明细将由前端/后端填充 -->
+      {if condition="$ship"}
+        {volist name="$ship.items" id="it"}
+          <div>{$it.order_id} / {$it.order_item_id} / {$it.goods_id} / {$it.sku_id} : <input name="items[{$it.id}][quantity]" value="{$it.quantity}" /></div>
+        {/volist}
+      {/if}
+    </div>
+    <div>物流公司：<input name="logistics_company" value="{$ship.logistics_company|default=''}" /></div>
+    <div>物流单号：<input name="logistics_no" value="{$ship.logistics_no|default=''}" /></div>
+    <div>发货日期：<input type="date" name="ship_date" value="{$ship.ship_date|default=''}" /></div>
+    <div>备注：<textarea name="remark">{$ship.remark|default=''} </textarea></div>
+    <div><button type="button" id="saveBtn">保存</button></div>
+  </form>
+  <script>
+  document.getElementById('saveBtn').addEventListener('click', function(){ var form = document.getElementById('shipForm'); var data = new FormData(form); var url = '{if condition="$ship"}/admin/shipping/update/{$ship.id}{else}/admin/shipping/save{/if}'; fetch(url,{method:'POST', body: data}).then(r=>r.json()).then(j=>{ alert(j.msg||'已保存'); if(j.code==200) location.href='/admin/shipping/list'; }); });
+  </script>
+</div>
+{/block}

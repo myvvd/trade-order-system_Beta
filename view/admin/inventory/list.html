@@ -1,0 +1,36 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div>
+    <h2>盘点单列表</h2>
+    <a href="/admin/inventory/create">创建盘点单</a>
+    <table style="width:100%; border-collapse:collapse; margin-top:12px; background:#fff;">
+        <thead><tr style="background:#f5f7fa;"><th>盘点单号</th><th>状态</th><th>项数</th><th>创建时间</th><th>完成时间</th><th>操作</th></tr></thead>
+        <tbody>
+        {volist name="list" id="it"}
+            <tr>
+                <td style="padding:8px; border-bottom:1px solid #eee;">{$it.id}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee;">{if $it.status==0}进行中{else}已完成{/if}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee;">{count($it.items)}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee;">{$it.create_time}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee;">{$it.completed_time|default='-'}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee;">
+                    <a href="/admin/inventory/detail/{$it.id}">查看</a>
+                    {if $it.status==0}
+                        &nbsp;|&nbsp;<a href="/admin/inventory/edit/{$it.id}">录入</a>
+                        &nbsp;|&nbsp;<a href="javascript:complete({$it.id})">完成</a>
+                        &nbsp;|&nbsp;<a href="javascript:del({$it.id})">删除</a>
+                    {/if}
+                </td>
+            </tr>
+        {/volist}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function complete(id){ if(confirm('确定完成盘点并应用库存变动吗？')){ fetch('/admin/inventory/complete/' + id, {method:'POST'}).then(r=>r.json()).then(j=>{ alert(j.msg||'完成'); if(j.code==200) location.reload(); }); }}
+function del(id){ if(confirm('确定删除？')){ fetch('/admin/inventory/delete/' + id, {method:'POST'}).then(r=>r.json()).then(j=>{ alert(j.msg||'已删除'); if(j.code==200) location.reload(); }); }}
+</script>
+
+{/block}

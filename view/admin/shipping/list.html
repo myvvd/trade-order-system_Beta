@@ -1,0 +1,26 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div>
+  <h2>出货单列表</h2>
+  <table style="width:100%;border-collapse:collapse;background:#fff;">
+    <thead><tr style="background:#f5f7fa;"><th>单号</th><th>客户</th><th>物流公司</th><th>物流单号</th><th>状态</th><th>发货日期</th><th>操作</th></tr></thead>
+    <tbody>
+    {volist name="list" id="r"}
+      <tr>
+        <td>{$r.shipping_no}</td>
+        <td>{$r.customer.name|default='-'}</td>
+        <td>{$r.logistics_company}</td>
+        <td>{$r.logistics_no}</td>
+        <td>{if condition="$r.status eq 1"}已发货{else/}未发货{/if}</td>
+        <td>{$r.shipped_at|default='-'}</td>
+        <td><a href="/admin/shipping/detail/{$r.id}">详情</a> {if condition="$r.status eq 0"}<a href="/admin/shipping/edit/{$r.id}">编辑</a> <a href="javascript:;" onclick="doShip({$r.id})">发货</a>{/if}</td>
+      </tr>
+    {/volist}
+    </tbody>
+  </table>
+  <script>
+  function doShip(id){ if(!confirm('确认发货？')) return; fetch('/admin/shipping/ship/'+id,{method:'POST'}).then(r=>r.json()).then(j=>{ alert(j.msg||'操作完成'); if(j.code==200) location.reload(); }); }
+  </script>
+</div>
+{/block}

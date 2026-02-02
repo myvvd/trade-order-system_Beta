@@ -1,0 +1,85 @@
+{extend name="layout/supplier_base.html"}
+
+{block name="content"}
+<div id="app">
+    <a-card>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>我的派单</h3>
+            <div style="color:#86909c">共 {{ total }} 条</div>
+        </div>
+
+        <a-space direction="vertical" style="width:100%">
+            <a-tabs v-model:active-key="String(status)" size="small" type="line" @change="onTabChange">
+                <a-tab-pane key="" title="全部"></a-tab-pane>
+                <a-tab-pane key="20" title="待确认"></a-tab-pane>
+                <a-tab-pane key="30" title="制作中"></a-tab-pane>
+                <a-tab-pane key="40" title="待收货"></a-tab-pane>
+                <a-tab-pane key="50" title="已完成"></a-tab-pane>
+            </a-tabs>
+
+            <a-table :data="dispatches" :pagination="false">
+                <a-table-column title="派单号" dataIndex="dispatch_no" width="160">
+                    <template #cell="{ record }"><a :href="'/supplier/order/detail/' + record.id">{{ record.dispatch_no || record.id }}</a></template>
+                </a-table-column>
+                <a-table-column title="货品" key="items">
+                    <template #cell="{ record }">
+                        <div v-for="it in record.items" :key="it.id">{{ it.goods_name }} / {{ it.sku_name }}</div>
+                    </template>
+                </a-table-column>
+                <a-table-column title="数量">
+                    <template #cell="{ record }">
+                        <div v-for="it in record.items" :key="it.id">{{ it.quantity }}</div>
+                    </template>
+                </a-table-column>
+                <a-table-column title="要求交期" dataIndex="delivery_date" width="140"></a-table-column>
+                <a-table-column title="状态" dataIndex="status_text" width="100"></a-table-column>
+                <a-table-column title="操作" width="200">
+                    <template #cell="{ record }">
+                        <a-space>
+                            <a-button type="text" size="small" :href="'/supplier/order/detail/' + record.id">查看</a-button>
+                            <a-button v-if="record.status==20" type="text" size="small" @click="confirm(record.id)">确认</a-button>
+                            <a-button v-if="record.status==20" type="text" size="small" @click="reject(record.id)">拒绝</a-button>
+                            <a-button v-if="record.status==30" type="text" size="small" :href="'/supplier/order/ship/' + record.id">发货</a-button>
+                        </a-space>
+                    </template>
+                </a-table-column>
+            </a-table>
+
+            <div style="display:flex; justify-content:flex-end;">
+                <a-pagination :total="total" :page-size="page_size" :current="page" @change="goPage" show-quick-jumper />
+            </div>
+        </a-space>
+    </a-card>
+</div>
+
+<script>
+const { createApp } = Vue;
+createApp({
+    data(){
+        return {
+            dispatches: <?php echo json_encode($dispatches ?? [], JSON_UNESCAPED_UNICODE); ?>,
+            total: <?php echo (int)($total ?? 0); ?>,
+            page: <?php echo (int)($page ?? 1); ?>,
+            page_size: <?php echo (int)($page_size ?? 15); ?>,
+            page_total: <?php echo (int)($page_total ?? 1); ?>,
+            status: '<?php echo htmlspecialchars($status ?? '', ENT_QUOTES); ?>',
+        }
+    },
+    methods:{
+        buildQuery(params){
+            const url = new URL(window.location.href);
+            Object.keys(params).forEach(k=>{
+                if(params[k]===null || params[k]==='') url.searchParams.delete(k);
+                else url.searchParams.set(k, params[k]);
+            });
+            return url.pathname + url.search;
+        },
+        goPage(n){ window.location.href = this.buildQuery({ page: n, status: this.status }); },
+        onTabChange(key){ this.status = key; window.location.href = this.buildQuery({ page: 1, status: key }); },
+        async confirm(id){ if(!confirm('确认接单？')) return; const res = await fetch('/supplier/order/confirm/' + id, { method:'POST' }); const j = await res.json(); alert(j.msg||'完成'); if(j.code==200) location.reload(); },
+        async reject(id){ const reason = prompt('请输入拒绝原因：'); if(reason===null) return; const body = new URLSearchParams(); body.append('reason', reason); const res = await fetch('/supplier/order/reject/' + id, { method:'POST', body }); const j = await res.json(); alert(j.msg||'完成'); if(j.code==200) location.reload(); },
+    }
+}).use(window.Arco).mount('#app');
+</script>
+
+{/block}

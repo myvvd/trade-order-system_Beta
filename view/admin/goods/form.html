@@ -1,0 +1,209 @@
+{extend name="layout/admin_base"/}
+{php}
+$goods = isset($goods) ? $goods : null;
+$categories = isset($categories) ? ($categories instanceof \think\Collection ? $categories->toArray() : []) : [];
+$goodsData = $goods ? $goods->toArray() : [];
+$skus = isset($skus) ? $skus : [];
+{/php}
+
+{block name="content"}
+<div id="goodsFormApp">
+    <div class="page-header">
+        <div class="page-header-title">{$title|default='新增货品'}</div>
+        <a-space :size="12">
+            <a-button @click="goBack">返回</a-button>
+        </a-space>
+    </div>
+
+    <a-card>
+        <a-form
+            :model="form"
+            :label-col-props="{ span: 4 }"
+            :wrapper-col-props="{ span: 16 }"
+            @submit="handleSubmit"
+        >
+            {if condition="$goods"}
+            <input type="hidden" name="id" value="{$goods.id}">
+            {/if}
+
+            <!-- 基本信息 -->
+            <a-divider orientation="left">基本信息</a-divider>
+
+            <a-form-item
+                field="goods_no"
+                label="货品编号"
+                :rules="[{ required: true, message: '请输入货品编号' }]"
+            >
+                <a-input
+                    v-model="form.goods_no"
+                    placeholder="如：G001"
+                    allow-clear
+                />
+            </a-form-item>
+
+            <a-form-item
+                field="name"
+                label="货品名称"
+                :rules="[{ required: true, message: '请输入货品名称' }]"
+            >
+                <a-input
+                    v-model="form.name"
+                    placeholder="请输入货品名称"
+                    allow-clear
+                />
+            </a-form-item>
+
+            <a-form-item field="category_id" label="所属分类">
+                <a-select
+                    v-model="form.category_id"
+                    placeholder="请选择分类"
+                    allow-clear
+                >
+                    <a-option :value="0">未分类</a-option>
+                    <a-option
+                        v-for="cat in categories"
+                        :key="cat.id"
+                        :value="cat.id"
+                    >{{ cat.name }}</a-option>
+                </a-select>
+            </a-form-item>
+
+            <a-form-item field="unit" label="单位">
+                <a-input
+                    v-model="form.unit"
+                    placeholder="如：件、个、套"
+                    allow-clear
+                />
+            </a-form-item>
+
+            <a-form-item field="description" label="货品描述">
+                <a-textarea
+                    v-model="form.description"
+                    placeholder="请输入货品描述"
+                    :auto-size="{ minRows: 3, maxRows: 5 }"
+                    allow-clear
+                />
+            </a-form-item>
+
+            <!-- 价格信息 -->
+            <a-divider orientation="left">价格信息</a-divider>
+
+            <a-form-item
+                field="cost_price"
+                label="成本价（元）"
+                :rules="[{ required: true, message: '请输入成本价' }]"
+            >
+                <a-input-number
+                    v-model="form.cost_price"
+                    :min="0"
+                    :precision="2"
+                    placeholder="请输入成本价"
+                    style="width: 200px;"
+                >
+                    <template #prefix>¥</template>
+                </a-input-number>
+            </a-form-item>
+
+            <a-form-item
+                field="sale_price"
+                label="销售价（元）"
+                :rules="[{ required: true, message: '请输入销售价' }]"
+            >
+                <a-input-number
+                    v-model="form.sale_price"
+                    :min="0"
+                    :precision="2"
+                    placeholder="请输入销售价"
+                    style="width: 200px;"
+                >
+                    <template #prefix>¥</template>
+                </a-input-number>
+            </a-form-item>
+
+            <!-- 状态 -->
+            <a-form-item field="status" label="状态">
+                <a-radio-group v-model="form.status">
+                    <a-radio :value="1">上架</a-radio>
+                    <a-radio :value="0">下架</a-radio>
+                </a-radio-group>
+            </a-form-item>
+
+            <!-- 操作按钮 -->
+            <a-form-item :wrapper-col-props="{ span: 16, offset: 4 }">
+                <a-space :size="12">
+                    <a-button type="primary" html-type="submit" :loading="submitting">保存</a-button>
+                    <a-button @click="goBack">返回</a-button>
+                </a-space>
+            </a-form-item>
+        </a-form>
+    </a-card>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+const { createApp, ref, reactive } = Vue;
+
+const app = createApp({
+    setup() {
+        const submitting = ref(false);
+
+        const form = reactive({
+            id: {$goods.id|raw|default='null'},
+            goods_no: '{$goods.goods_no|raw|default=""}',
+            name: '{$goods.name|raw|default=""}',
+            category_id: {$goods.category_id|raw|default=0},
+            unit: '{$goods.unit|raw|default="件"}',
+            cost_price: {$goods.cost_price|raw|default=0},
+            sale_price: {$goods.sale_price|raw|default=0},
+            description: '{$goods.description|raw|default=""}',
+            status: {$goods.status|raw|default=1}
+        });
+
+        const categories = ref({$categories_json|raw|json_encode|default='[]'});
+
+        const handleSubmit = () => {
+            submitting.value = true;
+
+            const formData = new FormData();
+            Object.keys(form).forEach(key => {
+                formData.append(key, form[key]);
+            });
+
+            fetch('/admin/goods/save', {
+                method: 'POST',
+                body: formData
+            }).then(res => res.json()).then(result => {
+                if (result.success) {
+                    ArcoMessage.success('保存成功');
+                    location.href = '/admin/goods/list';
+                } else {
+                    ArcoMessage.error(result.msg || '保存失败');
+                }
+            }).catch(() => {
+                ArcoMessage.error('请求失败，请重试');
+            }).finally(() => {
+                submitting.value = false;
+            });
+        };
+
+        const goBack = () => {
+            history.back();
+        };
+
+        return {
+            form,
+            categories,
+            submitting,
+            handleSubmit,
+            goBack
+        };
+    }
+});
+
+// 挂载到独立的元素
+const goodsFormContainer = document.createElement('div');
+document.getElementById('goodsFormApp').appendChild(goodsFormContainer);
+app.mount(goodsFormContainer);
+</script>
+{/block}

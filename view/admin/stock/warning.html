@@ -1,0 +1,33 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div>
+    <h2>库存预警</h2>
+
+    <table style="width:100%; border-collapse:collapse; background:#fff;">
+        <thead>
+            <tr style="background:#f5f7fa; text-align:left;">
+                <th style="padding:8px;">编号</th>
+                <th style="padding:8px;">货品</th>
+                <th style="padding:8px;">规格</th>
+                <th style="padding:8px;">当前库存</th>
+                <th style="padding:8px;">预警库存</th>
+                <th style="padding:8px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+        {volist name="rows" id="r"}
+            <tr>
+                <td style="padding:8px;">{$r.goods_no}</td>
+                <td style="padding:8px;">{$r.goods_name}</td>
+                <td style="padding:8px;">-</td>
+                <td style="padding:8px;">{$r.quantity}</td>
+                <td style="padding:8px;">{$r.warn_stock}</td>
+                <td style="padding:8px;"><a href="/admin/stock/adjust?goods_id={$r.goods_id}">补货</a></td>
+            </tr>
+        {/volist}
+        </tbody>
+    </table>
+</div>
+
+{/block}

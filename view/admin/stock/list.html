@@ -1,0 +1,100 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div id="app">
+    <a-card>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; gap:8px; align-items:center;">
+                <a-input v-model:value="filters.q" placeholder="货品名称/编号" style="width:260px" />
+                <a-select v-model:value="filters.status" placeholder="状态" style="width:140px">
+                    <a-select-option value="">全部</a-select-option>
+                    <a-select-option value="normal">正常</a-select-option>
+                    <a-select-option value="low">不足</a-select-option>
+                    <a-select-option value="out">缺货</a-select-option>
+                </a-select>
+                <a-button type="primary" @click="search">搜索</a-button>
+            </div>
+            <div>
+                <a-button type="text" href="/admin/stock/warning">库存预警</a-button>
+            </div>
+        </div>
+
+        <a-table :data="list" :pagination="false" style="margin-top:12px;">
+            <a-table-column title="编号" dataIndex="goods_no" width="160"></a-table-column>
+            <a-table-column title="货品" dataIndex="goods_name"></a-table-column>
+            <a-table-column title="规格" dataIndex="sku_name" width="160"></a-table-column>
+            <a-table-column title="当前库存" dataIndex="quantity" width="120"></a-table-column>
+            <a-table-column title="预警库存" dataIndex="warn_stock" width="120"></a-table-column>
+            <a-table-column title="状态" width="100">
+                <template #cell="{ record }">
+                    <span v-if="record.quantity <= 0" style="color:#c00">缺货</span>
+                    <span v-else-if="record.quantity <= record.warn_stock" style="color:#f90">不足</span>
+                    <span v-else style="color:#0a0">正常</span>
+                </template>
+            </a-table-column>
+            <a-table-column title="操作" width="180">
+                <template #cell="{ record }">
+                    <a-space>
+                        <a-button type="text" size="small" :href="'/admin/stock/log/' + record.goods_id">查看记录</a-button>
+                        <a-button type="text" size="small" :href="'/admin/stock/adjust?goods_id=' + record.goods_id">手动调整</a-button>
+                    </a-space>
+                </template>
+            </a-table-column>
+        </a-table>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+            <a-pagination :total="total" :page-size="page_size" :current="page" @change="onPageChange" show-quick-jumper />
+        </div>
+    </a-card>
+</div>
+
+<script src="/static/libs/vue/vue.global.prod.js"></script>
+<script src="/static/libs/arco/arco-vue.min.js"></script>
+<script>
+const { createApp } = Vue;
+createApp({
+    data(){
+        return {
+            list: [],
+            total: 0,
+            page: 1,
+            page_size: 15,
+            filters: { q: '', status: '' }
+        }
+    },
+    mounted(){
+        // 初始化可能来自服务端的 query
+        const params = new URLSearchParams(window.location.search);
+        if(params.get('q')) this.filters.q = params.get('q');
+        if(params.get('status')) this.filters.status = params.get('status');
+        this.page = parseInt(params.get('page')||'1');
+        this.page_size = parseInt(params.get('page_size')||'15');
+        this.fetchList();
+    },
+    methods:{
+        async fetchList(){
+            const qs = new URLSearchParams();
+            qs.set('page', this.page);
+            qs.set('page_size', this.page_size);
+            if(this.filters.q) qs.set('q', this.filters.q);
+            if(this.filters.status) qs.set('status', this.filters.status);
+
+            const res = await fetch('/admin/stock/listJson?' + qs.toString());
+            const j = await res.json();
+            if(j && j.code==200 && j.data){
+                this.list = j.data.list;
+                this.total = j.data.total;
+                this.page = j.data.page;
+                this.page_size = j.data.page_size;
+            } else {
+                this.list = [];
+                this.total = 0;
+            }
+        },
+        search(){ this.page = 1; this.fetchList(); },
+        onPageChange(p){ this.page = p; this.fetchList(); },
+    }
+}).use(window.Arco).mount('#app');
+</script>
+
+{/block}

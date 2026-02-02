@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>派单</title>
+    <link rel="stylesheet" href="https://unpkg.com/@arco-design/web-vue/dist/arco.css">
+</head>
+<body>
+<div id="app">
+    <a-card>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>为订单：<?php echo $order->order_no; ?> 派单</h3>
+            <div>
+                <a-button @click="goBack">返回</a-button>
+            </div>
+        </div>
+
+        <a-row :gutter="16" style="margin-top:12px;">
+            <a-col :span="12">
+                <a-card>
+                    <h4>订单信息</h4>
+                    <p>客户：<?php echo $order->customer->company_name ?? '-'; ?></p>
+                    <p>总金额：<?php echo $order->total_amount; ?></p>
+                </a-card>
+
+                <a-card style="margin-top:12px;">
+                    <h4>货品明细</h4>
+                            <style>
+                                .row-over{ background:#fff6f6; }
+                                .error-text{ color:#c00; }
+                            </style>
+                            <a-table :data="items" :pagination="false" :row-class-name="rowClassName">
+                        <a-table-column title="选择">
+                            <template #cell="{ record }">
+                                <a-checkbox v-model:checked="record.selected" />
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="货品">
+                            <template #cell="{ record }">{{ record.goods_name || record.goods_id }}</template>
+                        </a-table-column>
+                        <a-table-column title="规格">
+                            <template #cell="{ record }">{{ record.sku_name || record.sku_id }}</template>
+                        </a-table-column>
+                        <a-table-column title="订单数量">
+                            <template #cell="{ record }">{{ record.quantity }}</template>
+                        </a-table-column>
+                                <a-table-column title="已派 / 可派">
+                                    <template #cell="{ record }">
+                                        <div>
+                                            <span>{{ record.dispatched || 0 }}</span>
+                                            <span> / </span>
+                                            <span>{{ record.remaining >= 0 ? record.remaining : 0 }}</span>
+                                        </div>
+                                        <div v-if="record._over" class="error-text">超过可派数量</div>
+                                    </template>
+                                </a-table-column>
+                        <a-table-column title="派单数量">
+                            <template #cell="{ record }">
+                                        <a-input-number v-model:value="record.dispatch_quantity" :min="0" :max="record.remaining" @change="onQuantityChange(record)" />
+                                        <div v-if="record.error" class="error-text">{{ record.error }}</div>
+                            </template>
+                        </a-table-column>
+                    </a-table>
+                </a-card>
+            </a-col>
+
+            <a-col :span="12">
+                <a-card>
+                    <a-form layout="vertical">
+                        <a-form-item label="供应商">
+                            <a-select v-model:value="supplier_id" placeholder="选择供应商" filterable remote @change="onSupplierChange" :on-search="searchSupplier">
+                                <a-select-option v-for="s in supplierOptions" :key="s.id" :value="s.id">{{ s.name }}</a-select-option>
+                            </a-select>
+                        </a-form-item>
+
+                        <a-form-item label="交货日期">
+                            <a-date-picker v-model:value="delivery_date" type="date" />
+                        </a-form-item>
+
+                        <a-form-item label="备注">
+                            <a-input v-model:value="remark" type="textarea" />
+                        </a-form-item>
+
+                        <a-form-item>
+                            <a-button type="primary" @click="submit">创建派单</a-button>
+                        </a-form-item>
+                    </a-form>
+                </a-card>
+            </a-col>
+        </a-row>
+    </a-card>
+</div>
+
+        <script src="https://unpkg.com/vue@3"></script>
+<script src="https://unpkg.com/@arco-design/web-vue/dist/arco-vue.js"></script>
+<script>
+const { createApp } = Vue;
+createApp({
+    data(){
+        return {
+            items: <?php echo json_encode($order->items->toArray() ?? [], JSON_UNESCAPED_UNICODE); ?>,
+            dispatchedCounts: <?php echo json_encode($dispatched_counts ?? [], JSON_UNESCAPED_UNICODE); ?>,
+            supplierOptions: <?php echo json_encode($suppliers ?? [], JSON_UNESCAPED_UNICODE); ?>,
+            supplier_id: null,
+            delivery_date: null,
+            remark: '',
+            order_id: <?php echo (int)$order->id; ?>,
+        }
+    },
+    methods: {
+        goBack(){ location.href='/admin/order/list'; },
+        searchSupplier(q){ /* 可扩展为远程 */ },
+        onSupplierChange(){},
+        rowClassName(record){ return record._over ? 'row-over' : ''; },
+        onQuantityChange(record){
+            record._over = false;
+            record.error = '';
+            const val = Number(record.dispatch_quantity || 0);
+            if(val > (record.remaining || 0)){
+                record._over = true;
+                record.error = '超过可派数量';
+            }
+        },
+        submit(){
+            // pre-check
+            const items = this.items.filter(i=>i.selected && Number(i.dispatch_quantity)>0);
+            if(!this.supplier_id) return alert('请选择供应商');
+            if(items.length==0) return alert('请勾选并填写派单数量');
+            for(const i of items){
+                if(Number(i.dispatch_quantity) > (i.remaining||0)){
+                    i._over = true;
+                    i.error = '超过可派数量';
+                    return alert('存在超过可派的数量，请先调整');
+                }
+            }
+
+            const payload = { order_id: this.order_id, supplier_id: this.supplier_id, items: items.map(i=>({ order_item_id: i.id, quantity: Number(i.dispatch_quantity) })), delivery_date: this.delivery_date, remark: this.remark };
+
+            fetch('/admin/orderdispatch/save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }).then(r=>r.json()).then(j=>{
+                if(j.code==1){
+                    alert('派单创建成功'); location.href='/admin/order_dispatch/list';
+                    return;
+                }
+
+                // 尝试从后端消息中提取 order_item_id 并定位到对应行
+                const msg = j.msg || '';
+                const m = msg.match(/订单明细ID:??\s*([0-9]+)/);
+                if(m){
+                    const itemId = Number(m[1]);
+                    const found = this.items.find(x=>Number(x.id)===itemId);
+                    if(found){
+                        found._over = true;
+                        found.error = msg;
+                        // 可选：滚动到该行
+                        alert(msg);
+                        return;
+                    }
+                }
+
+                alert(j.msg||'创建失败');
+            }).catch(err=>{ alert('网络或服务器错误'); });
+        }
+    },
+    mounted(){
+        // 初始化已派/可派
+        this.items.forEach(i=>{
+            i.selected=false;
+            i.dispatch_quantity = 0;
+            const dispatched = Number(this.dispatchedCounts[i.id] || 0);
+            i.dispatched = dispatched;
+            i.remaining = Number(i.quantity) - dispatched;
+            i._over = false;
+            i.error = '';
+        });
+    }
+}).use(window.Arco).mount('#app');
+</script>
+</body>
+</html>

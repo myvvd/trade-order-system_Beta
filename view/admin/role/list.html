@@ -1,0 +1,128 @@
+{extend name="layout/admin_base"/}
+
+{block name="content"}
+<h1 class="page-title">角色管理</h1>
+
+<!-- 操作栏 -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div style="display: flex; gap: 12px;">
+        <input type="text" id="searchInput" placeholder="搜索角色名称..." style="padding: 8px 16px; border: 1px solid #e5e6eb; border-radius: 4px; width: 200px;">
+        <select id="statusFilter" style="padding: 8px 16px; border: 1px solid #e5e6eb; border-radius: 4px;">
+            <option value="">全部状态</option>
+            <option value="1" {$status==1?'selected':''}>正常</option>
+            <option value="0" {$status==0?'selected':''}>禁用</option>
+        </select>
+        <button class="btn btn-primary" onclick="doSearch()">搜索</button>
+    </div>
+    <button class="btn btn-primary" onclick="location.href='/admin/role/form'">+ 新增角色</button>
+</div>
+
+<!-- 角色列表 -->
+<div class="card">
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f5f5f5;">
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb;">ID</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb;">角色名称</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb;">描述</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb;">用户数</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb;">状态</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb;">创建时间</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {volist name="roles" id="vo"}
+            <tr style="border-bottom: 1px solid #f0f0f0;">
+                <td style="padding: 12px;">{$vo.id}</td>
+                <td style="padding: 12px;">
+                    <span style="font-weight: 600;">{$vo.name}</span>
+                    {if condition="$vo.id eq 1"}<span class="status-tag success" style="margin-left: 8px;">超级管理员</span>{/if}
+                </td>
+                <td style="padding: 12px; color: #86909c;">{$vo.description}</td>
+                <td style="padding: 12px;">{$vo.user_count|default=0}</td>
+                <td style="padding: 12px;">
+                    {if condition="$vo.status eq 1"}<span class="status-tag success">正常</span>{else/}<span class="status-tag error">禁用</span>{/if}
+                </td>
+                <td style="padding: 12px; color: #86909c;">{$vo.create_time}</td>
+                <td style="padding: 12px;">
+                    <button class="btn btn-default action-btn" onclick="editRole({$vo.id})">编辑</button>
+                    {if condition="$vo.id neq 1"}
+                    <button class="btn btn-default action-btn" onclick="viewPermissions({$vo.id})">权限</button>
+                    <button class="btn btn-danger action-btn" onclick="deleteRole({$vo.id})">删除</button>
+                    {else/}
+                    {if condition="$vo.id neq 1"}
+                    <button class="btn btn-default action-btn" onclick="toggleStatus({$vo.id}, {$vo.status})">
+                        {$vo.status eq 1 ? '禁用' : '启用'}
+                    </button>
+                    {else/}
+                </td>
+            </tr>
+            {/volist}
+            {empty name="roles"}
+            <tr>
+                <td colspan="8" style="padding: 40px; text-align: center; color: #86909c;">暂无数据</td>
+            </tr>
+            {/empty}
+        </tbody>
+    </table>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+function doSearch() {
+    const keyword = document.getElementById('searchInput').value;
+    const status = document.getElementById('statusFilter').value;
+    let url = '/admin/role/list';
+    const params = [];
+    if (keyword) params.push('keyword=' + encodeURIComponent(keyword));
+    if (status !== '') params.push('status=' + status);
+    if (params.length) url += '?' + params.join('&');
+    location.href = url;
+}
+
+function editRole(id) {
+    location.href = '/admin/role/form?id=' + id;
+}
+
+function viewPermissions(id) {
+    location.href = '/admin/role/form?id=' + id;
+}
+
+function deleteRole(id) {
+    if (confirm('确定要删除此角色吗？')) {
+        fetch('/admin/role/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'id=' + id
+        }).then(res => res.json()).then(result => {
+            if (result.success) {
+                alert('删除成功');
+                location.reload();
+            } else {
+                alert(result.msg || '删除失败');
+            }
+        });
+    }
+}
+
+function toggleStatus(id, currentStatus) {
+    const action = currentStatus == 1 ? '禁用' : '启用';
+    if (confirm('确定要' + action + '此角色吗？')) {
+        fetch('/admin/role/toggleStatus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'id=' + id
+        }).then(res => res.json()).then(result => {
+            if (result.success) {
+                alert(result.msg);
+                location.reload();
+            } else {
+                alert(result.msg || '操作失败');
+            }
+        });
+    }
+}
+</script>
+{/block}

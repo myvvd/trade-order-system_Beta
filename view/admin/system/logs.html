@@ -1,0 +1,66 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div id="logsApp">
+  <a-card>
+    <a-space>
+      <a-input placeholder="操作人" v-model:value="filters.operator" />
+      <a-input placeholder="模块" v-model:value="filters.module" />
+      <a-date-picker v-model:value="filters.start" type="date" />
+      <a-date-picker v-model:value="filters.end" type="date" />
+      <a-button type="primary" @click="load">查询</a-button>
+    </a-space>
+
+    <a-table :columns="columns" :data="rows" style="margin-top:12px" />
+
+    <div style="margin-top:12px;text-align:right">
+      <a-pagination :current="page" :page-size="pageSize" :total="total" @change="onPageChange" />
+    </div>
+  </a-card>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/arco-design/dist/arco-vue.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/arco-design/dist/arco.min.css" />
+<script>
+const { createApp } = Vue;
+createApp({
+  data(){
+    return {
+      filters:{operator:'',module:'',start:null,end:null},
+      rows:[],
+      columns:[
+        {title:'时间',dataIndex:'created_at'},
+        {title:'操作人',dataIndex:'operator'},
+        {title:'模块',dataIndex:'module'},
+        {title:'操作',dataIndex:'action'},
+        {title:'IP',dataIndex:'ip'},
+        {title:'详情',dataIndex:'detail'}
+      ],
+      page:1,
+      pageSize:20,
+      total:0
+    };
+  },
+  mounted(){ this.load(); },
+  methods:{
+    load(p=1){
+      this.page = p;
+      const s = this.filters.start || '';
+      const e = this.filters.end || '';
+      const q = `/admin/system/data_logs?operator=${encodeURIComponent(this.filters.operator)}&module=${encodeURIComponent(this.filters.module)}&start=${s}&end=${e}&page=${this.page}&page_size=${this.pageSize}`;
+      fetch(q).then(r=>r.json()).then(j=>{
+        if (j.code === 200) {
+          this.rows = j.data.list;
+          this.total = j.data.total;
+          this.page = j.data.page;
+          this.pageSize = j.data.page_size;
+        }
+      });
+    },
+    onPageChange(p){ this.load(p); }
+  }
+}).use(ArcoVue).mount('#logsApp');
+</script>
+
+{/block}

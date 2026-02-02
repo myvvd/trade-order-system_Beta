@@ -1,0 +1,31 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div>
+    <h2>手动调整库存</h2>
+
+    <form id="adjustForm">
+        <div style="margin-bottom:8px;"><label>货品ID：<input name="goods_id" value="{$goods.id|default=''}" /></label></div>
+        <div style="margin-bottom:8px;"><label>规格ID（可空）：<input name="sku_id" value="" /></label></div>
+        <div style="margin-bottom:8px;"><label>调整类型：
+            <select name="type">
+                <option value="in">增加</option>
+                <option value="out">减少</option>
+                <option value="set">设置</option>
+            </select>
+        </label></div>
+        <div style="margin-bottom:8px;"><label>数量：<input name="quantity" type="number" value="0" /></label></div>
+        <div style="margin-bottom:8px;"><label>原因（必填）：<input name="reason" required /></label></div>
+        <div><button type="button" id="submitBtn">提交调整</button></div>
+    </form>
+
+    <script>
+    document.getElementById('submitBtn').addEventListener('click', function(){
+        const form = document.getElementById('adjustForm');
+        const data = new URLSearchParams(new FormData(form));
+        fetch('/admin/stock/doAdjust', { method:'POST', body: data }).then(r=>r.json()).then(j=>{ if(j.code==200){ alert('调整成功'); location.href='/admin/stock/list'; } else { alert(j.msg||'失败'); }});
+    });
+    </script>
+</div>
+
+{/block}

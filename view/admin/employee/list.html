@@ -1,0 +1,132 @@
+{extend name="layout/admin_base"/}
+{php}
+$userList = isset($users) ? ($users instanceof \think\Collection ? $users->items() : []) : [];
+$user_total = isset($users) ? ($users->total ?? 0) : 0;
+$user_current_page = isset($users) ? ($users->currentPage() ?? 1) : 1;
+$keyword = $keyword ?? '';
+$roleId = $roleId ?? 0;
+$status = $status ?? '';
+{/php}
+
+{block name="content"}
+<div id="employeeListApp">
+    <div class="page-header">
+        <div class="page-header-title">员工管理</div>
+        <a-space :size="12">
+            <a-button type="primary" @click="goCreate">+ 新增员工</a-button>
+        </a-space>
+    </div>
+
+    <a-card style="margin-bottom:16px;">
+        <a-form :model="searchForm" layout="inline">
+            <a-form-item label="关键词"><a-input v-model="searchForm.keyword" placeholder="用户名/姓名/手机/邮箱" style="width:240px;" allow-clear/></a-form-item>
+            <a-form-item label="角色">
+                <a-select v-model="searchForm.roleId" style="width:160px;" allow-clear>
+                    <a-option :value="0">全部</a-option>
+                </a-select>
+            </a-form-item>
+            <a-form-item label="状态">
+                <a-select v-model="searchForm.status" style="width:120px;" allow-clear>
+                    <a-option value="">全部</a-option>
+                    <a-option value="1">正常</a-option>
+                    <a-option value="0">禁用</a-option>
+                </a-select>
+            </a-form-item>
+            <a-form-item>
+                <a-button type="primary" @click="handleSearch">搜索</a-button>
+                <a-button @click="handleReset">重置</a-button>
+            </a-form-item>
+        </a-form>
+    </a-card>
+
+    <a-card>
+        <a-table :data="tableData" :pagination="false" :stripe="true">
+            <template #columns>
+                <a-table-column title="用户名" data-index="username" :width="160" />
+                <a-table-column title="姓名" data-index="real_name" :width="140" />
+                <a-table-column title="角色" data-index="role.name" :width="140">
+                    <template #cell="{ record }">{{ record.role ? record.role.name : '-' }}</template>
+                </a-table-column>
+                <a-table-column title="手机" data-index="phone" :width="140" />
+                <a-table-column title="邮箱" data-index="email" :width="180" />
+                <a-table-column title="状态" data-index="status" :width="80" align="center">
+                    <template #cell="{ record }"><a-tag v-if="record.status==1" color="green">正常</a-tag><a-tag v-else color="red">禁用</a-tag></template>
+                </a-table-column>
+                <a-table-column title="最后登录" data-index="last_login_time" :width="160" />
+                <a-table-column title="操作" :width="220">
+                    <template #cell="{ record }">
+                        <a-space :size="8">
+                            <a-button type="text" size="small" @click="edit(record.id)">编辑</a-button>
+                            <a-button type="text" size="small" @click="resetPassword(record.id)">重置密码</a-button>
+                            <a-button type="text" status="danger" size="small" @click="deleteUser(record)">删除</a-button>
+                        </a-space>
+                    </template>
+                </a-table-column>
+            </template>
+        </a-table>
+
+        <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#86909c;">共 {{ total }} 条记录</span>
+            <a-pagination v-model:current="currentPage" v-model:page-size="pageSize" :total="total" @change="handlePageChange" />
+        </div>
+    </a-card>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+const { ref, reactive } = Vue;
+window.createPageApp({
+    setup(){
+        // 后端变量注入（使用 PHP 输出为安全的 JSON 字符串）
+        const initialUsers = <?php echo json_encode($userList, JSON_UNESCAPED_UNICODE); ?> || [];
+        const initialTotal = <?php echo (int)($user_total ?? 0); ?>;
+        const initialPage = <?php echo (int)($user_current_page ?? 1); ?>;
+        const initialKeyword = <?php echo json_encode($keyword ?? '', JSON_UNESCAPED_UNICODE); ?>;
+        const initialRoleId = <?php echo json_encode($roleId ?? 0); ?>;
+        const initialStatus = <?php echo json_encode($status ?? '', JSON_UNESCAPED_UNICODE); ?>;
+
+        const searchForm = reactive({ keyword: initialKeyword, roleId: initialRoleId, status: initialStatus });
+        const tableData = ref(initialUsers);
+        const total = ref(initialTotal);
+        const currentPage = ref(initialPage);
+        const pageSize = ref(15);
+
+        const buildUrl = (page) => {
+            const params = [];
+            if (searchForm.keyword) params.push('keyword=' + encodeURIComponent(searchForm.keyword));
+            if (searchForm.roleId) params.push('role_id=' + searchForm.roleId);
+            if (searchForm.status !== '') params.push('status=' + searchForm.status);
+            if (page) params.push('page=' + page);
+            let url = '/admin/employee/list';
+            if (params.length) url += '?' + params.join('&');
+            return url;
+        };
+
+        const handleSearch = () => { location.href = buildUrl(1); };
+        const handleReset = () => { searchForm.keyword = ''; searchForm.roleId = 0; searchForm.status = ''; handleSearch(); };
+        const handlePageChange = (page) => { location.href = buildUrl(page); };
+        const goCreate = () => { location.href = '/admin/employee/create'; };
+        const edit = (id) => { location.href = '/admin/employee/edit/' + id; };
+
+        const deleteUser = (record) => {
+            if (!confirm('确定要删除此用户吗？')) return;
+            fetch('/admin/employee/delete/' + record.id, { method: 'POST' })
+                .then(r => r.json())
+                .then(ret => {
+                    if (ret.code === 1 || ret.success) { alert('删除成功'); location.reload(); }
+                    else { alert(ret.msg || '删除失败'); }
+                });
+        };
+
+        const resetPassword = (id) => {
+            const pwd = prompt('输入新密码：'); if (!pwd) return;
+            fetch('/admin/employee/resetPassword/' + id, { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: 'password=' + encodeURIComponent(pwd) })
+                .then(r => r.json()).then(ret => { if (ret.code === 1 || ret.success) { alert('重置成功'); } else { alert(ret.msg || '重置失败'); } });
+        };
+
+        return { searchForm, tableData, total, currentPage, pageSize, handleSearch, handleReset, handlePageChange, goCreate, edit, deleteUser, resetPassword };
+    }
+}, 'employeeListApp');
+</script>
+{/block}

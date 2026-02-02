@@ -1,0 +1,50 @@
+{extend name="layout/admin_base"/}
+{php}
+$customer = isset($customer) ? ($customer instanceof \think\Model ? $customer->toArray() : $customer) : [];
+$orders = isset($orders) ? $orders : [];
+$stats = isset($stats) ? $stats : ['total_orders'=>0,'total_amount'=>0];
+{/php}
+
+{block name="content"}
+<div class="page-header">
+    <div class="page-header-title">客户详情</div>
+</div>
+
+<a-row gutter="16">
+    <a-col :span="8">
+        <a-card>
+            <h3>客户信息</h3>
+            <p><strong>公司：</strong> {$customer.company_name}</p>
+            <p><strong>国家：</strong> {$customer.country}</p>
+            <p><strong>联系人：</strong> {$customer.contact_name}</p>
+            <p><strong>电话：</strong> {$customer.phone}</p>
+            <p><strong>邮箱：</strong> {$customer.email}</p>
+            <p><strong>地址：</strong> {$customer.address}</p>
+            <p><strong>等级：</strong> {if condition="$customer.level eq 2"}VIP{else/}普通{/if}</p>
+            <p><strong>备注：</strong> {$customer.remark}</p>
+        </a-card>
+    </a-col>
+
+    <a-col :span="16">
+        <a-card>
+            <h3>统计信息</h3>
+            <p><strong>总订单数：</strong> {$stats.total_orders}</p>
+            <p><strong>总金额：</strong> ¥{$stats.total_amount}</p>
+        </a-card>
+
+        <a-card style="margin-top:16px;">
+            <h3>历史订单</h3>
+            <a-table :data="orders" :pagination="false">
+                <template #columns>
+                    <a-table-column title="订单编号" data-index="order_no" />
+                    <a-table-column title="状态" data-index="status" />
+                    <a-table-column title="总金额" data-index="total_amount" />
+                    <a-table-column title="交货日期" data-index="delivery_date" />
+                    <a-table-column title="创建时间" data-index="create_time" />
+                </template>
+            </a-table>
+        </a-card>
+    </a-col>
+</a-row>
+
+{/block}

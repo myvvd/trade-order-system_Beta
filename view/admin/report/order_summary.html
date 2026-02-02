@@ -1,0 +1,63 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div id="reportApp">
+  <a-row gutter="12" style="margin-bottom:12px">
+    <a-col :span="6">
+      <a-statistic title="订单总数" :value="summary.total_count" />
+    </a-col>
+    <a-col :span="6">
+      <a-statistic title="总金额" :value="summary.total_amount" />
+    </a-col>
+    <a-col :span="6">
+      <a-statistic title="平均订单金额" :value="summary.avg_amount" />
+    </a-col>
+    <a-col :span="6">
+      <a-statistic title="完成率" :value="summary.complete_rate" />
+    </a-col>
+  </a-row>
+
+  <a-row gutter="12">
+    <a-col :span="16">
+      <a-card>
+        <div id="trendChart" style="height:340px"></div>
+      </a-card>
+    </a-col>
+    <a-col :span="8">
+      <a-card>
+        <a-space direction="vertical" style="width:100%">
+          <a-input-group compact>
+            <a-date-picker v-model:value="range[0]" type="date" />
+            <a-date-picker v-model:value="range[1]" type="date" />
+            <a-button type="primary" @click="load">查询</a-button>
+            <a-button @click="exportSummary">导出</a-button>
+          </a-input-group>
+          <a-table :columns="columns" :data="rows" :pagination="{pageSize:10}"/>
+        </a-space>
+      </a-card>
+    </a-col>
+  </a-row>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/arco-design/dist/arco-vue.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/arco-design/dist/arco.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+<script>
+const { createApp } = Vue;
+createApp({
+  data(){ return { summary:{total_count:0,total_amount:0,avg_amount:0,complete_rate:'0%'}, trend:[], rows:[], range:[null,null], columns:[{title:'订单ID',dataIndex:'id'},{title:'订单号',dataIndex:'order_no'},{title:'客户',dataIndex:'customer_id'},{title:'金额',dataIndex:'total_amount'},{title:'状态',dataIndex:'status'},{title:'创建时间',dataIndex:'created_at'}] } },
+  mounted(){ this.load(); },
+  methods:{
+    load(){ const s = this.range[0] ? this.range[0] : ''; const e = this.range[1] ? this.range[1] : ''; fetch('/admin/report/data_summary?start='+s+'&end='+e).then(r=>r.json()).then(j=>{ if(j.code==200){ this.summary.total_count=j.data.total_count; this.summary.total_amount=j.data.total_amount; this.summary.avg_amount=j.data.avg_amount; this.summary.complete_rate=j.data.complete_rate; this.trend=j.data.trend; this.rows=j.data.rows; this.renderTrend(); } }); },
+    renderTrend(){ const chart = echarts.init(document.getElementById('trendChart')); chart.setOption({title:{text:'近N天订单趋势'}, tooltip:{trigger:'axis'}, xAxis:{type:'category',data:this.trend.map(i=>i.date)}, yAxis:{type:'value'}, series:[{type:'line',data:this.trend.map(i=>i.orders),name:'订单数'}]}); },
+    exportSummary(){ const s = this.range[0] ? this.range[0] : ''; const e = this.range[1] ? this.range[1] : ''; location.href='/admin/report/export/summary?start='+s+'&end='+e; }
+  }
+}).use(ArcoVue).mount('#reportApp');
+</script>
+
+{block name="style"}
+<style>.card{background:#fff;padding:12px;}</style>
+{/block}
+
+{/block}

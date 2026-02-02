@@ -1,0 +1,37 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div>
+    <h2>盘点录入 - 盘点单 #{$inv.id}</h2>
+    <form id="checkForm">
+        <table style="width:100%; border-collapse:collapse; background:#fff;">
+            <thead><tr style="background:#f5f7fa;"><th>货品</th><th>规格</th><th>系统数量</th><th>实际数量</th><th>差异</th></tr></thead>
+            <tbody>
+            {volist name="inv.items" id="it"}
+                <tr>
+                    <td style="padding:8px; border-bottom:1px solid #eee;">{$it.goods.name}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eee;">{$it.sku.sku_name|default='-'}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eee;">{$it.system_qty|default='0'}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eee;"><input name="counted_{$it.id}" value="{$it.counted_qty|default=$it.system_qty}" /></td>
+                    <td style="padding:8px; border-bottom:1px solid #eee;" id="diff_{$it.id}"></td>
+                </tr>
+            {/volist}
+            </tbody>
+        </table>
+        <div style="margin-top:12px;"><button type="button" id="saveBtn">保存草稿</button> <button type="button" id="submitBtn">提交完成</button></div>
+    </form>
+    <script>
+    function calc(){
+        {volist name="inv.items" id="it"}
+        var sys = Number({$it.system_qty|default=0});
+        var el = document.querySelector('input[name="counted_{$it.id}"]');
+        var v = Number(el.value||0);
+        document.getElementById('diff_{$it.id}').textContent = (v - sys);
+        {/volist}
+    }
+    document.getElementById('saveBtn').addEventListener('click', function(){ var data = new URLSearchParams(); {volist name="inv.items" id="it"} data.append('items[{$it.id}][id]', '{$it.id}'); data.append('items[{$it.id}][counted_qty]', document.querySelector('input[name="counted_{$it.id}"]').value); {/volist} fetch('/admin/inventory/update/{$inv.id}', {method:'POST', body: data}).then(r=>r.json()).then(j=>{ alert(j.msg||'已保存'); }); });
+    document.getElementById('submitBtn').addEventListener('click', function(){ if(!confirm('确认提交并完成盘点？')) return; var data = new URLSearchParams(); {volist name="inv.items" id="it"} data.append('items[{$it.id}][id]', '{$it.id}'); data.append('items[{$it.id}][counted_qty]', document.querySelector('input[name="counted_{$it.id}"]').value); {/volist} fetch('/admin/inventory/update/{$inv.id}', {method:'POST', body: data}).then(()=> fetch('/admin/inventory/complete/{$inv.id}', {method:'POST'}).then(r=>r.json()).then(j=>{ alert(j.msg||'完成'); if(j.code==200) location.href='/admin/inventory/list'; })); });
+    </script>
+</div>
+
+{/block}

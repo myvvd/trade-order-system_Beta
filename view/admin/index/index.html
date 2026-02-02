@@ -1,0 +1,52 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div id="dashboard">
+  <div style="display:flex;gap:12px;margin-bottom:12px;">
+    <div class="card">今日订单<br/><div class="value" v-text="cards.today_orders"></div><div class="sub" v-text="cards.today_amount"></div></div>
+    <div class="card">本周订单<br/><div class="value" v-text="cards.week_orders"></div><div class="sub" v-text="cards.week_amount"></div></div>
+    <div class="card">本月订单<br/><div class="value" v-text="cards.month_orders"></div><div class="sub" v-text="cards.month_amount"></div></div>
+    <div class="card">待处理<br/><div class="value" v-text="cards.pending"></div></div>
+  </div>
+
+  <div style="display:flex;gap:12px;">
+    <div style="flex:2;">
+      <div id="statusChart" style="height:300px;background:#fff;padding:12px;margin-bottom:12px;"></div>
+      <div id="trendChart" style="height:300px;background:#fff;padding:12px;"></div>
+    </div>
+    <div style="flex:1;">
+      <div style="background:#fff;padding:12px;margin-bottom:12px;"><h4>供应商排行榜</h4><ul><li v-for="s in topSuppliers">{{s.supplier_name}} — {{s.amt}}</li></ul></div>
+      <div style="background:#fff;padding:12px;margin-bottom:12px;"><h4>热销货品</h4><ul><li v-for="g in topGoods">{{g.goods_name}} — {{g.qty}}</li></ul></div>
+      <div style="background:#fff;padding:12px;margin-bottom:12px;"><h4>待办</h4><ul><li v-for="t in pending"> <a :href="t.link">{{t.title}}</a> ({{t.count}})</li></ul></div>
+      <div style="background:#fff;padding:12px;"><h4>预警</h4><ul><li v-for="w in warnings">{{w.msg}}</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+<script>
+const { createApp, ref } = Vue;
+createApp({
+  data(){ return { cards:{}, statusCount:{}, trend:[], topSuppliers:[], topGoods:[], pending:[], warnings:[] } },
+  mounted(){ this.load(); },
+  methods:{
+    load(){ fetch('/admin/index/statistics').then(r=>r.json()).then(j=>{ if(j.code==200){ this.cards = j.data.cards; this.pending = j.data.pending; this.warnings = j.data.warnings; this.loadCharts(); } }); this.loadLists(); },
+    loadCharts(){ fetch('/admin/index/chartData/status').then(r=>r.json()).then(j=>{ if(j.code==200){ this.renderStatusChart(j.data); } }); fetch('/admin/index/chartData/trend?days=30').then(r=>r.json()).then(j=>{ if(j.code==200){ this.trend = j.data; this.renderTrendChart(); } }); },
+    loadLists(){ fetch('/admin/index/chartData/top_suppliers').then(r=>r.json()).then(j=>{ if(j.code==200) this.topSuppliers = j.data; }); fetch('/admin/index/chartData/top_goods').then(r=>r.json()).then(j=>{ if(j.code==200) this.topGoods = j.data; }); },
+    renderStatusChart(data){ const chart = echarts.init(document.getElementById('statusChart')); const series = []; const legend = []; for(const k in data){ legend.push(k); series.push({name:k,value:data[k]}); } chart.setOption({title:{text:'订单状态分布'}, tooltip:{}, legend:{data:legend}, series:[{type:'pie',radius:'55%',data:series}]}); },
+    renderTrendChart(){ const chart = echarts.init(document.getElementById('trendChart')); const dates = this.trend.map(i=>i.date); const orders = this.trend.map(i=>i.orders); chart.setOption({title:{text:'近30天订单趋势'}, tooltip:{trigger:'axis'}, xAxis:{type:'category',data:dates}, yAxis:{type:'value'}, series:[{type:'line',data:orders,name:'订单数'}]}); }
+  }
+}).mount('#dashboard')
+</script>
+
+{block name="style"}
+<style>
+.card{background:#fff;padding:12px;flex:1}
+.card .value{font-size:24px;font-weight:600}
+.card .sub{color:#888}
+body .echarts{background:#fff}
+</style>
+{/block}
+
+{/block}

@@ -1,0 +1,44 @@
+{extend name="layout/supplier_base.html"}
+
+{block name="content"}
+<div>
+    <h2>供应商首页</h2>
+    <div style="display:flex; gap:16px; margin-top:12px;">
+        <div style="flex:1; background:#fff; padding:16px; border-radius:6px;">
+            <h3>待处理订单</h3>
+            <p style="font-size:24px; margin-top:8px;"><a id="pendingLink" href="/supplier/order/my?status=20">{-$pending_count|default=0-}</a></p>
+            <a href="/supplier/order/my">查看我的订单</a>
+        </div>
+
+        <div style="flex:2; background:#fff; padding:16px; border-radius:6px;">
+            <h3>最近订单</h3>
+            <ul>
+                {volist name="recent" id="r"}
+                    <li style="padding:6px 0;"><a href="/supplier/order/detail/{$r.id}">{$r.dispatch_no|default=$r.id}</a> - {$r.status_text}</li>
+                {/volist}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+// 每 30 秒轮询 pending 数量并更新链接文本
+(function(){
+    const el = document.getElementById('pendingLink');
+    if(!el) return;
+    async function fetchPending(){
+        try{
+            const res = await fetch('/supplier/order/pendingCount');
+            const j = await res.json();
+            if(j && j.code==200 && j.data){
+                el.textContent = j.data.pending || 0;
+            }
+        }catch(e){ /* 忽略网络错误 */ }
+    }
+    // 初始延迟 1s 后获取，并每 30s 更新
+    setTimeout(fetchPending, 1000);
+    setInterval(fetchPending, 30000);
+})();
+</script>
+
+{/block}

@@ -1,0 +1,40 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div>
+    <h2>库存变动记录 - {$goods.name|default='货品'}</h2>
+    <p>编号：{$goods.goods_no|default='-'}</p>
+
+    <table style="width:100%; border-collapse:collapse; background:#fff;">
+        <thead>
+            <tr style="background:#f5f7fa; text-align:left;">
+                <th style="padding:8px;">时间</th>
+                <th style="padding:8px;">类型</th>
+                <th style="padding:8px;">数量</th>
+                <th style="padding:8px;">变动前</th>
+                <th style="padding:8px;">变动后</th>
+                <th style="padding:8px;">关联</th>
+                <th style="padding:8px;">操作人</th>
+                <th style="padding:8px;">备注</th>
+            </tr>
+        </thead>
+        <tbody>
+        {volist name="logs" id="l"}
+            <tr>
+                <td style="padding:8px;">{$l.create_time}</td>
+                <td style="padding:8px;">{if $l.type=='in'}入库{elseif $l.type=='out'}出库{else}盘点{/if}</td>
+                <td style="padding:8px;">{$l.change}</td>
+                <td style="padding:8px;">{$l.before|default='-'}</td>
+                <td style="padding:8px;">{$l.after|default='-'}</td>
+                <td style="padding:8px;">{$l.related_type} #{$l.related_id}</td>
+                <td style="padding:8px;">{$l.operator.username|default='系统'}</td>
+                <td style="padding:8px;">{$l.remark}</td>
+            </tr>
+        {/volist}
+        </tbody>
+    </table>
+
+    <div style="margin-top:12px;">{-- 分页 --}</div>
+</div>
+
+{/block}

@@ -1,0 +1,55 @@
+{extend name="layout/admin_base"}
+
+{block name="content"}
+<div id="sysConfigApp">
+  <a-card>
+    <a-tabs type="line">
+      <a-tab-pane key="basic" title="基础设置">
+        <a-form labelCol="{span:6}" wrapperCol="{span:14}">
+          <a-form-item label="系统名称">
+            <a-input v-model:value="basic.system_name" />
+          </a-form-item>
+          <a-form-item label="公司名称">
+            <a-input v-model:value="basic.company_name" />
+          </a-form-item>
+          <a-form-item label="联系方式">
+            <a-input v-model:value="basic.contact" />
+          </a-form-item>
+        </a-form>
+      </a-tab-pane>
+      <a-tab-pane key="order" title="订单设置">
+        <a-form labelCol="{span:6}" wrapperCol="{span:14}">
+          <a-form-item label="订单号前缀">
+            <a-input v-model:value="order.prefix" />
+          </a-form-item>
+          <a-form-item label="默认币种">
+            <a-input v-model:value="order.currency" />
+          </a-form-item>
+        </a-form>
+      </a-tab-pane>
+      <a-tab-pane key="stock" title="库存设置">
+        <a-form labelCol="{span:6}" wrapperCol="{span:14}">
+          <a-form-item label="默认预警数量">
+            <a-input-number v-model:value="stock.warn_stock" :min="0" />
+          </a-form-item>
+        </a-form>
+      </a-tab-pane>
+    </a-tabs>
+    <div style="margin-top:12px; text-align:right"><a-button type="primary" @click="save">保存</a-button></div>
+  </a-card>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/arco-design/dist/arco-vue.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/arco-design/dist/arco.min.css" />
+<script>
+const { createApp } = Vue;
+createApp({
+  data(){ return { basic: <?= json_encode($basic) ?>, order: <?= json_encode($order) ?>, stock: <?= json_encode($stock) ?> } },
+  methods:{
+    save(){ const payload = { basic:this.basic, order:this.order, stock:this.stock }; fetch('/admin/system/saveConfig',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json()).then(j=>{ alert(j.msg||'已保存'); }); }
+  }
+}).use(ArcoVue).mount('#sysConfigApp');
+</script>
+
+{/block}

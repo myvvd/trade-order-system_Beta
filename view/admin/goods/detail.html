@@ -1,0 +1,336 @@
+{extend name="layout/admin_base"/}
+{php}
+$goods = isset($goods) ? $goods : null;
+$stockSummary = isset($stockSummary) ? $stockSummary : ['total_quantity' => 0, 'sku_count' => 0];
+$skus = isset($skus) ? $skus : [];
+$goodsDetail = $goods ? $goods->toArray() : [];
+$skusData = is_array($skus) ? $skus : [];
+{/php}
+
+{block name="content"}
+<div id="goodsDetailApp">
+    <div class="page-header">
+        <div class="page-header-title">货品详情</div>
+        <a-space :size="12">
+            <a-button type="primary" @click="editGoods">编辑货品</a-button>
+            <a-button @click="goBack">返回列表</a-button>
+        </a-space>
+    </div>
+
+    <a-row :gutter="24">
+        <!-- 左侧：货品信息 -->
+        <a-col :span="8">
+            <a-card title="货品信息">
+                <!-- 货品图片 -->
+                <div style="text-align: center; margin-bottom: 16px;">
+                    <a-avatar
+                        :size="120"
+                        style="background: #f5f5f5;"
+                    >
+                        {if condition="$goods.image"}
+                        <img src="{$goods.getImageUrl()}" alt="{$goods.name}" style="max-width: 100%; max-height: 100%; border-radius: 4px;">
+                        {else/}
+                        <span style="font-size: 48px;">📦</span>
+                        {/if}
+                    </a-avatar>
+                    <div style="margin-top: 8px; font-weight: 600;">{$goods.name}</div>
+                    <div style="color: #86909c; font-size: 13px;">{$goods.goods_no}</div>
+                </div>
+
+                <!-- 货品详情 -->
+                <a-descriptions :column="1" bordered>
+                    <a-descriptions-item label="所属分类">
+                        {$goods.category.name|default='-'}
+                    </a-descriptions-item>
+                    <a-descriptions-item label="单位">
+                        {$goods.unit}
+                    </a-descriptions-item>
+                    <a-descriptions-item label="成本价">
+                        <span style="color: #00b42a; font-weight: 600;">¥{$goods.cost_price|number_format=2}</span>
+                    </a-descriptions-item>
+                    <a-descriptions-item label="销售价">
+                        <span style="color: #165DFF; font-weight: 600;">¥{$goods.sale_price|number_format=2}</span>
+                    </a-descriptions-item>
+                    <a-descriptions-item label="状态">
+                        <a-tag v-if="{$goods.status} == 1" color="green">上架</a-tag>
+                        <a-tag v-else color="red">下架</a-tag>
+                    </a-descriptions-item>
+                </a-descriptions>
+            </a-card>
+
+            <!-- 库存汇总 -->
+            <a-card title="库存汇总" style="margin-top: 16px;">
+                <a-row :gutter="24">
+                    <a-col :span="12">
+                        <a-statistic title="总库存" :value="{$stockSummary.total_quantity}" :precision="0">
+                            <template #prefix>
+                                <span style="color: #165DFF;">📦</span>
+                            </template>
+                        </a-statistic>
+                    </a-col>
+                    <a-col :span="12">
+                        <a-statistic title="SKU 数量" :value="{$stockSummary.sku_count}" :precision="0">
+                            <template #prefix>
+                                <span style="color: #00b42a;">📋</span>
+                            </template>
+                        </a-statistic>
+                    </a-col>
+                </a-row>
+            </a-card>
+        </a-col>
+
+        <!-- 右侧：SKU 列表 -->
+        <a-col :span="16">
+            <a-card>
+                <template #title>
+                    <a-space>
+                        <span>SKU 规格</span>
+                        <a-button type="primary" size="small" @click="showSkuModal">+ 添加规格</a-button>
+                    </a-space>
+                </template>
+
+                <a-table
+                    :data="skus"
+                    :pagination="false"
+                    :bordered="{cell:true}"
+                >
+                    <template #columns>
+                        <a-table-column title="SKU 编号" data-index="sku_no" :width="120" />
+                        <a-table-column title="规格名称" data-index="sku_name" :width="150">
+                            <template #cell="{ record }">
+                                {{ record.sku_name || '-' }}
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="成本价" data-index="cost_price" :width="100" align="right">
+                            <template #cell="{ record }">
+                                ¥{{ parseFloat(record.cost_price).toFixed(2) }}
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="销售价" data-index="sale_price" :width="100" align="right">
+                            <template #cell="{ record }">
+                                ¥{{ parseFloat(record.sale_price).toFixed(2) }}
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="库存" data-index="stock_quantity" :width="80" align="center">
+                            <template #cell="{ record }">
+                                <span style="font-weight: 600;">{{ record.stock_quantity || 0 }}</span>
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="操作" :width="150">
+                            <template #cell="{ record }">
+                                <a-space :size="4">
+                                    <a-button type="text" size="small" @click="editSku(record)">编辑</a-button>
+                                    <a-button type="text" status="danger" size="small" @click="deleteSku(record)">删除</a-button>
+                                </a-space>
+                            </template>
+                        </a-table-column>
+                    </template>
+                    <template #empty>
+                        <div style="padding: 40px; text-align: center; color: #86909c;">暂无 SKU 数据</div>
+                    </template>
+                </a-table>
+            </a-card>
+        </a-col>
+    </a-row>
+</div>
+
+<!-- SKU 表单弹窗 -->
+<a-modal
+    v-model:visible="skuModalVisible"
+    :title="editingSku ? '编辑 SKU' : '添加 SKU'"
+    @ok="saveSku"
+    @cancel="hideSkuModal"
+    :ok-loading="skuSubmitting"
+    width="600px"
+>
+    <a-form :model="skuForm" layout="vertical">
+        <a-form-item
+            field="sku_no"
+            label="SKU 编号"
+            :rules="[{ required: true, message: '请输入SKU编号' }]"
+        >
+            <a-input v-model="skuForm.sku_no" placeholder="请输入SKU编号" allow-clear />
+        </a-form-item>
+        <a-form-item field="sku_name" label="规格名称">
+            <a-input v-model="skuForm.sku_name" placeholder="请输入规格名称（可选）" allow-clear />
+        </a-form-item>
+        <a-row :gutter="12">
+            <a-col :span="12">
+                <a-form-item
+                    field="cost_price"
+                    label="成本价"
+                    :rules="[{ required: true, message: '请输入成本价' }]"
+                >
+                    <a-input-number
+                        v-model="skuForm.cost_price"
+                        :min="0"
+                        :precision="2"
+                        placeholder="请输入成本价"
+                        style="width: 100%;"
+                    >
+                        <template #prefix>¥</template>
+                    </a-input-number>
+                </a-form-item>
+            </a-col>
+            <a-col :span="12">
+                <a-form-item
+                    field="sale_price"
+                    label="销售价"
+                    :rules="[{ required: true, message: '请输入销售价' }]"
+                >
+                    <a-input-number
+                        v-model="skuForm.sale_price"
+                        :min="0"
+                        :precision="2"
+                        placeholder="请输入销售价"
+                        style="width: 100%;"
+                    >
+                        <template #prefix>¥</template>
+                    </a-input-number>
+                </a-form-item>
+            </a-col>
+        </a-row>
+    </a-form>
+</a-modal>
+{/block}
+
+{block name="script"}
+<script>
+const { createApp, ref, reactive } = Vue;
+
+const app = createApp({
+    setup() {
+        const goodsId = {$goods.id|raw};
+        const skuModalVisible = ref(false);
+        const editingSku = ref(null);
+        const skuSubmitting = ref(false);
+
+        const skus = ref({$skus_json|raw|json_encode|default='[]'});
+
+        const skuForm = reactive({
+            id: null,
+            sku_no: '',
+            sku_name: '',
+            cost_price: 0,
+            sale_price: 0
+        });
+
+        // 显示 SKU 弹窗
+        const showSkuModal = () => {
+            editingSku.value = null;
+            skuForm.id = null;
+            skuForm.sku_no = '';
+            skuForm.sku_name = '';
+            skuForm.cost_price = 0;
+            skuForm.sale_price = 0;
+            skuModalVisible.value = true;
+        };
+
+        // 编辑 SKU
+        const editSku = (record) => {
+            editingSku.value = record;
+            skuForm.id = record.id;
+            skuForm.sku_no = record.sku_no;
+            skuForm.sku_name = record.sku_name || '';
+            skuForm.cost_price = record.cost_price;
+            skuForm.sale_price = record.sale_price;
+            skuModalVisible.value = true;
+        };
+
+        // 隐藏 SKU 弹窗
+        const hideSkuModal = () => {
+            skuModalVisible.value = false;
+        };
+
+        // 保存 SKU
+        const saveSku = () => {
+            if (!skuForm.sku_no) {
+                ArcoMessage.warning('SKU编号不能为空');
+                return;
+            }
+
+            skuSubmitting.value = true;
+
+            const formData = new FormData();
+            formData.append('goods_id', goodsId);
+            formData.append('sku_id', skuForm.id || '');
+            formData.append('sku_no', skuForm.sku_no);
+            formData.append('sku_name', skuForm.sku_name);
+            formData.append('cost_price', skuForm.cost_price);
+            formData.append('sale_price', skuForm.sale_price);
+
+            fetch('/admin/goods/saveSku', {
+                method: 'POST',
+                body: formData
+            }).then(res => res.json()).then(result => {
+                if (result.success) {
+                    ArcoMessage.success('保存成功');
+                    location.reload();
+                } else {
+                    ArcoMessage.error(result.msg || '保存失败');
+                }
+            }).catch(() => {
+                ArcoMessage.error('请求失败，请重试');
+            }).finally(() => {
+                skuSubmitting.value = false;
+            });
+        };
+
+        // 删除 SKU
+        const deleteSku = (record) => {
+            ArcoModal.confirm({
+                title: '提示',
+                content: '确定要删除此 SKU 吗？',
+                okText: '确定',
+                cancelText: '取消',
+                onOk: () => {
+                    fetch('/admin/goods/deleteSku', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'sku_id=' + record.id
+                    }).then(res => res.json()).then(result => {
+                        if (result.success) {
+                            ArcoMessage.success('删除成功');
+                            location.reload();
+                        } else {
+                            ArcoMessage.error(result.msg || '删除失败');
+                        }
+                    });
+                }
+            });
+        };
+
+        // 编辑货品
+        const editGoods = () => {
+            location.href = '/admin/goods/edit/' + goodsId;
+        };
+
+        // 返回列表
+        const goBack = () => {
+            location.href = '/admin/goods/list';
+        };
+
+        return {
+            goodsId,
+            skus,
+            skuModalVisible,
+            editingSku,
+            skuSubmitting,
+            skuForm,
+            showSkuModal,
+            editSku,
+            hideSkuModal,
+            saveSku,
+            deleteSku,
+            editGoods,
+            goBack
+        };
+    }
+});
+
+// 挂载到独立的元素
+const goodsDetailContainer = document.createElement('div');
+document.getElementById('goodsDetailApp').appendChild(goodsDetailContainer);
+app.mount(goodsDetailContainer);
+</script>
+{/block}

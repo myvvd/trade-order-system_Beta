@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{$title|default='外贸订单管理系统'}</title>
+
+    <!-- Arco Design CSS -->
+    <link rel="stylesheet" href="/static/libs/arco/arco-vue.min.css">
+
+    <!-- 公共样式 -->
+    <link rel="stylesheet" href="/static/css/admin/common.css">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        .admin-layout { display: flex; width: 100%; height: 100%; }
+        .admin-sidebar { width: 220px; background: #001529; color: rgba(255,255,255,0.65); display: flex; flex-direction: column; transition: width 0.2s; flex-shrink: 0; }
+        .admin-sidebar.collapsed { width: 64px; }
+        .sidebar-logo { height: 64px; display: flex; align-items: center; padding: 0 20px; font-size: 16px; font-weight: bold; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); white-space: nowrap; overflow: hidden; }
+        .sidebar-menu { flex: 1; overflow-y: auto; }
+        .menu-item { display: flex; align-items: center; padding: 12px 20px; cursor: pointer; text-decoration: none; transition: all 0.3s; color: rgba(255,255,255,0.65); }
+        .menu-item:hover { color: #fff; background: rgba(255,255,255,0.08); }
+        .menu-item.active { color: #1890ff; background: rgba(24,144,255,0.15); }
+        .menu-item-icon { width: 20px; margin-right: 12px; text-align: center; flex-shrink: 0; }
+        .menu-item-text { white-space: nowrap; overflow: hidden; }
+        .submenu { background: rgba(0,0,0,0.3); max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .submenu.show { max-height: 200px; }
+        .submenu .menu-item { padding-left: 52px; font-size: 13px; }
+        .sidebar-toggle { height: 48px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-toggle:hover { color: #fff; }
+        .admin-main { flex: 1; display: flex; flex-direction: column; background: #f0f2f5; overflow: hidden; min-width: 0; }
+        .admin-header { height: 64px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; box-shadow: 0 1px 4px rgba(0,21,41,0.08); flex-shrink: 0; }
+        .header-breadcrumb { font-size: 14px; color: rgba(0,0,0,0.65); }
+        .header-breadcrumb span { margin: 0 4px; color: rgba(0,0,0,0.25); }
+        .header-breadcrumb a { color: rgba(0,0,0,0.65); text-decoration: none; }
+        .header-breadcrumb a:hover { color: #1890ff; }
+        .header-user { display: flex; align-items: center; cursor: pointer; padding: 8px 12px; border-radius: 4px; position: relative; }
+        .header-user:hover { background: #f5f5f5; }
+        .user-avatar { width: 32px; height: 32px; background: #1890ff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px; font-size: 14px; }
+        .user-name { font-size: 14px; }
+        .dropdown-menu { position: absolute; top: 100%; right: 0; background: #fff; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 120px; z-index: 1000; display: none; margin-top: 4px; }
+        .dropdown-menu.show { display: block; }
+        .dropdown-item { padding: 10px 16px; cursor: pointer; font-size: 14px; color: rgba(0,0,0,0.65); }
+        .dropdown-item:hover { background: #f5f5f5; color: #1890ff; }
+        .dropdown-item.danger:hover { color: #ff4d4f; background: #fff1f0; }
+        .admin-content { flex: 1; padding: 24px; overflow-y: auto; }
+        .content-wrapper { min-height: 100%; }
+        .menu-group-arrow { margin-left: auto; font-size: 12px; transition: transform 0.3s; }
+        .menu-group-arrow.open { transform: rotate(90deg); }
+        
+        /* 侧边栏折叠状态 */
+        .admin-sidebar.collapsed .sidebar-logo span:first-child { display: none; }
+        .admin-sidebar.collapsed .sidebar-logo span:last-child { display: block; }
+        .admin-sidebar.collapsed .menu-item-text { display: none; }
+        .admin-sidebar.collapsed .menu-group-arrow { display: none; }
+        .admin-sidebar.collapsed .menu-item { justify-content: center; padding: 12px 0; }
+        .admin-sidebar.collapsed .menu-item-icon { margin-right: 0; }
+        .admin-sidebar.collapsed .submenu { display: none !important; max-height: 0 !important; }
+        .sidebar-logo span:last-child { display: none; }
+
+        /* Arco Design 组件区域样式 */
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .page-header-title { font-size: 20px; font-weight: 600; color: #1d2129; }
+        
+        /* 修复 Arco Design 组件样式 */
+        .arco-card { border-radius: 4px; }
+        .arco-table { background: #fff; }
+        .arco-btn { border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div class="admin-layout">
+    <!-- 左侧边栏 -->
+    <div class="admin-sidebar" id="adminSidebar">
+        <div class="sidebar-logo">
+            <span>订单管理系统</span>
+            <span>OM</span>
+        </div>
+        <div class="sidebar-menu">
+            <!-- 首页 -->
+            <a href="/admin" class="menu-item {if isset($current_page) && $current_page == 'dashboard'}active{/if}">
+                <span class="menu-item-icon">📊</span>
+                <span class="menu-item-text">首页</span>
+            </a>
+            <!-- 订单管理 -->
+            <div class="menu-item menu-group" onclick="toggleSubmenu(this)">
+                <span class="menu-item-icon">📦</span>
+                <span class="menu-item-text">订单管理</span>
+                <span class="menu-group-arrow">▶</span>
+            </div>
+            <div class="submenu">
+                <a href="/admin/order/list" class="menu-item"><span class="menu-item-text">订单列表</span></a>
+                <a href="/admin/order/create" class="menu-item"><span class="menu-item-text">创建订单</span></a>
+            </div>
+            <!-- 客户管理 -->
+            <a href="/admin/customer/list" class="menu-item {if isset($current_page) && $current_page == 'customer'}active{/if}">
+                <span class="menu-item-icon">👥</span>
+                <span class="menu-item-text">客户管理</span>
+            </a>
+            <!-- 供应商管理 -->
+            <a href="/admin/supplier/list" class="menu-item {if isset($current_page) && $current_page == 'supplier'}active{/if}">
+                <span class="menu-item-icon">🏭</span>
+                <span class="menu-item-text">供应商管理</span>
+            </a>
+            <!-- 货品管理 -->
+            <a href="/admin/goods/list" class="menu-item {if isset($current_page) && $current_page == 'goods'}active{/if}">
+                <span class="menu-item-icon">📋</span>
+                <span class="menu-item-text">货品管理</span>
+            </a>
+            <!-- 库存盘点 -->
+            <a href="/admin/inventory/list" class="menu-item {if isset($current_page) && $current_page == 'inventory'}active{/if}">
+                <span class="menu-item-icon">📦</span>
+                <span class="menu-item-text">库存盘点</span>
+            </a>
+            <!-- 员工管理 -->
+            <a href="/admin/employee/list" class="menu-item {if isset($current_page) && $current_page == 'employee'}active{/if}">
+                <span class="menu-item-icon">👤</span>
+                <span class="menu-item-text">员工管理</span>
+            </a>
+            <!-- 系统设置 -->
+            <div class="menu-item menu-group" onclick="toggleSubmenu(this)">
+                <span class="menu-item-icon">⚙️</span>
+                <span class="menu-item-text">系统设置</span>
+                <span class="menu-group-arrow">▶</span>
+            </div>
+            <div class="submenu">
+                <a href="/admin/system/config" class="menu-item"><span class="menu-item-text">基本设置</span></a>
+                <a href="/admin/role/list" class="menu-item"><span class="menu-item-text">角色权限</span></a>
+                <a href="/admin/system/logs" class="menu-item"><span class="menu-item-text">操作日志</span></a>
+            </div>
+        </div>
+        <div class="sidebar-toggle" onclick="toggleSidebar()">
+            <span id="toggleIcon">◀</span>
+        </div>
+    </div>
+
+    <!-- 右侧内容区 -->
+    <div class="admin-main">
+        <!-- 顶部导航栏 -->
+        <div class="admin-header">
+            <div class="header-breadcrumb">
+                <a href="/admin">首页</a>
+                <span>/</span>
+                <span>{$breadcrumb|default='控制台'}</span>
+            </div>
+            <div class="header-user" onclick="toggleDropdown(event)">
+                <div class="user-avatar">{$username|default='A'|substr=0,1}</div>
+                <div class="user-name">{$username|default='管理员'}</div>
+                <div class="dropdown-menu" id="userDropdown">
+                    <div class="dropdown-item" onclick="location.href='/admin/profile'">个人设置</div>
+                    <div class="dropdown-item danger" onclick="logout()">退出登录</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="admin-content">
+            <div class="content-wrapper">
+                {block name="content"}
+                <p>内容区域</p>
+                {/block}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vue 3 -->
+<script src="/static/libs/vue/vue.global.prod.js"></script>
+<!-- Arco Design JS -->
+<script src="/static/libs/arco/arco-vue.min.js"></script>
+
+<script>
+// 侧边栏折叠
+function toggleSidebar() {
+    const sidebar = document.getElementById('adminSidebar');
+    const icon = document.getElementById('toggleIcon');
+    sidebar.classList.toggle('collapsed');
+    icon.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+}
+
+// 子菜单展开/折叠
+function toggleSubmenu(el) {
+    const submenu = el.nextElementSibling;
+    const arrow = el.querySelector('.menu-group-arrow');
+    if (submenu && submenu.classList.contains('submenu')) {
+        submenu.classList.toggle('show');
+        if (arrow) {
+            arrow.classList.toggle('open');
+        }
+    }
+}
+
+// 用户下拉菜单
+function toggleDropdown(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.classList.toggle('show');
+}
+
+// 点击其他地方关闭下拉菜单
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown && !e.target.closest('.header-user')) {
+        dropdown.classList.remove('show');
+    }
+});
+
+// 退出登录
+function logout() {
+    if (window.ArcoVue && window.ArcoVue.Modal) {
+        ArcoVue.Modal.confirm({
+            title: '提示',
+            content: '确定要退出登录吗？',
+            okText: '确定',
+            cancelText: '取消',
+            onOk: () => {
+                location.href = '/admin/logout';
+            }
+        });
+    } else {
+        if (confirm('确定要退出登录吗？')) {
+            location.href = '/admin/logout';
+        }
+    }
+}
+
+// 全局挂载 Arco Design 方法
+window.ArcoModal = ArcoVue.Modal;
+window.ArcoMessage = ArcoVue.Message;
+window.ArcoNotification = ArcoVue.Notification;
+
+// 辅助函数：为子页面创建并挂载 Vue 应用
+window.createPageApp = function(options, mountId) {
+    const app = Vue.createApp(options);
+    app.use(ArcoVue);
+    const el = document.getElementById(mountId);
+    if (el) {
+        app.mount(el);
+    }
+    return app;
+};
+
+// 页面加载完成后，根据当前路径展开对应的子菜单
+document.addEventListener('DOMContentLoaded', function() {
+    const path = location.pathname;
+    // 订单相关
+    if (path.includes('/admin/order')) {
+        const orderMenu = document.querySelector('.menu-group');
+        if (orderMenu) {
+            const submenu = orderMenu.nextElementSibling;
+            const arrow = orderMenu.querySelector('.menu-group-arrow');
+            if (submenu) submenu.classList.add('show');
+            if (arrow) arrow.classList.add('open');
+        }
+    }
+    // 系统设置相关
+    if (path.includes('/admin/system') || path.includes('/admin/role')) {
+        const menuGroups = document.querySelectorAll('.menu-group');
+        const settingsMenu = menuGroups[menuGroups.length - 1];
+        if (settingsMenu) {
+            const submenu = settingsMenu.nextElementSibling;
+            const arrow = settingsMenu.querySelector('.menu-group-arrow');
+            if (submenu) submenu.classList.add('show');
+            if (arrow) arrow.classList.add('open');
+        }
+    }
+});
+</script>
+
+<!-- 页面脚本区域 -->
+{block name="script"}
+{/block}
+</body>
+</html>

@@ -1,0 +1,134 @@
+{extend name="layout/admin_base"/}
+
+{block name="content"}
+<h1 class="page-title">{$title}</h1>
+
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <form id="roleForm" onsubmit="return saveRole(event)">
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">角色名称 <span style="color: #f53f3f;">*</span></label>
+            <input type="text" name="name" value="{$role.name|default=''}" placeholder="请输入角色名称" required
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">角色描述</label>
+            <textarea name="description" placeholder="请输入角色描述"
+                style="width: 100%; height: 80px; padding: 12px; border: 1px solid #e5e6eb; border-radius: 4px; resize: vertical;">{$role.description|default=''}</textarea>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">
+                状态
+                {if condition="$role.id eq 1"}
+                <span style="color: #86909c; font-weight: normal;">（超级管理员固定为正常状态）</span>
+                {/if}
+            </label>
+            <label style="margin-right: 16px;">
+                <input type="radio" name="status" value="1" {$role.status|default=1 eq 1 ? 'checked' : ''} {$role.id eq 1 ? 'disabled' : ''}> 正常
+            </label>
+            <label>
+                <input type="radio" name="status" value="0" {$role.status|default=1 eq 0 ? 'checked' : ''} {$role.id eq 1 ? 'disabled' : ''}> 禁用
+            </label>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h3 style="font-size: 18px; font-weight: 600;">权限配置</h3>
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="selectAll" onchange="toggleAll(this)" style="margin-right: 8px;">
+                    全选
+                </label>
+            </div>
+
+            <!-- 权限列表 -->
+            <div id="permissionList" style="border: 1px solid #e5e6eb; border-radius: 4px; padding: 16px; background: #fafafa;">
+                {php}
+                $allPermissions = \think\facade\Config::get('permissions');
+                $currentPermissions = isset($role['permissions']) ? (is_array($role['permissions']) ? $role['permissions'] : json_decode($role['permissions'], true)) : [];
+                {/php}
+
+                {volist name="allPermissions" id="module"}
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; cursor: pointer; font-weight: 600;">
+                            <input type="checkbox" class="module-check" value="{$key}"
+                                onchange="toggleModule(this)" style="margin-right: 8px;">
+                            {$module.title}
+                        </label>
+                    </div>
+                    <div class="module-permissions" style="padding-left: 24px;">
+                        {volist name="module.actions" id="action" key="perm"}
+                        <label style="display: inline-flex; align-items: center; cursor: pointer; margin-right: 20px; margin-bottom: 8px;">
+                            <input type="checkbox" name="permissions[]" value="{$perm}"
+                                {php}echo in_array($perm, $currentPermissions) ? 'checked' : '';{/php}
+                                class="perm-check" data-module="{$key}" style="margin-right: 6px;">
+                            {$action}
+                        </label>
+                        {/volist}
+                    </div>
+                </div>
+                {/volist}
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+            <button type="submit" class="btn btn-primary" style="flex: 1;">保存</button>
+            <button type="button" class="btn btn-default" onclick="history.back()" style="flex: 1;">返回</button>
+        </div>
+
+        {if condition="$role.id"}
+        <input type="hidden" name="id" value="{$role.id}">
+        {/if}
+    </form>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+function saveRole(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('roleForm');
+    const formData = new FormData(form);
+
+    // 收集选中的权限
+    const checkedPerms = [];
+    document.querySelectorAll('.perm-check:checked').forEach(cb => {
+        checkedPerms.push(cb.value);
+    });
+    formData.append('permissions', JSON.stringify(checkedPerms));
+
+    fetch(form.action || '/admin/role/create', {
+        method: 'POST',
+        body: formData
+    }).then(res => res.json()).then(result => {
+        if (result.success) {
+            alert('保存成功');
+            location.href = '/admin/role/list';
+        } else {
+            alert(result.msg || '保存失败');
+        }
+    });
+}
+
+function toggleAll(checkbox) {
+    const isChecked = checkbox.checked;
+    document.querySelectorAll('.perm-check').forEach(cb => {
+        cb.checked = isChecked;
+    });
+    document.querySelectorAll('.module-check').forEach(cb => {
+        cb.checked = isChecked;
+    });
+}
+
+function toggleModule(checkbox) {
+    const isChecked = checkbox.checked;
+    const module = checkbox.value;
+    const modulePerms = document.querySelectorAll('.perm-check[data-module="' + module + '"]');
+    modulePerms.forEach(cb => {
+        cb.checked = isChecked;
+    });
+}
+</script>
+{/block}

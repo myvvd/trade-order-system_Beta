@@ -1,0 +1,41 @@
+{extend name="layout/supplier_base.html"}
+
+{block name="content"}
+<div>
+    <h2>发货 - 派单 {$dispatch.dispatch_no|default=$dispatch.id}</h2>
+
+    <div style="background:#fff; padding:16px; border-radius:6px;">
+        <form id="shipForm">
+            <div style="margin-bottom:8px;"><label>承运商：<input name="carrier" type="text" /></label></div>
+            <div style="margin-bottom:8px;"><label>运单号：<input name="ship_no" type="text" /></label></div>
+            <div style="margin-bottom:8px;"><label>备注：<textarea name="remark"></textarea></label></div>
+
+            <h4>货品确认</h4>
+            <table style="width:100%; border-collapse:collapse;">
+                <thead><tr><th>货品</th><th>规格</th><th>订单数量</th><th>发货数量</th></tr></thead>
+                <tbody>
+                {foreach name="$dispatch.items" item="it"}
+                    <tr>
+                        <td style="padding:8px;">{$it.goods_name}</td>
+                        <td style="padding:8px;">{$it.sku_name}</td>
+                        <td style="padding:8px;">{$it.quantity}</td>
+                        <td style="padding:8px;"><input name="ship_qty_{$it.id}" type="number" value="{$it.quantity}" /></td>
+                    </tr>
+                {/foreach}
+                </tbody>
+            </table>
+
+            <div style="margin-top:12px;"><button type="button" onclick="submitShip()">提交发货</button></div>
+        </form>
+    </div>
+</div>
+
+<script>
+function submitShip(){
+    const form = document.getElementById('shipForm');
+    const data = new URLSearchParams(new FormData(form));
+    fetch('/supplier/order/ship/{$dispatch.id}', { method: 'POST', body: data }).then(r=>r.json()).then(j=>{ alert(j.msg||'完成'); if(j.code==200) location.href='/supplier/order/my'; });
+}
+</script>
+
+{/block}

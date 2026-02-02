@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{$title|default='外贸订单管理系统'}</title>
+
+    <!-- Arco Design CSS -->
+    <link rel="stylesheet" href="/static/libs/arco/arco-vue.min.css">
+
+    <!-- 公共样式 -->
+    <link rel="stylesheet" href="/static/css/supplier/common.css">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; background: #f7f8fa; }
+        #app { min-height: 100%; display: flex; flex-direction: column; }
+        .header-wrapper {
+            display: flex; align-items: center; justify-content: space-between;
+            height: 60px; padding: 0 24px; background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 100;
+        }
+        .logo-section { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, #165DFF 0%, #4E7CFF 100%);
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 14px; font-weight: bold;
+        }
+        .logo-text { font-size: 16px; font-weight: 600; color: #1d2129; }
+        .menu-section { display: flex; gap: 8px; }
+        .menu-item {
+            padding: 8px 20px; border-radius: 6px; cursor: pointer;
+            color: #4e5969; font-size: 14px; transition: all 0.3s;
+        }
+        .menu-item:hover { background: #f2f3f5; }
+        .menu-item.active { background: #e8f3ff; color: #165DFF; }
+        .user-section { display: flex; align-items: center; gap: 16px; }
+        .supplier-name { font-size: 14px; color: #4e5969; }
+        .logout-btn {
+            display: flex; align-items: center; gap: 4px;
+            padding: 6px 16px; border: 1px solid #f2f3f5; border-radius: 6px;
+            cursor: pointer; color: #86909c; font-size: 14px; transition: all 0.3s;
+        }
+        .logout-btn:hover { border-color: #165DFF; color: #165DFF; }
+        .content-wrapper { flex: 1; padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
+        @media (max-width: 768px) {
+            .header-wrapper { padding: 0 16px; height: 56px; }
+            .logo-text { font-size: 14px; }
+            .menu-item { padding: 6px 12px; font-size: 13px; }
+            .content-wrapper { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- 顶部导航栏 -->
+    <header class="header-wrapper">
+        <div class="logo-section">
+            <div class="logo-icon">OM</div>
+            <div class="logo-text">订单管理系统</div>
+        </div>
+
+        <div class="menu-section">
+            <div class="menu-item" :class="{ active: currentPage === 'my_order' }" @click="navigate('my_order')">
+                我的订单
+            </div>
+            <div class="menu-item" :class="{ active: currentPage === 'history' }" @click="navigate('history')">
+                历史订单
+            </div>
+            <div class="menu-item" :class="{ active: currentPage === 'settings' }" @click="navigate('settings')">
+                个人设置
+            </div>
+        </div>
+
+        <div class="user-section">
+            <div class="supplier-name">
+                🏭 {$supplier_name|default='供应商'}
+            </div>
+            <div class="logout-btn" @click="logout()">
+                退出登录
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="content-wrapper">
+        {block name="content"}
+        <div style="background: #fff; padding: 40px; border-radius: 8px; text-align: center; color: #86909c;">
+            <h2>内容区域</h2>
+            <p style="margin-top: 16px;">请选择左侧菜单进行操作</p>
+        </div>
+        {/block}
+    </main>
+</div>
+
+<!-- Vue 3 -->
+<script src="/static/libs/vue/vue.global.prod.js"></script>
+<!-- Arco Design JS -->
+<script src="/static/libs/arco/arco-vue.min.js"></script>
+
+<script>
+const { createApp, ref } = Vue;
+
+createApp({
+    setup() {
+        const currentPage = ref('{$current_page|default="my_order"}');
+
+        const navigate = (page) => {
+            currentPage.value = page;
+            const routes = {
+                my_order: '/supplier/order/my',
+                history: '/supplier/order/history',
+                settings: '/supplier/settings'
+            };
+            if (routes[page]) {
+                window.location.href = routes[page];
+            }
+        };
+
+        const logout = () => {
+            if (confirm('确定要退出登录吗？')) {
+                window.location.href = '/supplier/logout';
+            }
+        };
+
+        return {
+            currentPage,
+            navigate,
+            logout
+        };
+    }
+}).mount('#app');
+</script>
+
+<!-- 页面脚本区域 -->
+{block name="script"}
+{/block}
+</body>
+</html>

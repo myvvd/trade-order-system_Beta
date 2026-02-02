@@ -1,0 +1,49 @@
+{extend name="layout/admin_base"/}
+{php}
+$supplier = isset($supplier) ? ($supplier instanceof \think\Model ? $supplier->toArray() : $supplier) : [];
+$dispatches = isset($dispatches) ? $dispatches : [];
+$stats = isset($stats) ? $stats : ['total'=>0,'accepted'=>0];
+{/php}
+
+{block name="content"}
+<div class="page-header"><div class="page-header-title">供应商详情</div></div>
+
+<a-row gutter="16">
+    <a-col :span="8">
+        <a-card>
+            <h3>供应商信息</h3>
+            <p><strong>名称：</strong> {$supplier.name}</p>
+            <p><strong>分类：</strong> {$supplier.category_id}</p>
+            <p><strong>联系人：</strong> {$supplier.contact}</p>
+            <p><strong>电话：</strong> {$supplier.phone}</p>
+            <p><strong>邮箱：</strong> {$supplier.email}</p>
+            <p><strong>地址：</strong> {$supplier.address}</p>
+            <p><strong>登录账号：</strong> {$supplier.login_account}</p>
+            <p><strong>状态：</strong> {if condition="$supplier.status eq 1"}正常{else/}禁用{/if}</p>
+        </a-card>
+    </a-col>
+
+    <a-col :span="16">
+        <a-card>
+            <h3>接单统计</h3>
+            <p><strong>总派单数：</strong> {$stats.total}</p>
+            <p><strong>已接单（>=30）：</strong> {$stats.accepted}</p>
+        </a-card>
+
+        <a-card style="margin-top:16px;">
+            <h3>历史派单记录</h3>
+            <a-table :data="dispatches" :pagination="false">
+                <template #columns>
+                    <a-table-column title="派单编号" data-index="dispatch_no" />
+                    <a-table-column title="订单ID" data-index="order_id" />
+                    <a-table-column title="状态" data-index="status" />
+                    <a-table-column title="要求完成" data-index="require_date" />
+                    <a-table-column title="确认时间" data-index="confirm_time" />
+                    <a-table-column title="发货时间" data-index="ship_time" />
+                </template>
+            </a-table>
+        </a-card>
+    </a-col>
+</a-row>
+
+{/block}

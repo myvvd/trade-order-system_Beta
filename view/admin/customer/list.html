@@ -1,0 +1,193 @@
+{extend name="layout/admin_base"/}
+{php}
+$customerList = [];
+if (isset($customers)) {
+    if (is_object($customers) && method_exists($customers, 'items')) {
+        $items = $customers->items();
+        foreach ($items as $it) {
+            $customerList[] = is_object($it) ? $it->toArray() : $it;
+        }
+    } elseif (is_array($customers)) {
+        $customerList = $customers;
+    }
+}
+
+$customers_list_json = json_encode($customerList, JSON_UNESCAPED_UNICODE);
+$customer_total = isset($customers) && isset($customers->total) ? $customers->total : (is_array($customerList) ? count($customerList) : 0);
+$customer_current_page = isset($customers) && method_exists($customers, 'currentPage') ? $customers->currentPage() : 1;
+$keyword = $keyword ?? '';
+$country = $country ?? '';
+$level = $level ?? '';
+$status = $status ?? '';
+{/php}
+
+{block name="content"}
+<div id="customerListApp">
+    <div class="page-header">
+        <div class="page-header-title">客户管理</div>
+        <a-space :size="12">
+            <a-button type="primary" @click="goCreate">+ 新增客户</a-button>
+            <a-button @click="exportCsv">导出</a-button>
+        </a-space>
+    </div>
+
+    <a-card style="margin-bottom: 16px;">
+        <a-form :model="searchForm" layout="inline">
+            <a-form-item label="关键词">
+                <a-input v-model="searchForm.keyword" placeholder="公司名称/联系人" style="width: 240px;" allow-clear />
+            </a-form-item>
+            <a-form-item label="国家">
+                <a-input v-model="searchForm.country" placeholder="国家" style="width: 160px;" allow-clear />
+            </a-form-item>
+            <a-form-item label="等级">
+                <a-select v-model="searchForm.level" style="width: 120px;" allow-clear>
+                    <a-option value="">全部</a-option>
+                    <a-option value="1">普通</a-option>
+                    <a-option value="2">VIP</a-option>
+                </a-select>
+            </a-form-item>
+            <a-form-item label="状态">
+                <a-select v-model="searchForm.status" style="width: 120px;" allow-clear>
+                    <a-option value="">全部</a-option>
+                    <a-option value="1">正常</a-option>
+                    <a-option value="0">禁用</a-option>
+                </a-select>
+            </a-form-item>
+            <a-form-item>
+                <a-button type="primary" @click="handleSearch">搜索</a-button>
+                <a-button @click="handleReset">重置</a-button>
+            </a-form-item>
+        </a-form>
+    </a-card>
+
+    <a-card>
+        <a-table :data="tableData" :pagination="false" :bordered="{cell:true}" :stripe="true">
+            <template #columns>
+                <a-table-column title="公司名称" data-index="company_name" :width="240">
+                    <template #cell="{ record }">
+                        <a-link @click="viewDetail(record.id)">{{ record.company_name }}</a-link>
+                    </template>
+                </a-table-column>
+                <a-table-column title="国家" data-index="country" :width="120" />
+                <a-table-column title="联系人" data-index="contact_name" :width="140" />
+                <a-table-column title="电话" data-index="phone" :width="140" />
+                <a-table-column title="邮箱" data-index="email" :width="180" />
+                <a-table-column title="等级" data-index="level" :width="80" align="center">
+                    <template #cell="{ record }">
+                        <a-tag v-if="record.level == 2" color="gold">VIP</a-tag>
+                        <a-tag v-else>普通</a-tag>
+                    </template>
+                </a-table-column>
+                <a-table-column title="状态" data-index="status" :width="80" align="center">
+                    <template #cell="{ record }">
+                        <a-tag v-if="record.status == 1" color="green">正常</a-tag>
+                        <a-tag v-else color="red">禁用</a-tag>
+                    </template>
+                </a-table-column>
+                <a-table-column title="订单数" data-index="order_count" :width="100" align="center">
+                    <template #cell="{ record }">
+                        {{ record.order_count ?? '-' }}
+                    </template>
+                </a-table-column>
+                <a-table-column title="操作" :width="220">
+                    <template #cell="{ record }">
+                        <a-space :size="8">
+                            <a-button type="text" size="small" @click="editCustomer(record.id)">编辑</a-button>
+                            <a-button type="text" size="small" @click="viewDetail(record.id)">详情</a-button>
+                            <a-button type="text" status="danger" size="small" @click="deleteCustomer(record)">删除</a-button>
+                        </a-space>
+                    </template>
+                </a-table-column>
+            </template>
+        </a-table>
+
+        <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #86909c;">共 {{ total }} 条记录</span>
+            <a-pagination v-model:current="currentPage" v-model:page-size="pageSize" :total="total" @change="handlePageChange" />
+        </div>
+    </a-card>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+const { ref, reactive } = Vue;
+
+window.createPageApp({
+    setup() {
+        const searchForm = reactive({
+            keyword: '{$keyword|raw}',
+            country: '{$country|raw}',
+            level: '{$level|raw}',
+            status: '{$status|raw}'
+        });
+
+        const tableData = ref({$customers_list_json|raw|default='[]'});
+        const total = ref({$customer_total|raw|default=0});
+        const currentPage = ref({$customer_current_page|raw|default=1});
+        const pageSize = ref(15);
+
+        const handleSearch = () => {
+            const params = [];
+            if (searchForm.keyword) params.push('keyword=' + encodeURIComponent(searchForm.keyword));
+            if (searchForm.country) params.push('country=' + encodeURIComponent(searchForm.country));
+            if (searchForm.level !== '') params.push('level=' + searchForm.level);
+            if (searchForm.status !== '') params.push('status=' + searchForm.status);
+            let url = '/admin/customer/list';
+            if (params.length) url += '?' + params.join('&');
+            location.href = url;
+        };
+
+        const handleReset = () => {
+            searchForm.keyword = '';
+            searchForm.country = '';
+            searchForm.level = '';
+            searchForm.status = '';
+            handleSearch();
+        };
+
+        const handlePageChange = (page) => {
+            const params = [];
+            if (searchForm.keyword) params.push('keyword=' + encodeURIComponent(searchForm.keyword));
+            if (searchForm.country) params.push('country=' + encodeURIComponent(searchForm.country));
+            if (searchForm.level !== '') params.push('level=' + searchForm.level);
+            if (searchForm.status !== '') params.push('status=' + searchForm.status);
+            params.push('page=' + page);
+            let url = '/admin/customer/list';
+            if (params.length) url += '?' + params.join('&');
+            location.href = url;
+        };
+
+        const goCreate = () => { location.href = '/admin/customer/create'; };
+        const editCustomer = (id) => { location.href = '/admin/customer/edit/' + id; };
+        const viewDetail = (id) => { location.href = '/admin/customer/detail/' + id; };
+
+        const deleteCustomer = (record) => {
+            ArcoModal.confirm({
+                title: '提示',
+                content: '确定要删除此客户吗？',
+                onOk: () => {
+                    fetch('/admin/customer/delete/' + record.id, { method: 'POST' }).then(r => r.json()).then(ret => {
+                        if (ret.success) { ArcoMessage.success('删除成功'); location.reload(); }
+                        else { ArcoMessage.error(ret.msg || '删除失败'); }
+                    });
+                }
+            });
+        };
+
+        const exportCsv = () => {
+            const params = [];
+            if (searchForm.keyword) params.push('keyword=' + encodeURIComponent(searchForm.keyword));
+            if (searchForm.country) params.push('country=' + encodeURIComponent(searchForm.country));
+            if (searchForm.level !== '') params.push('level=' + searchForm.level);
+            if (searchForm.status !== '') params.push('status=' + searchForm.status);
+            let url = '/admin/customer/export';
+            if (params.length) url += '?' + params.join('&');
+            location.href = url;
+        };
+
+        return { searchForm, tableData, total, currentPage, pageSize, handleSearch, handleReset, handlePageChange, goCreate, editCustomer, viewDetail, deleteCustomer, exportCsv };
+    }
+}, 'customerListApp');
+</script>
+{/block}

@@ -1,0 +1,155 @@
+{extend name="layout/admin_base"/}
+{php}
+$category = isset($category) ? $category : null;
+$parentOptions = isset($parentOptions) ? $parentOptions : [];
+$categoryData = $category ? $category->toArray() : [];
+{/php}
+
+{block name="content"}
+<div id="categoryFormApp">
+    <div class="page-header">
+        <div class="page-header-title">{$title|default='新增分类'}</div>
+        <a-space :size="12">
+            <a-button @click="goBack">返回</a-button>
+        </a-space>
+    </div>
+
+    <a-card style="max-width: 600px; margin: 0 auto;">
+        <a-form
+            :model="form"
+            :label-col-props="{ span: 6 }"
+            :wrapper-col-props="{ span: 16 }"
+            @submit="handleSubmit"
+        >
+            {if condition="$category"}
+            <input type="hidden" name="category_id" value="{$category.id}">
+            {/if}
+
+            <a-form-item
+                field="name"
+                label="分类名称"
+                :rules="[{ required: true, message: '请输入分类名称' }]"
+            >
+                <a-input
+                    v-model="form.name"
+                    placeholder="请输入分类名称"
+                    allow-clear
+                />
+            </a-form-item>
+
+            <a-form-item field="parent_id" label="父级分类">
+                <a-select
+                    v-model="form.parent_id"
+                    placeholder="请选择父级分类"
+                    allow-clear
+                >
+                    <a-option :value="0">顶级分类</a-option>
+                    {volist name="parentOptions" id="vo"}
+                    <a-option value="{$vo.id}">{$vo.name}</a-option>
+                    {/volist}
+                </a-select>
+                <template #extra>
+                    <a-text style="color: #86909c; font-size: 12px;">
+                        选择"顶级分类"创建一级分类
+                    </a-text>
+                </template>
+            </a-form-item>
+
+            <a-form-item field="sort" label="排序">
+                <a-input-number
+                    v-model="form.sort"
+                    :min="0"
+                    :max="9999"
+                    placeholder="请输入排序"
+                    style="width: 200px;"
+                />
+                <template #extra>
+                    <a-text style="color: #86909c; font-size: 12px;">
+                        数值越小越靠前
+                    </a-text>
+                </template>
+            </a-form-item>
+
+            <a-form-item :wrapper-col-props="{ span: 16, offset: 6 }">
+                <a-space :size="12">
+                    <a-button type="primary" html-type="submit" :loading="submitting">保存</a-button>
+                    <a-button @click="goBack">返回</a-button>
+                </a-space>
+            </a-form-item>
+        </a-form>
+    </a-card>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+const { createApp, ref, reactive } = Vue;
+
+const app = createApp({
+    setup() {
+        const submitting = ref(false);
+
+        const form = reactive({
+            id: {$category.id|raw|default='null'},
+            name: '{$category.name|raw|default=""}',
+            parent_id: {$category.parent_id|raw|default=0},
+            sort: {$category.sort|raw|default=0}
+        });
+
+        const parentOptions = ref({$parent_options_json|raw|json_encode|default='[]'});
+
+        const handleSubmit = () => {
+            if (!form.name) {
+                ArcoMessage.warning('分类名称不能为空');
+                return;
+            }
+
+            submitting.value = true;
+
+            const formData = new FormData();
+            if (form.id) {
+                formData.append('category_id', form.id);
+            }
+            formData.append('name', form.name);
+            formData.append('parent_id', form.parent_id || 0);
+            formData.append('sort', form.sort || 0);
+
+            const url = form.id ? '/admin/goods_category/update' : '/admin/goods_category/create';
+
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            }).then(res => res.json()).then(result => {
+                if (result.success) {
+                    ArcoMessage.success('保存成功');
+                    location.href = '/admin/goods_category/list';
+                } else {
+                    ArcoMessage.error(result.msg || '保存失败');
+                }
+            }).catch(() => {
+                ArcoMessage.error('请求失败，请重试');
+            }).finally(() => {
+                submitting.value = false;
+            });
+        };
+
+        const goBack = () => {
+            history.back();
+        };
+
+        return {
+            form,
+            parentOptions,
+            submitting,
+            handleSubmit,
+            goBack
+        };
+    }
+});
+
+// 挂载到独立的元素
+const categoryFormContainer = document.createElement('div');
+document.getElementById('categoryFormApp').appendChild(categoryFormContainer);
+app.mount(categoryFormContainer);
+</script>
+{/block}

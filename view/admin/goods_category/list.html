@@ -1,0 +1,141 @@
+{extend name="layout/admin_base"/}
+{php}
+$tree = isset($tree) ? $tree : [];
+$keyword = $keyword ?? '';
+{/php}
+
+{block name="content"}
+<div id="categoryListApp">
+    <div class="page-header">
+        <div class="page-header-title">分类管理</div>
+        <a-space :size="12">
+            <a-button type="primary" @click="goCreate">+ 新增分类</a-button>
+        </a-space>
+    </div>
+
+    <!-- 搜索区域 -->
+    <a-card style="margin-bottom: 16px;">
+        <a-space :size="12">
+            <a-input
+                v-model="searchForm.keyword"
+                placeholder="搜索分类名称..."
+                style="width: 250px;"
+                allow-clear
+            />
+            <a-button type="primary" @click="handleSearch">搜索</a-button>
+        </a-space>
+    </a-card>
+
+    <!-- 分类列表 -->
+    <a-card>
+        {if condition="empty($tree)"}
+        <a-empty description="暂无分类数据" />
+        {else/}
+        <a-row :gutter="16">
+            {volist name="tree" id="vo"}
+            <a-col :span="8">
+                <a-card style="margin-bottom: 16px;" hoverable>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">{$vo.name}</h3>
+                            <a-tag color="blue" style="margin-left: 0;">货品数：{$vo.goods_count|default=0}</a-tag>
+                        </div>
+                        <a-space :size="4">
+                            <a-button type="text" size="small" @click="editCategory({$vo.id})">编辑</a-button>
+                            <a-button type="text" status="danger" size="small" @click="deleteCategory({$vo.id})">删除</a-button>
+                        </a-space>
+                    </div>
+
+                    <!-- 子分类 -->
+                    {if condition="!empty($vo.children)"}
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
+                        <a-space :size="8" wrap>
+                            <span style="color: #86909c; font-size: 13px;">子分类（{count($vo.children)}）：</span>
+                            {volist name="vo.children" id="child"}
+                            <a-tag color="arcoblue">{$child.name}</a-tag>
+                            {/volist}
+                        </a-space>
+                    </div>
+                    {/if}
+                </a-card>
+            </a-col>
+            {/volist}
+        </a-row>
+        {/if}
+    </a-card>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+const { createApp, ref, reactive } = Vue;
+
+const app = createApp({
+    setup() {
+        const searchForm = reactive({
+            keyword: '{$keyword|raw}'
+        });
+
+        const treeData = ref({$tree_json|raw|json_encode|default='[]'});
+
+        // 搜索
+        const handleSearch = () => {
+            const keyword = searchForm.keyword;
+            let url = '/admin/goods_category/list';
+            if (keyword) {
+                url += '?keyword=' + encodeURIComponent(keyword);
+            }
+            location.href = url;
+        };
+
+        // 新增
+        const goCreate = () => {
+            location.href = '/admin/goods_category/form';
+        };
+
+        // 编辑
+        const editCategory = (id) => {
+            location.href = '/admin/goods_category/form?id=' + id;
+        };
+
+        // 删除
+        const deleteCategory = (id) => {
+            ArcoModal.confirm({
+                title: '提示',
+                content: '确定要删除此分类吗？',
+                okText: '确定',
+                cancelText: '取消',
+                onOk: () => {
+                    fetch('/admin/goods_category/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'category_id=' + id
+                    }).then(res => res.json()).then(result => {
+                        if (result.success) {
+                            ArcoMessage.success('删除成功');
+                            location.reload();
+                        } else {
+                            ArcoMessage.error(result.msg || '删除失败');
+                        }
+                    });
+                }
+            });
+        };
+
+        return {
+            searchForm,
+            treeData,
+            handleSearch,
+            goCreate,
+            editCategory,
+            deleteCategory
+        };
+    }
+});
+
+// 挂载到独立的元素
+const categoryListContainer = document.createElement('div');
+document.getElementById('categoryListApp').appendChild(categoryListContainer);
+app.mount(categoryListContainer);
+</script>
+{/block}
