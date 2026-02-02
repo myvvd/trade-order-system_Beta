@@ -1,55 +1,149 @@
-{extend name="layout/admin_base"}
+{extend name="layout/admin_base"/}
 
 {block name="content"}
 <div id="sysConfigApp">
-  <a-card>
-    <a-tabs type="line">
-      <a-tab-pane key="basic" title="基础设置">
-        <a-form labelCol="{span:6}" wrapperCol="{span:14}">
-          <a-form-item label="系统名称">
-            <a-input v-model:value="basic.system_name" />
-          </a-form-item>
-          <a-form-item label="公司名称">
-            <a-input v-model:value="basic.company_name" />
-          </a-form-item>
-          <a-form-item label="联系方式">
-            <a-input v-model:value="basic.contact" />
-          </a-form-item>
-        </a-form>
-      </a-tab-pane>
-      <a-tab-pane key="order" title="订单设置">
-        <a-form labelCol="{span:6}" wrapperCol="{span:14}">
-          <a-form-item label="订单号前缀">
-            <a-input v-model:value="order.prefix" />
-          </a-form-item>
-          <a-form-item label="默认币种">
-            <a-input v-model:value="order.currency" />
-          </a-form-item>
-        </a-form>
-      </a-tab-pane>
-      <a-tab-pane key="stock" title="库存设置">
-        <a-form labelCol="{span:6}" wrapperCol="{span:14}">
-          <a-form-item label="默认预警数量">
-            <a-input-number v-model:value="stock.warn_stock" :min="0" />
-          </a-form-item>
-        </a-form>
-      </a-tab-pane>
-    </a-tabs>
-    <div style="margin-top:12px; text-align:right"><a-button type="primary" @click="save">保存</a-button></div>
-  </a-card>
+    <div class="page-header">
+        <div class="page-header-title">基本设置</div>
+        <a-space :size="12">
+            <a-button @click="clearCache" :loading="cacheClearing">清除缓存</a-button>
+            <a-button type="primary" @click="saveConfig" :loading="saving">保存配置</a-button>
+        </a-space>
+    </div>
+
+    <a-card>
+        <a-tabs type="line" v-model:active-key="activeTab">
+            <a-tab-pane key="basic" title="基础设置">
+                <a-form :model="basic" layout="vertical" style="max-width: 600px;">
+                    <a-form-item label="系统名称">
+                        <a-input v-model="basic.system_name" placeholder="请输入系统名称" />
+                    </a-form-item>
+                    <a-form-item label="公司名称">
+                        <a-input v-model="basic.company_name" placeholder="请输入公司名称" />
+                    </a-form-item>
+                    <a-form-item label="联系方式">
+                        <a-input v-model="basic.contact" placeholder="请输入联系方式" />
+                    </a-form-item>
+                    <a-form-item label="公司地址">
+                        <a-textarea v-model="basic.address" placeholder="请输入公司地址" :auto-size="{ minRows: 2 }" />
+                    </a-form-item>
+                </a-form>
+            </a-tab-pane>
+            <a-tab-pane key="order" title="订单设置">
+                <a-form :model="order" layout="vertical" style="max-width: 600px;">
+                    <a-form-item label="订单号前缀">
+                        <a-input v-model="order.prefix" placeholder="如：ORD" />
+                    </a-form-item>
+                    <a-form-item label="默认币种">
+                        <a-select v-model="order.currency" placeholder="请选择默认币种">
+                            <a-option value="CNY">人民币 (CNY)</a-option>
+                            <a-option value="USD">美元 (USD)</a-option>
+                            <a-option value="EUR">欧元 (EUR)</a-option>
+                            <a-option value="GBP">英镑 (GBP)</a-option>
+                            <a-option value="JPY">日元 (JPY)</a-option>
+                        </a-select>
+                    </a-form-item>
+                    <a-form-item label="订单自动关闭时间（小时）">
+                        <a-input-number v-model="order.auto_close_hours" :min="0" placeholder="0表示不自动关闭" />
+                    </a-form-item>
+                </a-form>
+            </a-tab-pane>
+            <a-tab-pane key="stock" title="库存设置">
+                <a-form :model="stock" layout="vertical" style="max-width: 600px;">
+                    <a-form-item label="默认库存预警数量">
+                        <a-input-number v-model="stock.warn_stock" :min="0" placeholder="库存低于此值时预警" />
+                    </a-form-item>
+                    <a-form-item label="是否允许负库存">
+                        <a-switch v-model="stock.allow_negative" />
+                        <span style="margin-left: 8px; color: #86909c;">开启后允许库存为负数</span>
+                    </a-form-item>
+                </a-form>
+            </a-tab-pane>
+        </a-tabs>
+    </a-card>
 </div>
+{/block}
 
-<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/arco-design/dist/arco-vue.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/arco-design/dist/arco.min.css" />
+{block name="script"}
 <script>
-const { createApp } = Vue;
-createApp({
-  data(){ return { basic: <?= json_encode($basic) ?>, order: <?= json_encode($order) ?>, stock: <?= json_encode($stock) ?> } },
-  methods:{
-    save(){ const payload = { basic:this.basic, order:this.order, stock:this.stock }; fetch('/admin/system/saveConfig',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json()).then(j=>{ alert(j.msg||'已保存'); }); }
-  }
-}).use(ArcoVue).mount('#sysConfigApp');
-</script>
+// 从控制器传递的数据
+const __BASIC__ = {$basic_json|raw};
+const __ORDER__ = {$order_json|raw};
+const __STOCK__ = {$stock_json|raw};
 
+const { ref, reactive } = Vue;
+
+window.createPageApp({
+    setup() {
+        const activeTab = ref('basic');
+        const saving = ref(false);
+        const cacheClearing = ref(false);
+
+        const basic = reactive({
+            system_name: __BASIC__.system_name || '',
+            company_name: __BASIC__.company_name || '',
+            contact: __BASIC__.contact || '',
+            address: __BASIC__.address || ''
+        });
+
+        const order = reactive({
+            prefix: __ORDER__.prefix || 'ORD',
+            currency: __ORDER__.currency || 'CNY',
+            auto_close_hours: __ORDER__.auto_close_hours || 0
+        });
+
+        const stock = reactive({
+            warn_stock: __STOCK__.warn_stock || 10,
+            allow_negative: __STOCK__.allow_negative || false
+        });
+
+        const saveConfig = () => {
+            saving.value = true;
+            const payload = { basic, order, stock };
+            fetch('/admin/system/saveConfig', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(r => r.json()).then(ret => {
+                saving.value = false;
+                if (ret.success || ret.code == 1 || ret.code == 200) {
+                    ArcoMessage.success(ret.msg || '保存成功');
+                } else {
+                    ArcoMessage.error(ret.msg || '保存失败');
+                }
+            }).catch(() => {
+                saving.value = false;
+                ArcoMessage.error('保存失败');
+            });
+        };
+
+        const clearCache = () => {
+            cacheClearing.value = true;
+            fetch('/admin/system/clearCache', { method: 'POST' })
+                .then(r => r.json())
+                .then(ret => {
+                    cacheClearing.value = false;
+                    if (ret.success || ret.code == 1 || ret.code == 200) {
+                        ArcoMessage.success(ret.msg || '缓存已清除');
+                    } else {
+                        ArcoMessage.error(ret.msg || '清除失败');
+                    }
+                }).catch(() => {
+                    cacheClearing.value = false;
+                    ArcoMessage.error('清除失败');
+                });
+        };
+
+        return {
+            activeTab,
+            saving,
+            cacheClearing,
+            basic,
+            order,
+            stock,
+            saveConfig,
+            clearCache
+        };
+    }
+}, 'sysConfigApp');
+</script>
 {/block}

@@ -1,52 +1,240 @@
-{extend name="layout/admin_base"}
+{extend name="layout/admin_base"/}
 
 {block name="content"}
-<div id="dashboard">
-  <div style="display:flex;gap:12px;margin-bottom:12px;">
-    <div class="card">今日订单<br/><div class="value" v-text="cards.today_orders"></div><div class="sub" v-text="cards.today_amount"></div></div>
-    <div class="card">本周订单<br/><div class="value" v-text="cards.week_orders"></div><div class="sub" v-text="cards.week_amount"></div></div>
-    <div class="card">本月订单<br/><div class="value" v-text="cards.month_orders"></div><div class="sub" v-text="cards.month_amount"></div></div>
-    <div class="card">待处理<br/><div class="value" v-text="cards.pending"></div></div>
-  </div>
+<div id="dashboardApp">
+    <div class="page-header">
+        <div class="page-header-title">控制台</div>
+        <a-space :size="12">
+            <a-button @click="refreshData" :loading="loading">
+                <template #icon><icon-refresh /></template>
+                刷新数据
+            </a-button>
+        </a-space>
+    </div>
 
-  <div style="display:flex;gap:12px;">
-    <div style="flex:2;">
-      <div id="statusChart" style="height:300px;background:#fff;padding:12px;margin-bottom:12px;"></div>
-      <div id="trendChart" style="height:300px;background:#fff;padding:12px;"></div>
+    <!-- 统计卡片 -->
+    <div class="stat-cards">
+        <div class="stat-card stat-card-blue">
+            <div class="stat-card-icon">📦</div>
+            <div class="stat-card-content">
+                <div class="stat-card-title">今日订单</div>
+                <div class="stat-card-value">{{ cards.today_orders }}</div>
+                <div class="stat-card-extra">金额: ¥{{ formatMoney(cards.today_amount) }}</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-green">
+            <div class="stat-card-icon">📈</div>
+            <div class="stat-card-content">
+                <div class="stat-card-title">本周订单</div>
+                <div class="stat-card-value">{{ cards.week_orders }}</div>
+                <div class="stat-card-extra">金额: ¥{{ formatMoney(cards.week_amount) }}</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-orange">
+            <div class="stat-card-icon">📊</div>
+            <div class="stat-card-content">
+                <div class="stat-card-title">本月订单</div>
+                <div class="stat-card-value">{{ cards.month_orders }}</div>
+                <div class="stat-card-extra">金额: ¥{{ formatMoney(cards.month_amount) }}</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-red">
+            <div class="stat-card-icon">⏳</div>
+            <div class="stat-card-content">
+                <div class="stat-card-title">待处理订单</div>
+                <div class="stat-card-value">{{ cards.pending }}</div>
+                <div class="stat-card-extra">需要及时处理</div>
+            </div>
+        </div>
     </div>
-    <div style="flex:1;">
-      <div style="background:#fff;padding:12px;margin-bottom:12px;"><h4>供应商排行榜</h4><ul><li v-for="s in topSuppliers">{{s.supplier_name}} — {{s.amt}}</li></ul></div>
-      <div style="background:#fff;padding:12px;margin-bottom:12px;"><h4>热销货品</h4><ul><li v-for="g in topGoods">{{g.goods_name}} — {{g.qty}}</li></ul></div>
-      <div style="background:#fff;padding:12px;margin-bottom:12px;"><h4>待办</h4><ul><li v-for="t in pending"> <a :href="t.link">{{t.title}}</a> ({{t.count}})</li></ul></div>
-      <div style="background:#fff;padding:12px;"><h4>预警</h4><ul><li v-for="w in warnings">{{w.msg}}</li></ul></div>
+
+    <!-- 双列布局 -->
+    <div class="dashboard-row">
+        <!-- 待办事项 -->
+        <a-card title="待办事项" class="dashboard-card">
+            <template #extra>
+                <a-link @click="goOrders">查看全部</a-link>
+            </template>
+            <a-list :data="pending" :bordered="false">
+                <template #item="{ item }">
+                    <a-list-item>
+                        <a-list-item-meta :title="item.title">
+                            <template #avatar>
+                                <a-avatar :style="{ backgroundColor: '#165DFF' }">
+                                    {{ item.count }}
+                                </a-avatar>
+                            </template>
+                            <template #description>
+                                <a-link @click="goLink(item.link)">立即处理</a-link>
+                            </template>
+                        </a-list-item-meta>
+                    </a-list-item>
+                </template>
+                <template #empty>
+                    <div style="text-align: center; padding: 20px; color: #86909c;">暂无待办事项</div>
+                </template>
+            </a-list>
+        </a-card>
+
+        <!-- 预警信息 -->
+        <a-card title="预警信息" class="dashboard-card">
+            <template #extra>
+                <a-tag v-if="warnings.length > 0" color="red">{{ warnings.length }} 条预警</a-tag>
+                <a-tag v-else color="green">无预警</a-tag>
+            </template>
+            <a-list :data="warnings" :bordered="false">
+                <template #item="{ item }">
+                    <a-list-item>
+                        <a-list-item-meta>
+                            <template #avatar>
+                                <a-avatar :style="{ backgroundColor: item.type === 'stock_low' ? '#ff7d00' : '#f53f3f' }">
+                                    ⚠️
+                                </a-avatar>
+                            </template>
+                            <template #title>
+                                <span v-if="item.type === 'stock_low'">库存预警</span>
+                                <span v-else>系统预警</span>
+                            </template>
+                            <template #description>{{ item.msg }}</template>
+                        </a-list-item-meta>
+                    </a-list-item>
+                </template>
+                <template #empty>
+                    <div style="text-align: center; padding: 20px; color: #86909c;">
+                        <span style="font-size: 24px;">✅</span>
+                        <p style="margin-top: 8px;">系统运行正常，无预警信息</p>
+                    </div>
+                </template>
+            </a-list>
+        </a-card>
     </div>
-  </div>
+
+    <!-- 快捷操作 -->
+    <a-card title="快捷操作" style="margin-top: 16px;">
+        <a-space :size="16" wrap>
+            <a-button type="primary" size="large" @click="goLink('/admin/order/create')">
+                <template #icon>➕</template>
+                创建订单
+            </a-button>
+            <a-button size="large" @click="goLink('/admin/customer/list')">
+                <template #icon>👥</template>
+                客户管理
+            </a-button>
+            <a-button size="large" @click="goLink('/admin/supplier/list')">
+                <template #icon>🏭</template>
+                供应商管理
+            </a-button>
+            <a-button size="large" @click="goLink('/admin/goods/list')">
+                <template #icon>📦</template>
+                货品管理
+            </a-button>
+            <a-button size="large" @click="goLink('/admin/inventory/list')">
+                <template #icon>📋</template>
+                库存盘点
+            </a-button>
+        </a-space>
+    </a-card>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
-<script>
-const { createApp, ref } = Vue;
-createApp({
-  data(){ return { cards:{}, statusCount:{}, trend:[], topSuppliers:[], topGoods:[], pending:[], warnings:[] } },
-  mounted(){ this.load(); },
-  methods:{
-    load(){ fetch('/admin/index/statistics').then(r=>r.json()).then(j=>{ if(j.code==200){ this.cards = j.data.cards; this.pending = j.data.pending; this.warnings = j.data.warnings; this.loadCharts(); } }); this.loadLists(); },
-    loadCharts(){ fetch('/admin/index/chartData/status').then(r=>r.json()).then(j=>{ if(j.code==200){ this.renderStatusChart(j.data); } }); fetch('/admin/index/chartData/trend?days=30').then(r=>r.json()).then(j=>{ if(j.code==200){ this.trend = j.data; this.renderTrendChart(); } }); },
-    loadLists(){ fetch('/admin/index/chartData/top_suppliers').then(r=>r.json()).then(j=>{ if(j.code==200) this.topSuppliers = j.data; }); fetch('/admin/index/chartData/top_goods').then(r=>r.json()).then(j=>{ if(j.code==200) this.topGoods = j.data; }); },
-    renderStatusChart(data){ const chart = echarts.init(document.getElementById('statusChart')); const series = []; const legend = []; for(const k in data){ legend.push(k); series.push({name:k,value:data[k]}); } chart.setOption({title:{text:'订单状态分布'}, tooltip:{}, legend:{data:legend}, series:[{type:'pie',radius:'55%',data:series}]}); },
-    renderTrendChart(){ const chart = echarts.init(document.getElementById('trendChart')); const dates = this.trend.map(i=>i.date); const orders = this.trend.map(i=>i.orders); chart.setOption({title:{text:'近30天订单趋势'}, tooltip:{trigger:'axis'}, xAxis:{type:'category',data:dates}, yAxis:{type:'value'}, series:[{type:'line',data:orders,name:'订单数'}]}); }
-  }
-}).mount('#dashboard')
-</script>
-
-{block name="style"}
 <style>
-.card{background:#fff;padding:12px;flex:1}
-.card .value{font-size:24px;font-weight:600}
-.card .sub{color:#888}
-body .echarts{background:#fff}
+.stat-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.stat-card {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-radius: 8px;
+    color: #fff;
+}
+.stat-card-blue { background: linear-gradient(135deg, #165DFF 0%, #4E7CFF 100%); }
+.stat-card-green { background: linear-gradient(135deg, #00b42a 0%, #00d277 100%); }
+.stat-card-orange { background: linear-gradient(135deg, #ff7d00 0%, #ff9500 100%); }
+.stat-card-red { background: linear-gradient(135deg, #f53f3f 0%, #ff7d7d 100%); }
+.stat-card-icon {
+    font-size: 36px;
+    margin-right: 16px;
+    opacity: 0.9;
+}
+.stat-card-content { flex: 1; }
+.stat-card-title { font-size: 14px; opacity: 0.9; }
+.stat-card-value { font-size: 32px; font-weight: bold; margin: 4px 0; }
+.stat-card-extra { font-size: 12px; opacity: 0.8; }
+.dashboard-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.dashboard-card { min-height: 280px; }
+
+@media (max-width: 1200px) {
+    .stat-cards { grid-template-columns: repeat(2, 1fr); }
+    .dashboard-row { grid-template-columns: 1fr; }
+}
 </style>
 {/block}
 
+{block name="script"}
+<script>
+// 从控制器传递的数据
+const __CARDS__ = {$cards_json|raw};
+const __STATUS_COUNT__ = {$status_count_json|raw};
+const __PENDING__ = {$pending_json|raw};
+const __WARNINGS__ = {$warnings_json|raw};
+
+const { ref, reactive } = Vue;
+
+window.createPageApp({
+    setup() {
+        const loading = ref(false);
+        const cards = reactive(__CARDS__);
+        const statusCount = ref(__STATUS_COUNT__);
+        const pending = ref(__PENDING__);
+        const warnings = ref(__WARNINGS__);
+
+        const formatMoney = (val) => {
+            if (!val) return '0.00';
+            return parseFloat(val).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        };
+
+        const refreshData = () => {
+            loading.value = true;
+            fetch('/admin/index/statistics')
+                .then(r => r.json())
+                .then(ret => {
+                    loading.value = false;
+                    if (ret.code === 200 && ret.data) {
+                        Object.assign(cards, ret.data.cards);
+                        statusCount.value = ret.data.status_count;
+                        pending.value = ret.data.pending;
+                        warnings.value = ret.data.warnings;
+                        ArcoMessage.success('数据已刷新');
+                    }
+                })
+                .catch(() => {
+                    loading.value = false;
+                    ArcoMessage.error('刷新失败');
+                });
+        };
+
+        const goLink = (link) => { location.href = link; };
+        const goOrders = () => { location.href = '/admin/order/list'; };
+
+        return {
+            loading,
+            cards,
+            statusCount,
+            pending,
+            warnings,
+            formatMoney,
+            refreshData,
+            goLink,
+            goOrders
+        };
+    }
+}, 'dashboardApp');
+</script>
 {/block}

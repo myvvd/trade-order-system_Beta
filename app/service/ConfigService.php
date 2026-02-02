@@ -7,6 +7,7 @@ use think\facade\Cache;
 class ConfigService
 {
     protected $cachePrefix = 'sys_config_';
+    protected $tableName = 'system_config';
 
     public function get($key, $default = null)
     {
@@ -14,7 +15,7 @@ class ConfigService
         $val = Cache::get($cacheKey);
         if ($val !== null) return $val;
 
-        $row = Db::name('config')->where('key', $key)->find();
+        $row = Db::name($this->tableName)->where('key', $key)->find();
         if ($row) {
             $value = $row['value'];
             Cache::set($cacheKey, $value);
@@ -25,13 +26,13 @@ class ConfigService
 
     public function set($key, $value)
     {
-        $exists = Db::name('config')->where('key', $key)->find();
+        $exists = Db::name($this->tableName)->where('key', $key)->find();
         if ($exists) {
-            Db::name('config')->where('key', $key)->update(['value'=>$value]);
+            Db::name($this->tableName)->where('key', $key)->update(['value'=>$value]);
         } else {
             // try extract group from key like group.name
             $group = strpos($key, '.') !== false ? explode('.', $key)[0] : 'default';
-            Db::name('config')->insert(['`key`'=>$key,'value'=>$value,'`group`'=>$group]);
+            Db::name($this->tableName)->insert(['key'=>$key,'value'=>$value,'group'=>$group]);
         }
         Cache::set($this->cachePrefix . $key, $value);
         return true;
@@ -39,7 +40,7 @@ class ConfigService
 
     public function getGroup($group)
     {
-        $rows = Db::name('config')->where('`group`', $group)->select();
+        $rows = Db::name($this->tableName)->where('group', $group)->select();
         $out = [];
         foreach ($rows as $r) {
             $k = $r['key'];

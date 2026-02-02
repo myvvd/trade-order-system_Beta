@@ -15,7 +15,27 @@ class Inventory extends Base
         $pageSize = input('page_size/d', 15);
         $query = InventoryModel::order('id', 'desc');
         $page = $this->paginate($query, $pageSize);
-        View::assign(['title'=>'盘点单列表','list'=>$page['list'],'total'=>$page['total'],'page'=>$page['page'],'page_size'=>$page['page_size'],'page_total'=>$page['page_total']]);
+        
+        // 处理列表数据，加载关联的items
+        $listData = [];
+        foreach ($page['list'] as $item) {
+            $data = $item->toArray();
+            // 计算项数
+            $data['item_count'] = Db::name('inventory_item')->where('inventory_id', $item->id)->count();
+            $listData[] = $data;
+        }
+        
+        View::assign([
+            'title'             => '盘点单列表',
+            'list'              => $page['list'],
+            'list_json'         => json_encode($listData, JSON_UNESCAPED_UNICODE),
+            'total'             => $page['total'],
+            'page'              => $page['page'],
+            'page_size'         => $page['page_size'],
+            'page_total'        => $page['page_total'],
+            'breadcrumb'        => '库存盘点',
+            'current_page'      => 'inventory',
+        ]);
         return View::fetch('admin/inventory/list');
     }
 

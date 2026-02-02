@@ -1,66 +1,134 @@
-{extend name="layout/admin_base"}
+{extend name="layout/admin_base"/}
 
 {block name="content"}
 <div id="logsApp">
-  <a-card>
-    <a-space>
-      <a-input placeholder="操作人" v-model:value="filters.operator" />
-      <a-input placeholder="模块" v-model:value="filters.module" />
-      <a-date-picker v-model:value="filters.start" type="date" />
-      <a-date-picker v-model:value="filters.end" type="date" />
-      <a-button type="primary" @click="load">查询</a-button>
-    </a-space>
-
-    <a-table :columns="columns" :data="rows" style="margin-top:12px" />
-
-    <div style="margin-top:12px;text-align:right">
-      <a-pagination :current="page" :page-size="pageSize" :total="total" @change="onPageChange" />
+    <div class="page-header">
+        <div class="page-header-title">操作日志</div>
     </div>
-  </a-card>
+
+    <!-- 搜索区域 -->
+    <a-card style="margin-bottom: 16px;">
+        <a-form :model="searchForm" layout="inline">
+            <a-form-item label="模块">
+                <a-select v-model="searchForm.module" placeholder="全部模块" style="width: 150px;" allow-clear>
+                    <a-option value="">全部</a-option>
+                    <a-option v-for="m in modules" :key="m" :value="m">{{ m || '未知' }}</a-option>
+                </a-select>
+            </a-form-item>
+            <a-form-item label="开始日期">
+                <a-date-picker v-model="searchForm.start" style="width: 150px;" format="YYYY-MM-DD" value-format="YYYY-MM-DD" />
+            </a-form-item>
+            <a-form-item label="结束日期">
+                <a-date-picker v-model="searchForm.end" style="width: 150px;" format="YYYY-MM-DD" value-format="YYYY-MM-DD" />
+            </a-form-item>
+            <a-form-item>
+                <a-button type="primary" @click="handleSearch">查询</a-button>
+                <a-button @click="handleReset" style="margin-left: 8px;">重置</a-button>
+            </a-form-item>
+        </a-form>
+    </a-card>
+
+    <!-- 表格区域 -->
+    <a-card>
+        <a-table :data="tableData" :pagination="false" :bordered="{cell:true}" :stripe="true" row-key="id">
+            <template #columns>
+                <a-table-column title="ID" data-index="id" :width="80" />
+                <a-table-column title="时间" data-index="create_time" :width="170" />
+                <a-table-column title="操作人" data-index="operator" :width="120" />
+                <a-table-column title="模块" :width="120">
+                    <template #cell="{ record }">
+                        <a-tag v-if="record.module">{{ record.module }}</a-tag>
+                        <span v-else style="color: #86909c;">-</span>
+                    </template>
+                </a-table-column>
+                <a-table-column title="操作" data-index="action" :width="150">
+                    <template #cell="{ record }">{{ record.action || '-' }}</template>
+                </a-table-column>
+                <a-table-column title="请求方法" :width="100" align="center">
+                    <template #cell="{ record }">
+                        <a-tag v-if="record.method == 'POST'" color="orange">POST</a-tag>
+                        <a-tag v-else-if="record.method == 'GET'" color="blue">GET</a-tag>
+                        <a-tag v-else>{{ record.method || '-' }}</a-tag>
+                    </template>
+                </a-table-column>
+                <a-table-column title="IP" data-index="ip" :width="140">
+                    <template #cell="{ record }">{{ record.ip || '-' }}</template>
+                </a-table-column>
+                <a-table-column title="请求URL" :ellipsis="true">
+                    <template #cell="{ record }">
+                        <span style="color: #86909c;">{{ record.url || '-' }}</span>
+                    </template>
+                </a-table-column>
+            </template>
+        </a-table>
+
+        <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #86909c;">共 {{ total }} 条记录</span>
+            <a-pagination v-model:current="currentPage" v-model:page-size="pageSize" :total="total" @change="handlePageChange" />
+        </div>
+    </a-card>
 </div>
+{/block}
 
-<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/arco-design/dist/arco-vue.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/arco-design/dist/arco.min.css" />
+{block name="script"}
 <script>
-const { createApp } = Vue;
-createApp({
-  data(){
-    return {
-      filters:{operator:'',module:'',start:null,end:null},
-      rows:[],
-      columns:[
-        {title:'时间',dataIndex:'created_at'},
-        {title:'操作人',dataIndex:'operator'},
-        {title:'模块',dataIndex:'module'},
-        {title:'操作',dataIndex:'action'},
-        {title:'IP',dataIndex:'ip'},
-        {title:'详情',dataIndex:'detail'}
-      ],
-      page:1,
-      pageSize:20,
-      total:0
-    };
-  },
-  mounted(){ this.load(); },
-  methods:{
-    load(p=1){
-      this.page = p;
-      const s = this.filters.start || '';
-      const e = this.filters.end || '';
-      const q = `/admin/system/data_logs?operator=${encodeURIComponent(this.filters.operator)}&module=${encodeURIComponent(this.filters.module)}&start=${s}&end=${e}&page=${this.page}&page_size=${this.pageSize}`;
-      fetch(q).then(r=>r.json()).then(j=>{
-        if (j.code === 200) {
-          this.rows = j.data.list;
-          this.total = j.data.total;
-          this.page = j.data.page;
-          this.pageSize = j.data.page_size;
-        }
-      });
-    },
-    onPageChange(p){ this.load(p); }
-  }
-}).use(ArcoVue).mount('#logsApp');
-</script>
+// 从控制器传递的数据
+const __LIST__ = {$list_json|raw};
+const __MODULES__ = {$modules_json|raw};
+const __TOTAL__ = {$total};
+const __CURRENT_PAGE__ = {$page_num};
+const __MODULE__ = '{$module|addslashes}';
+const __START__ = '{$start|addslashes}';
+const __END__ = '{$end|addslashes}';
 
+const { ref, reactive } = Vue;
+
+window.createPageApp({
+    setup() {
+        const searchForm = reactive({
+            module: __MODULE__,
+            start: __START__ || null,
+            end: __END__ || null
+        });
+
+        const tableData = ref(__LIST__);
+        const modules = ref(__MODULES__);
+        const total = ref(__TOTAL__);
+        const currentPage = ref(__CURRENT_PAGE__);
+        const pageSize = ref(20);
+
+        const buildUrl = (page) => {
+            const params = [];
+            if (searchForm.module) params.push('module=' + encodeURIComponent(searchForm.module));
+            if (searchForm.start) params.push('start=' + searchForm.start);
+            if (searchForm.end) params.push('end=' + searchForm.end);
+            if (page) params.push('page=' + page);
+            let url = '/admin/system/logs';
+            if (params.length) url += '?' + params.join('&');
+            return url;
+        };
+
+        const handleSearch = () => { location.href = buildUrl(1); };
+        const handleReset = () => {
+            searchForm.module = '';
+            searchForm.start = null;
+            searchForm.end = null;
+            location.href = '/admin/system/logs';
+        };
+        const handlePageChange = (page) => { location.href = buildUrl(page); };
+
+        return {
+            searchForm,
+            tableData,
+            modules,
+            total,
+            currentPage,
+            pageSize,
+            handleSearch,
+            handleReset,
+            handlePageChange
+        };
+    }
+}, 'logsApp');
+</script>
 {/block}

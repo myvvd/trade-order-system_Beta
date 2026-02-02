@@ -40,12 +40,33 @@ class Employee extends Base
 
         $users = $query->order('id', 'desc')->paginate(['list_rows' => $pageSize, 'page' => $page]);
 
+        // 获取角色列表
+        $roles = Db::name('admin_role')->where('status', 1)->select()->toArray();
+        $rolesMap = [];
+        foreach ($roles as $role) {
+            $rolesMap[$role['id']] = $role;
+        }
+
+        // 在控制器中处理好数据，手动关联角色
+        $userList = [];
+        foreach ($users->items() as $item) {
+            $data = $item->toArray();
+            $data['role'] = isset($rolesMap[$data['role_id']]) ? $rolesMap[$data['role_id']] : null;
+            $userList[] = $data;
+        }
+
         return View::fetch('admin/employee/list', [
-            'users' => $users,
-            'keyword' => $keyword,
-            'roleId' => $roleId,
-            'status' => $status,
-            'title' => '员工管理',
+            'users'             => $users,
+            'users_list_json'   => json_encode($userList, JSON_UNESCAPED_UNICODE),
+            'roles_json'        => json_encode($roles, JSON_UNESCAPED_UNICODE),
+            'user_total'        => $users->total(),
+            'user_current_page' => $users->currentPage(),
+            'keyword'           => $keyword,
+            'roleId'            => $roleId,
+            'status'            => $status,
+            'title'             => '员工管理',
+            'breadcrumb'        => '员工管理',
+            'current_page'      => 'employee',
         ]);
     }
 

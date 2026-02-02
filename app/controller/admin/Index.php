@@ -9,7 +9,21 @@ class Index extends Base
 {
     public function index()
     {
-        View::assign(['title'=>'控制台']);
+        $svc = new DashboardService();
+        $cards = $svc->getSummaryCards();
+        $statusCount = $svc->getOrderStatusCount();
+        $pending = $svc->getPendingTasks();
+        $warnings = $svc->getWarnings();
+        
+        View::assign([
+            'title'            => '控制台',
+            'cards_json'       => json_encode($cards, JSON_UNESCAPED_UNICODE),
+            'status_count_json'=> json_encode($statusCount, JSON_UNESCAPED_UNICODE),
+            'pending_json'     => json_encode($pending, JSON_UNESCAPED_UNICODE),
+            'warnings_json'    => json_encode($warnings, JSON_UNESCAPED_UNICODE),
+            'breadcrumb'       => '控制台',
+            'current_page'     => 'dashboard',
+        ]);
         return View::fetch('admin/index/index');
     }
 

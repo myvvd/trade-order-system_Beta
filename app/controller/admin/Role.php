@@ -25,26 +25,30 @@ class Role extends Base
         $query = AdminRole::order('id', 'desc');
 
         if ($keyword) {
-            $query->withSearch(['keyword'], $keyword);
+            $query->where('name', 'like', '%' . $keyword . '%');
         }
 
         if ($status !== '') {
-            $query->withSearch(['status'], $status);
+            $query->where('status', $status);
         }
 
         $roles = $query->select();
 
         // 为每个角色添加用户数量
-        foreach ($roles as &$role) {
-            $role['user_count'] = $role->getUserCount();
+        $rolesData = [];
+        foreach ($roles as $role) {
+            $data = $role->toArray();
+            $data['user_count'] = $role->getUserCount();
+            $rolesData[] = $data;
         }
 
         return View::fetch('admin/role/list', [
-            'roles'   => $roles,
-            'keyword' => $keyword,
-            'status'  => $status,
-            'title'    => '角色管理',
-            'breadcrumb' => '角色管理',
+            'roles'        => $roles,
+            'roles_json'   => json_encode($rolesData, JSON_UNESCAPED_UNICODE),
+            'keyword'      => $keyword,
+            'status'       => $status,
+            'title'        => '角色管理',
+            'breadcrumb'   => '角色权限',
             'current_page' => 'role',
         ]);
     }

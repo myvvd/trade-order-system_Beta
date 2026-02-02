@@ -12,9 +12,9 @@ class DashboardService
         $weekStart = date('Y-m-d 00:00:00', strtotime('this week'));
         $monthStart = date('Y-m-01 00:00:00');
 
-        $today = Db::name('order')->whereBetween('created_at', [$todayStart, $todayEnd])->field('count(*) as cnt, sum(total_amount) as amt')->find();
-        $week = Db::name('order')->where('created_at', '>=', $weekStart)->field('count(*) as cnt, sum(total_amount) as amt')->find();
-        $month = Db::name('order')->where('created_at', '>=', $monthStart)->field('count(*) as cnt, sum(total_amount) as amt')->find();
+        $today = Db::name('order')->whereBetween('create_time', [$todayStart, $todayEnd])->field('count(*) as cnt, sum(total_amount) as amt')->find();
+        $week = Db::name('order')->where('create_time', '>=', $weekStart)->field('count(*) as cnt, sum(total_amount) as amt')->find();
+        $month = Db::name('order')->where('create_time', '>=', $monthStart)->field('count(*) as cnt, sum(total_amount) as amt')->find();
         $pending = Db::name('order')->where('status', '<', 50)->count();
 
         return [
@@ -43,7 +43,7 @@ class DashboardService
             $d = date('Y-m-d', strtotime("-{$i} days"));
             $start = $d . ' 00:00:00';
             $end = $d . ' 23:59:59';
-            $row = Db::name('order')->whereBetween('created_at', [$start, $end])->field('count(*) as cnt, sum(total_amount) as amt')->find();
+            $row = Db::name('order')->whereBetween('create_time', [$start, $end])->field('count(*) as cnt, sum(total_amount) as amt')->find();
             $data[] = [ 'date'=>$d, 'orders'=>(int)($row['cnt']??0), 'amount'=>(float)($row['amt']??0) ];
         }
         return $data;
@@ -84,9 +84,20 @@ class DashboardService
     public function getWarnings()
     {
         $warnings = [];
-        // 低库存
-        $low = Db::name('stock')->alias('s')->join('goods g','s.goods_id=g.id')->where('s.quantity','<=',Db::raw('g.warn_stock'))->field('g.id,g.name,s.quantity,g.warn_stock')->limit(10)->select();
-        foreach ($low as $l) $warnings[] = ['type'=>'stock_low','msg'=>"{$l['name']} 库存 {$l['quantity']}，预警阈值 {$l['warn_stock']}"];
+        // 低库存 - 预警数量字段在 stock 表中
+        $low = Db::name('stock')->alias('s')
+            ->join('goods g', 's.goods_id=g.id')
+            ->where('s.quantity', '<=', Db::raw('s.warning_quantity'))
+            ->where('s.warning_quantity', '>', 0)
+            ->field('g.id, g.name, s.quantity, s.warning_quantity')
+            ->limit(10)
+            ->select();
+        foreach ($low as $l) {
+            $warnings[] = [
+                'type' => 'stock_low',
+                'msg' => "{$l['name']} 库存 {$l['quantity']}，预警阈值 {$l['warning_quantity']}"
+            ];
+        }
         return $warnings;
     }
 }

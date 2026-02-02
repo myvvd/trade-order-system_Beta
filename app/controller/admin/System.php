@@ -18,7 +18,14 @@ class System extends Base
         $order = $cfg->getGroup('order');
         $stock = $cfg->getGroup('stock');
 
-        View::assign(['title'=>'系统设置','basic'=>$basic,'order'=>$order,'stock'=>$stock]);
+        View::assign([
+            'title'       => '系统设置',
+            'basic_json'  => json_encode($basic ?: new \stdClass(), JSON_UNESCAPED_UNICODE),
+            'order_json'  => json_encode($order ?: new \stdClass(), JSON_UNESCAPED_UNICODE),
+            'stock_json'  => json_encode($stock ?: new \stdClass(), JSON_UNESCAPED_UNICODE),
+            'breadcrumb'  => '基本设置',
+            'current_page'=> 'system',
+        ]);
         return View::fetch('admin/system/config');
     }
 
@@ -48,20 +55,55 @@ class System extends Base
     // 操作日志列表
     public function logs()
     {
-        $operator = input('operator', '');
+        $userId = input('user_id', '');
         $module = input('module', '');
         $start = input('start', '');
         $end = input('end', '');
+        $page = input('page/d', 1);
         $pageSize = input('page_size/d', 20);
 
         $query = Db::name('operation_log');
-        if ($operator) $query->where('operator', 'like', "%{$operator}%");
+        if ($userId) $query->where('user_id', $userId);
         if ($module) $query->where('module', $module);
-        if ($start) $query->where('created_at', '>=', $start.' 00:00:00');
-        if ($end) $query->where('created_at', '<=', $end.' 23:59:59');
+        if ($start) $query->where('create_time', '>=', $start.' 00:00:00');
+        if ($end) $query->where('create_time', '<=', $end.' 23:59:59');
 
-        $list = $query->order('id','desc')->paginate(['list_rows'=>$pageSize]);
-        View::assign(['title'=>'操作日志','list'=>$list,'operator'=>$operator,'module'=>$module,'start'=>$start,'end'=>$end]);
+        $list = $query->order('id','desc')->paginate(['list_rows'=>$pageSize, 'page'=>$page]);
+        
+        // 获取所有模块列表用于筛选
+        $modules = Db::name('operation_log')->distinct(true)->column('module');
+        
+        // 获取用户信息映射
+        $userIds = [];
+        foreach ($list->items() as $item) {
+            if ($item['user_id']) $userIds[] = $item['user_id'];
+        }
+        $usersMap = [];
+        if (!empty($userIds)) {
+            $users = Db::name('admin_user')->whereIn('id', array_unique($userIds))->column('username', 'id');
+            $usersMap = $users;
+        }
+        
+        // 转换为数组，添加用户名
+        $listData = [];
+        foreach ($list->items() as $item) {
+            $item['operator'] = $usersMap[$item['user_id']] ?? '未知';
+            $listData[] = $item;
+        }
+        
+        View::assign([
+            'title'        => '操作日志',
+            'list_json'    => json_encode($listData, JSON_UNESCAPED_UNICODE),
+            'modules_json' => json_encode($modules, JSON_UNESCAPED_UNICODE),
+            'total'        => $list->total(),
+            'page_num'     => $list->currentPage(),
+            'user_id'      => $userId,
+            'module'       => $module,
+            'start'        => $start,
+            'end'          => $end,
+            'breadcrumb'   => '操作日志',
+            'current_page' => 'system',
+        ]);
         return View::fetch('admin/system/logs');
     }
 
