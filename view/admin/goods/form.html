@@ -1,209 +1,426 @@
 {extend name="layout/admin_base"/}
-{php}
-$goods = isset($goods) ? $goods : null;
-$categories = isset($categories) ? ($categories instanceof \think\Collection ? $categories->toArray() : []) : [];
-$goodsData = $goods ? $goods->toArray() : [];
-$skus = isset($skus) ? $skus : [];
-{/php}
 
 {block name="content"}
-<div id="goodsFormApp">
-    <div class="page-header">
-        <div class="page-header-title">{$title|default='新增货品'}</div>
-        <a-space :size="12">
-            <a-button @click="goBack">返回</a-button>
-        </a-space>
-    </div>
+<style>
+/* 表单容器 */
+.goods-form-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
 
-    <a-card>
-        <a-form
-            :model="form"
-            :label-col-props="{ span: 4 }"
-            :wrapper-col-props="{ span: 16 }"
-            @submit="handleSubmit"
-        >
-            {if condition="$goods"}
-            <input type="hidden" name="id" value="{$goods.id}">
-            {/if}
+/* 区块标题 */
+.section-header {
+    display: flex;
+    align-items: center;
+    margin: 24px 0 16px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e6eb;
+}
+.section-header:first-child {
+    margin-top: 0;
+}
+.section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1d2129;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.section-title::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 14px;
+    background: #165dff;
+    border-radius: 2px;
+}
 
-            <!-- 基本信息 -->
-            <a-divider orientation="left">基本信息</a-divider>
+/* 表单行 */
+.form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.form-group {
+    flex: 1;
+}
+.form-group-half {
+    flex: 0 0 calc(50% - 10px);
+}
 
-            <a-form-item
-                field="goods_no"
-                label="货品编号"
-                :rules="[{ required: true, message: '请输入货品编号' }]"
-            >
-                <a-input
-                    v-model="form.goods_no"
-                    placeholder="如：G001"
-                    allow-clear
-                />
-            </a-form-item>
+/* 标签 */
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #1d2129;
+    font-size: 14px;
+}
+.form-label .required {
+    color: #f53f3f;
+    margin-left: 4px;
+}
 
-            <a-form-item
-                field="name"
-                label="货品名称"
-                :rules="[{ required: true, message: '请输入货品名称' }]"
-            >
-                <a-input
-                    v-model="form.name"
-                    placeholder="请输入货品名称"
-                    allow-clear
-                />
-            </a-form-item>
+/* 输入框 */
+.form-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #e5e6eb;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #1d2129;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-input:focus {
+    outline: none;
+    border-color: #165dff;
+    box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.1);
+}
+.form-input::placeholder {
+    color: #a9aeb8;
+}
 
-            <a-form-item field="category_id" label="所属分类">
-                <a-select
-                    v-model="form.category_id"
-                    placeholder="请选择分类"
-                    allow-clear
-                >
-                    <a-option :value="0">未分类</a-option>
-                    <a-option
-                        v-for="cat in categories"
-                        :key="cat.id"
-                        :value="cat.id"
-                    >{{ cat.name }}</a-option>
-                </a-select>
-            </a-form-item>
+/* 选择框 */
+.form-select {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #e5e6eb;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #1d2129;
+    background: #fff;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.form-select:focus {
+    outline: none;
+    border-color: #165dff;
+}
 
-            <a-form-item field="unit" label="单位">
-                <a-input
-                    v-model="form.unit"
-                    placeholder="如：件、个、套"
-                    allow-clear
-                />
-            </a-form-item>
+/* 文本域 */
+.form-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px 12px;
+    border: 1px solid #e5e6eb;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #1d2129;
+    background: #fff;
+    box-sizing: border-box;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+.form-textarea:focus {
+    outline: none;
+    border-color: #165dff;
+}
 
-            <a-form-item field="description" label="货品描述">
-                <a-textarea
-                    v-model="form.description"
-                    placeholder="请输入货品描述"
-                    :auto-size="{ minRows: 3, maxRows: 5 }"
-                    allow-clear
-                />
-            </a-form-item>
+/* 图片上传 */
+.image-upload-box {
+    border: 1px dashed #c9cdd4;
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;
+    background: #fafbfc;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.image-upload-box:hover {
+    border-color: #165dff;
+    background: #f2f7ff;
+}
+.image-upload-box.dragover {
+    border-color: #165dff;
+    background: #e8f3ff;
+}
+.image-preview {
+    width: 160px;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #e5e6eb;
+    background: #fff;
+    display: block;
+    margin: 0 auto 12px auto;
+}
+.upload-tips {
+    font-size: 13px;
+    color: #86909c;
+}
+.upload-actions {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #4e5969;
+}
 
-            <!-- 价格信息 -->
-            <a-divider orientation="left">价格信息</a-divider>
+/* 价格输入框 */
+.price-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.price-prefix {
+    position: absolute;
+    left: 12px;
+    color: #86909c;
+    font-size: 14px;
+}
+.form-input.price-input {
+    padding-left: 28px;
+    width: 180px;
+}
 
-            <a-form-item
-                field="cost_price"
-                label="成本价（元）"
-                :rules="[{ required: true, message: '请输入成本价' }]"
-            >
-                <a-input-number
-                    v-model="form.cost_price"
-                    :min="0"
-                    :precision="2"
-                    placeholder="请输入成本价"
-                    style="width: 200px;"
-                >
-                    <template #prefix>¥</template>
-                </a-input-number>
-            </a-form-item>
+/* 单选按钮组 */
+.radio-group {
+    display: flex;
+    gap: 24px;
+    padding-top: 6px;
+}
+.radio-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #4e5969;
+}
+.radio-label input[type="radio"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
 
-            <a-form-item
-                field="sale_price"
-                label="销售价（元）"
-                :rules="[{ required: true, message: '请输入销售价' }]"
-            >
-                <a-input-number
-                    v-model="form.sale_price"
-                    :min="0"
-                    :precision="2"
-                    placeholder="请输入销售价"
-                    style="width: 200px;"
-                >
-                    <template #prefix>¥</template>
-                </a-input-number>
-            </a-form-item>
+/* 按钮样式 */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #e5e6eb;
+}
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px;
+    height: 36px;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    text-decoration: none;
+}
+.btn-primary {
+    background: #165dff;
+    color: #fff;
+    border-color: #165dff;
+}
+.btn-primary:hover {
+    background: #4080ff;
+    border-color: #4080ff;
+}
+.btn-default {
+    background: #f2f3f5;
+    color: #4e5969;
+    border-color: #e5e6eb;
+}
+.btn-default:hover {
+    background: #e5e6eb;
+    border-color: #c9cdd4;
+}
+</style>
 
-            <!-- 状态 -->
-            <a-form-item field="status" label="状态">
-                <a-radio-group v-model="form.status">
-                    <a-radio :value="1">上架</a-radio>
-                    <a-radio :value="0">下架</a-radio>
-                </a-radio-group>
-            </a-form-item>
+<h1 class="page-title">{$title|default='新增货品'}</h1>
 
-            <!-- 操作按钮 -->
-            <a-form-item :wrapper-col-props="{ span: 16, offset: 4 }">
-                <a-space :size="12">
-                    <a-button type="primary" html-type="submit" :loading="submitting">保存</a-button>
-                    <a-button @click="goBack">返回</a-button>
-                </a-space>
-            </a-form-item>
-        </a-form>
-    </a-card>
+<div class="card goods-form-container">
+    <form id="goodsForm" onsubmit="return saveGoods(event)">
+        
+        <!-- 基本信息 -->
+        <div class="section-header">
+            <div class="section-title">基本信息</div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group form-group-half">
+                <label class="form-label">货品编号 <span class="required">*</span></label>
+                <input type="text" name="goods_no" class="form-input" value="{$goods.goods_no|default=''}" placeholder="如：G001" required>
+            </div>
+            <div class="form-group form-group-half">
+                <label class="form-label">货品名称 <span class="required">*</span></label>
+                <input type="text" name="name" class="form-input" value="{$goods.name|default=''}" placeholder="请输入货品名称" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group form-group-half">
+                <label class="form-label">所属分类</label>
+                <select name="category_id" class="form-select">
+                    <option value="0">未分类</option>
+                    {volist name="categories" id="cat"}
+                    <option value="{$cat.id}" {if condition="($goods['category_id'] ?? 0) eq $cat['id']"}selected{/if}>{$cat.name}</option>
+                    {/volist}
+                </select>
+            </div>
+            <div class="form-group form-group-half">
+                <label class="form-label">单位</label>
+                <input type="text" name="unit" class="form-input" value="{$goods.unit|default='件'}" placeholder="如：件、个、套">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">货品描述</label>
+                <textarea name="description" class="form-textarea" placeholder="请输入货品描述">{$goods.description|default=''}</textarea>
+            </div>
+        </div>
+
+        <!-- 货品图片 -->
+        <div class="section-header">
+            <div class="section-title">货品图片</div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <div class="image-upload-box" id="imageUploadBox">
+                    <img id="imagePreview" class="image-preview" src="{$image_url|default='/static/images/no-image.svg'}" alt="货品图片">
+                    <div class="upload-tips">点击上传或拖拽图片到此处</div>
+                    <div class="upload-actions">支持 JPG/PNG/GIF/WEBP，大小不超过 5MB</div>
+                </div>
+                <input type="file" id="imageFile" accept="image/*" style="display: none;">
+                <input type="hidden" name="image" id="imagePath" value="{$goods.image|default=''}">
+                <input type="hidden" name="temp_image" id="tempImagePath" value="">
+            </div>
+        </div>
+
+        <!-- 价格信息（隐藏） -->
+        <input type="hidden" name="cost_price" value="{$goods.cost_price|default='0'}">
+        <input type="hidden" name="sale_price" value="{$goods.sale_price|default='0'}">
+
+        <!-- 状态 -->
+        <div class="section-header">
+            <div class="section-title">状态设置</div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">货品状态</label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="status" value="1" {if condition="($goods['status'] ?? 1) eq 1"}checked{/if}> 上架
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="status" value="0" {if condition="($goods['status'] ?? 1) eq 0"}checked{/if}> 下架
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 隐藏字段 -->
+        {notempty name="goods.id"}
+        <input type="hidden" name="id" value="{$goods.id}">
+        {/notempty}
+
+        <!-- 操作按钮 -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">保存货品</button>
+            <button type="button" class="btn btn-default" onclick="history.back()">返回</button>
+        </div>
+    </form>
 </div>
 {/block}
 
 {block name="script"}
 <script>
-const { createApp, ref, reactive } = Vue;
+function saveGoods(event) {
+    event.preventDefault();
 
-const app = createApp({
-    setup() {
-        const submitting = ref(false);
+    const form = document.getElementById('goodsForm');
+    const formData = new FormData(form);
 
-        const form = reactive({
-            id: {$goods.id|raw|default='null'},
-            goods_no: '{$goods.goods_no|raw|default=""}',
-            name: '{$goods.name|raw|default=""}',
-            category_id: {$goods.category_id|raw|default=0},
-            unit: '{$goods.unit|raw|default="件"}',
-            cost_price: {$goods.cost_price|raw|default=0},
-            sale_price: {$goods.sale_price|raw|default=0},
-            description: '{$goods.description|raw|default=""}',
-            status: {$goods.status|raw|default=1}
-        });
+    // 根据是否有ID决定是新增还是编辑
+    const goodsId = formData.get('id');
+    const url = goodsId ? '/admin/goods/update?id=' + goodsId : '/admin/goods/save';
 
-        const categories = ref({$categories_json|raw|json_encode|default='[]'});
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    }).then(res => res.json()).then(result => {
+        if (result.success || result.code === 200 || result.code === 1) {
+            alert(result.msg || '保存成功');
+            location.href = '/admin/goods/list';
+        } else {
+            alert(result.msg || '保存失败');
+        }
+    }).catch(err => {
+        console.error('请求出错:', err);
+        alert('网络请求失败');
+    });
+}
 
-        const handleSubmit = () => {
-            submitting.value = true;
+function initImageUpload() {
+    const uploadBox = document.getElementById('imageUploadBox');
+    const fileInput = document.getElementById('imageFile');
+    const preview = document.getElementById('imagePreview');
+    const tempImagePath = document.getElementById('tempImagePath');
 
-            const formData = new FormData();
-            Object.keys(form).forEach(key => {
-                formData.append(key, form[key]);
-            });
+    if (!uploadBox || !fileInput || !preview || !tempImagePath) return;
 
-            fetch('/admin/goods/save', {
-                method: 'POST',
-                body: formData
-            }).then(res => res.json()).then(result => {
-                if (result.success) {
-                    ArcoMessage.success('保存成功');
-                    location.href = '/admin/goods/list';
-                } else {
-                    ArcoMessage.error(result.msg || '保存失败');
+    const handleFile = (file) => {
+        if (!file) return;
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            alert('图片大小不能超过 5MB');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        fetch('/admin/goods/uploadTempImage', {
+            method: 'POST',
+            body: formData
+        }).then(res => res.json()).then(result => {
+            if (result.success || result.code === 200 || result.code === 1) {
+                const data = result.data || {};
+                if (data.url) {
+                    preview.src = data.url;
                 }
-            }).catch(() => {
-                ArcoMessage.error('请求失败，请重试');
-            }).finally(() => {
-                submitting.value = false;
-            });
-        };
+                if (data.temp_path) {
+                    tempImagePath.value = data.temp_path;
+                }
+            } else {
+                alert(result.msg || '上传失败');
+            }
+        }).catch(() => {
+            alert('上传失败，请重试');
+        });
+    };
 
-        const goBack = () => {
-            history.back();
-        };
+    uploadBox.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
 
-        return {
-            form,
-            categories,
-            submitting,
-            handleSubmit,
-            goBack
-        };
-    }
-});
+    uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadBox.classList.add('dragover');
+    });
+    uploadBox.addEventListener('dragleave', () => {
+        uploadBox.classList.remove('dragover');
+    });
+    uploadBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadBox.classList.remove('dragover');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+}
 
-// 挂载到独立的元素
-const goodsFormContainer = document.createElement('div');
-document.getElementById('goodsFormApp').appendChild(goodsFormContainer);
-app.mount(goodsFormContainer);
+document.addEventListener('DOMContentLoaded', initImageUpload);
 </script>
 {/block}

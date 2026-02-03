@@ -11,11 +11,24 @@
     <!-- 公共样式 -->
     <link rel="stylesheet" href="/static/css/admin/common.css">
 
+    <script>
+        (function() {
+            try {
+                const collapsed = localStorage.getItem('admin_sidebar_collapsed') === '1';
+                const openGroups = JSON.parse(localStorage.getItem('admin_sidebar_open_groups') || '[]');
+                document.documentElement.classList.add('no-transition');
+                document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+                document.documentElement.dataset.openGroups = openGroups.join(',');
+            } catch (e) {}
+        })();
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { width: 100%; height: 100%; overflow: hidden; }
+        .no-transition *, .no-transition *::before, .no-transition *::after { transition: none !important; }
         .admin-layout { display: flex; width: 100%; height: 100%; }
         .admin-sidebar { width: 220px; background: #001529; color: rgba(255,255,255,0.65); display: flex; flex-direction: column; transition: width 0.2s; flex-shrink: 0; }
+        .sidebar-collapsed .admin-sidebar { width: 64px; }
         .admin-sidebar.collapsed { width: 64px; }
         .sidebar-logo { height: 64px; display: flex; align-items: center; padding: 0 20px; font-size: 16px; font-weight: bold; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); white-space: nowrap; overflow: hidden; }
         .sidebar-menu { flex: 1; overflow-y: auto; }
@@ -57,16 +70,50 @@
         .admin-sidebar.collapsed .menu-item { justify-content: center; padding: 12px 0; }
         .admin-sidebar.collapsed .menu-item-icon { margin-right: 0; }
         .admin-sidebar.collapsed .submenu { display: none !important; max-height: 0 !important; }
+
+        .sidebar-collapsed .admin-sidebar.collapsed .sidebar-logo span:first-child { display: none; }
+        .sidebar-collapsed .admin-sidebar.collapsed .sidebar-logo span:last-child { display: block; }
+        .sidebar-collapsed .admin-sidebar.collapsed .menu-item-text { display: none; }
+        .sidebar-collapsed .admin-sidebar.collapsed .menu-group-arrow { display: none; }
+        .sidebar-collapsed .admin-sidebar.collapsed .menu-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .admin-sidebar.collapsed .menu-item-icon { margin-right: 0; }
+        .sidebar-collapsed .admin-sidebar.collapsed .submenu { display: none !important; max-height: 0 !important; }
         .sidebar-logo span:last-child { display: none; }
 
         /* Arco Design 组件区域样式 */
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .page-header-title { font-size: 20px; font-weight: 600; color: #1d2129; }
+        .page-title { font-size: 20px; font-weight: 600; color: #1d2129; margin-bottom: 20px; }
         
         /* 修复 Arco Design 组件样式 */
         .arco-card { border-radius: 4px; }
         .arco-table { background: #fff; }
         .arco-btn { border-radius: 4px; }
+        
+        /* 通用卡片样式 */
+        .card { background: #fff; border-radius: 4px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        
+        /* 通用按钮样式 */
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 4px; font-size: 14px; cursor: pointer; text-decoration: none; border: none; transition: all 0.2s; }
+        .btn-primary { background: #165dff; color: #fff; }
+        .btn-primary:hover { background: #4080ff; }
+        .btn-default { background: #f2f3f5; color: #1d2129; border: 1px solid #e5e6eb; }
+        .btn-default:hover { background: #e5e6eb; }
+        .btn-danger { background: #f53f3f; color: #fff; }
+        .btn-danger:hover { background: #f76560; }
+        
+        /* 数据表格样式 */
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th, .data-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; }
+        .data-table th { background: #f7f8fa; font-weight: 600; }
+        .data-table tbody tr:hover { background: #f7f8fa; }
+        
+        /* 分页样式 */
+        .pagination { display: flex; gap: 4px; }
+        .pagination a, .pagination span { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid #e5e6eb; border-radius: 4px; color: #1d2129; text-decoration: none; font-size: 14px; }
+        .pagination a:hover { background: #f2f3f5; border-color: #165dff; color: #165dff; }
+        .pagination .active span { background: #165dff; color: #fff; border-color: #165dff; }
+        .pagination .disabled span { color: #c9cdd4; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -176,7 +223,11 @@ function toggleSidebar() {
     const sidebar = document.getElementById('adminSidebar');
     const icon = document.getElementById('toggleIcon');
     sidebar.classList.toggle('collapsed');
+    document.documentElement.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
     icon.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+    try {
+        localStorage.setItem('admin_sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+    } catch (e) {}
 }
 
 // 子菜单展开/折叠
@@ -188,6 +239,14 @@ function toggleSubmenu(el) {
         if (arrow) {
             arrow.classList.toggle('open');
         }
+        try {
+            const groups = Array.from(document.querySelectorAll('.menu-group'));
+            const index = groups.indexOf(el);
+            const openGroups = groups
+                .map((g, i) => (g.nextElementSibling && g.nextElementSibling.classList.contains('show')) ? i : null)
+                .filter(i => i !== null);
+            localStorage.setItem('admin_sidebar_open_groups', JSON.stringify(openGroups));
+        } catch (e) {}
     }
 }
 
@@ -243,6 +302,33 @@ window.createPageApp = function(options, mountId) {
 
 // 页面加载完成后，根据当前路径展开对应的子菜单
 document.addEventListener('DOMContentLoaded', function() {
+    // 应用侧边栏折叠状态
+    try {
+        const collapsed = localStorage.getItem('admin_sidebar_collapsed') === '1';
+        const sidebar = document.getElementById('adminSidebar');
+        const icon = document.getElementById('toggleIcon');
+        if (sidebar && collapsed) {
+            sidebar.classList.add('collapsed');
+            document.documentElement.classList.add('sidebar-collapsed');
+            if (icon) icon.textContent = '▶';
+        }
+    } catch (e) {}
+
+    // 还原子菜单展开状态
+    try {
+        const openGroups = JSON.parse(localStorage.getItem('admin_sidebar_open_groups') || '[]');
+        const groups = document.querySelectorAll('.menu-group');
+        openGroups.forEach(i => {
+            const group = groups[i];
+            if (group) {
+                const submenu = group.nextElementSibling;
+                const arrow = group.querySelector('.menu-group-arrow');
+                if (submenu) submenu.classList.add('show');
+                if (arrow) arrow.classList.add('open');
+            }
+        });
+    } catch (e) {}
+
     const path = location.pathname;
     // 订单相关
     if (path.includes('/admin/order')) {
@@ -265,6 +351,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (arrow) arrow.classList.add('open');
         }
     }
+
+    // 初始化完成后恢复过渡效果
+    requestAnimationFrame(() => {
+        document.documentElement.classList.remove('no-transition');
+    });
 });
 </script>
 

@@ -230,6 +230,9 @@ abstract class Base extends \app\BaseController
      */
     protected function post(string $key = '', $default = null, string $filter = '')
     {
+        if ($key === '') {
+            return input('post.');
+        }
         return input('post.' . $key, $default, $filter);
     }
 

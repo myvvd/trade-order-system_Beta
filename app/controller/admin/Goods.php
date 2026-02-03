@@ -49,20 +49,29 @@ class Goods extends Base
         // 获取分类数据
         $categories = GoodsCategoryModel::select()->toArray();
 
-        // 在控制器中处理好JSON数据，传给视图
+        // 为每个货品添加分类名称和图片URL
+        foreach ($goods as $item) {
+            $item->category_name = '-';
+            if ($item->category_id) {
+                foreach ($categories as $cat) {
+                    if ($cat['id'] == $item->category_id) {
+                        $item->category_name = $cat['name'];
+                        break;
+                    }
+                }
+            }
+            $item->image_url = $item->getImageUrl();
+        }
+
         return View::fetch('admin/goods/list', [
-            'goods'           => $goods,
-            'goods_list_json' => json_encode($goods->items(), JSON_UNESCAPED_UNICODE),
-            'categories_json' => json_encode($categories, JSON_UNESCAPED_UNICODE),
-            'goods_total'     => $goods->total(),
-            'goods_current_page' => $goods->currentPage(),
-            'keyword'         => $keyword,
-            'categoryId'      => $categoryId,
-            'status'          => $status,
-            'categories'      => $categories,
-            'title'           => '货品管理',
-            'breadcrumb'      => '货品管理',
-            'current_page'    => 'goods',
+            'goods'       => $goods,
+            'categories'  => $categories,
+            'keyword'     => $keyword,
+            'categoryId'  => $categoryId,
+            'status'      => $status,
+            'title'       => '货品管理',
+            'breadcrumb'  => '货品管理',
+            'current_page' => 'goods',
         ]);
     }
 
@@ -103,12 +112,17 @@ class Goods extends Base
             $skus = $goods->getActiveSkus();
         }
 
+        $categories = GoodsCategoryModel::getTopCategories();
+        $imageUrl = $goods ? $goods->getImageUrl() : '/static/images/no-image.png';
+
         return View::fetch('admin/goods/form', [
-            'goods'       => $goods,
-            'skus'        => $skus,
-            'categories'   => GoodsCategoryModel::getTopCategories(),
-            'title'        => $id ? '编辑货品' : '新增货品',
-            'breadcrumb'  => $id ? '编辑货品' : '新增货品',
+            'goods'           => $goods,
+            'skus'            => $skus,
+            'categories'      => $categories,
+            'categories_json' => json_encode($categories, JSON_UNESCAPED_UNICODE),
+            'image_url'       => $imageUrl,
+            'title'           => $id ? '编辑货品' : '新增货品',
+            'breadcrumb'      => $id ? '编辑货品' : '新增货品',
         ]);
     }
 
@@ -137,6 +151,83 @@ class Goods extends Base
     }
 
     /**
+     * 货品图片临时上传（缓存）
+     * @return Response
+     */
+    public function uploadTempImage(): Response
+    {
+        if (!$this->isPost()) {
+            return $this->error('请求方式错误');
+        }
+
+        $file = request()->file('image');
+        if (!$file) {
+            return $this->error('未选择图片');
+        }
+
+        $ext = strtolower($file->extension());
+        $allowExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if (!in_array($ext, $allowExt, true)) {
+            return $this->error('图片格式不支持');
+        }
+
+        if ($file->getSize() > 5 * 1024 * 1024) {
+            return $this->error('图片大小不能超过 5MB');
+        }
+
+        $tempDir = root_path() . 'public/uploads/cache';
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $filename = 'goods_' . date('YmdHis') . '_' . uniqid() . '.' . $ext;
+        $info = $file->move($tempDir, $filename);
+        if (!$info) {
+            return $this->error('上传失败');
+        }
+
+        $tempPath = 'uploads/cache/' . $filename;
+        return $this->success([
+            'temp_path' => $tempPath,
+            'url'       => '/' . $tempPath,
+        ], '上传成功');
+    }
+
+    /**
+     * 将临时图片移动到正式目录
+     * @param string $tempPath
+     * @return string|null
+     */
+    protected function moveTempImage(string $tempPath): ?string
+    {
+        $tempPath = ltrim($tempPath, '/');
+        $source = root_path() . 'public/' . $tempPath;
+        if (!is_file($source)) {
+            return null;
+        }
+
+        $dateDir = date('Ym');
+        $finalDir = root_path() . 'public/uploads/goods/' . $dateDir;
+        if (!is_dir($finalDir)) {
+            mkdir($finalDir, 0755, true);
+        }
+
+        $filename = basename($source);
+        $finalRel = 'uploads/goods/' . $dateDir . '/' . $filename;
+        $target = root_path() . 'public/' . $finalRel;
+
+        if (!@rename($source, $target)) {
+            if (@copy($source, $target)) {
+                @unlink($source);
+            } else {
+                return null;
+            }
+        }
+
+        return $finalRel;
+    }
+
+    /**
      * 保存货品
      * @return Response
      */
@@ -147,6 +238,14 @@ class Goods extends Base
         }
 
         $params = $this->post();
+
+        $tempImage = $params['temp_image'] ?? '';
+        if ($tempImage) {
+            $finalImage = $this->moveTempImage($tempImage);
+            if ($finalImage) {
+                $params['image'] = $finalImage;
+            }
+        }
 
         // 验证货品基本信息
         try {
@@ -213,6 +312,14 @@ class Goods extends Base
         }
 
         $params = $this->post();
+
+        $tempImage = $params['temp_image'] ?? '';
+        if ($tempImage) {
+            $finalImage = $this->moveTempImage($tempImage);
+            if ($finalImage) {
+                $params['image'] = $finalImage;
+            }
+        }
 
         try {
             $goods = GoodsModel::find($id);

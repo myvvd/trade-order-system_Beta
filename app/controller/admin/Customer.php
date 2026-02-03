@@ -98,8 +98,12 @@ class Customer extends Base
      * @param int $id
      * @return string|\think\response\Redirect
      */
-    public function edit($id)
+    public function edit($id = null)
     {
+        $id = $id ?: input('id/d', 0);
+        if (!$id) {
+            return redirect('/admin/customer/list')->with('error', '参数错误');
+        }
         return $this->showForm($id);
     }
 
@@ -115,14 +119,17 @@ class Customer extends Base
 
         // 简单国家列表，可按需扩展
         $countries = [
-            'China', 'United States', 'United Kingdom', 'Germany', 'France', 'Other'
+            'China', 'United States', 'United Kingdom', 'Germany', 'France', 'Japan', 'South Korea', 'Other'
         ];
 
+        $customerData = $customer ? $customer->toArray() : [];
+
         return View::fetch('admin/customer/form', [
-            'customer'    => $customer,
-            'countries'   => $countries,
-            'title'       => $id ? '编辑客户' : '新增客户',
-            'breadcrumb'  => $id ? '编辑客户' : '新增客户',
+            'customer'      => $customerData,
+            'countries'     => $countries,
+            'title'         => $id ? '编辑客户' : '新增客户',
+            'breadcrumb'    => $id ? '编辑客户' : '新增客户',
+            'current_page'  => 'customer',
         ]);
     }
 
@@ -176,13 +183,17 @@ class Customer extends Base
      * @param int $id
      * @return Response
      */
-    public function update($id): Response
+    public function update($id = null): Response
     {
         if (!$this->isPost()) {
             return $this->error('请求方式错误');
         }
 
         $params = $this->post();
+        $id = $id ?: ($params['id'] ?? input('id/d', 0));
+        if (!$id) {
+            return $this->error('参数错误');
+        }
 
         try {
             validate(CustomerValidate::class)->scene('update')->check(array_merge(['id' => $id], $params));
@@ -229,10 +240,15 @@ class Customer extends Base
      * @param int $id
      * @return Response
      */
-    public function delete($id): Response
+    public function delete($id = null): Response
     {
         if (!$this->isPost()) {
             return $this->error('请求方式错误');
+        }
+
+        $id = $id ?: input('id/d', 0);
+        if (!$id) {
+            return $this->error('参数错误');
         }
 
         $customer = CustomerModel::find($id);
@@ -253,11 +269,16 @@ class Customer extends Base
      * @param int $id
      * @return string|\think\response\Redirect
      */
-    public function detail($id)
+    public function detail($id = null)
     {
+        $id = $id ?: input('id/d', 0);
+        if (!$id) {
+            return redirect('/admin/customer/list')->with('error', '参数错误');
+        }
+        
         $customer = CustomerModel::find($id);
         if (!$customer) {
-            return redirect('admin/customer/list')->with('error', '客户不存在');
+            return redirect('/admin/customer/list')->with('error', '客户不存在');
         }
 
         $orders = $customer->getOrders();

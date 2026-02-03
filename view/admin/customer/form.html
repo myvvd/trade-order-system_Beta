@@ -1,101 +1,114 @@
 {extend name="layout/admin_base"/}
-{php}
-$customer = isset($customer) ? ($customer instanceof \think\Model ? $customer->toArray() : $customer) : null;
-$countries = $countries ?? [];
-{/php}
 
 {block name="content"}
-<div class="page-header">
-    <div class="page-header-title">{$title}</div>
+<h1 class="page-title">{$title}</h1>
+
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <form id="customerForm" onsubmit="return saveCustomer(event)">
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">公司名称 <span style="color: #f53f3f;">*</span></label>
+            <input type="text" name="company_name" value="{$customer.company_name|default=''}" placeholder="请输入公司名称" required
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">国家 <span style="color: #f53f3f;">*</span></label>
+            <select name="country" required
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box; background: #fff;">
+                <option value="">请选择国家</option>
+                {volist name="countries" id="c"}
+                <option value="{$c}" {if condition="($customer['country'] ?? '') eq $c"}selected{/if}>{$c}</option>
+                {/volist}
+            </select>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">联系人 <span style="color: #f53f3f;">*</span></label>
+            <input type="text" name="contact_name" value="{$customer.contact_name|default=''}" placeholder="请输入联系人姓名" required
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">电话</label>
+            <input type="text" name="phone" value="{$customer.phone|default=''}" placeholder="请输入联系电话"
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">邮箱</label>
+            <input type="email" name="email" value="{$customer.email|default=''}" placeholder="请输入邮箱地址"
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">地址</label>
+            <textarea name="address" placeholder="请输入详细地址"
+                style="width: 100%; height: 80px; padding: 12px; border: 1px solid #e5e6eb; border-radius: 4px; resize: vertical; box-sizing: border-box;">{$customer.address|default=''}</textarea>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">客户等级</label>
+            <select name="level"
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box; background: #fff;">
+                <option value="1" {if condition="($customer['level'] ?? 1) eq 1"}selected{/if}>普通</option>
+                <option value="2" {if condition="($customer['level'] ?? 1) eq 2"}selected{/if}>VIP</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">状态</label>
+            <label style="margin-right: 16px;">
+                <input type="radio" name="status" value="1" {if condition="($customer['status'] ?? 1) eq 1"}checked{/if}> 正常
+            </label>
+            <label>
+                <input type="radio" name="status" value="0" {if condition="($customer['status'] ?? 1) eq 0"}checked{/if}> 禁用
+            </label>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">备注</label>
+            <textarea name="remark" placeholder="请输入备注信息"
+                style="width: 100%; height: 80px; padding: 12px; border: 1px solid #e5e6eb; border-radius: 4px; resize: vertical; box-sizing: border-box;">{$customer.remark|default=''}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+            <button type="submit" class="btn btn-primary" style="flex: 1;">保存</button>
+            <button type="button" class="btn btn-default" onclick="history.back()" style="flex: 1;">返回</button>
+        </div>
+
+        {if condition="!empty($customer['id'])"}
+        <input type="hidden" name="id" value="{$customer.id}">
+        {/if}
+    </form>
 </div>
-
-<a-card>
-    <a-form id="customerForm">
-        <a-form-item label="公司名称">
-            <a-input v-model:value="form.company_name" placeholder="公司名称" />
-        </a-form-item>
-
-        <a-form-item label="国家">
-            <a-select v-model:value="form.country" placeholder="请选择国家">
-                <a-option v-for="c in countries" :key="c" :value="c">{{ c }}</a-option>
-            </a-select>
-        </a-form-item>
-
-        <a-form-item label="联系人">
-            <a-input v-model:value="form.contact_name" />
-        </a-form-item>
-
-        <a-form-item label="电话">
-            <a-input v-model:value="form.phone" />
-        </a-form-item>
-
-        <a-form-item label="邮箱">
-            <a-input v-model:value="form.email" />
-        </a-form-item>
-
-        <a-form-item label="地址">
-            <a-input v-model:value="form.address" />
-        </a-form-item>
-
-        <a-form-item label="客户等级">
-            <a-select v-model:value="form.level">
-                <a-option :value="1">普通</a-option>
-                <a-option :value="2">VIP</a-option>
-            </a-select>
-        </a-form-item>
-
-        <a-form-item label="备注">
-            <a-input v-model:value="form.remark" />
-        </a-form-item>
-
-        <a-form-item>
-            <a-button type="primary" @click="handleSubmit">保存</a-button>
-            <a-button @click="handleCancel">取消</a-button>
-        </a-form-item>
-    </a-form>
-</a-card>
-
 {/block}
 
 {block name="script"}
 <script>
-const { createApp, reactive } = Vue;
-const app = createApp({
-    setup() {
-        const form = reactive({
-            id: '{$customer.id|raw}',
-            company_name: '{$customer.company_name|raw}',
-            country: '{$customer.country|raw}',
-            contact_name: '{$customer.contact_name|raw}',
-            phone: '{$customer.phone|raw}',
-            email: '{$customer.email|raw}',
-            address: '{$customer.address|raw}',
-            level: {$customer.level|raw|default=1},
-            remark: '{$customer.remark|raw}',
-            status: {$customer.status|raw|default=1}
-        });
+function saveCustomer(event) {
+    event.preventDefault();
 
-        const countries = {$countries_json|raw|json_encode|default='[]'};
+    const form = document.getElementById('customerForm');
+    const formData = new FormData(form);
 
-        const handleSubmit = () => {
-            const url = form.id ? '/admin/customer/update/' + form.id : '/admin/customer/save';
-            const body = new URLSearchParams();
-            for (const k in form) body.append(k, form[k]);
-            fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
-                .then(r => r.json()).then(ret => {
-                    if (ret.success) { ArcoMessage.success(ret.msg || '保存成功'); location.href = '/admin/customer/list'; }
-                    else { ArcoMessage.error(ret.msg || '保存失败'); }
-                });
-        };
+    // 根据是否有ID决定是新增还是编辑
+    const customerId = formData.get('id');
+    const url = customerId ? '/admin/customer/update?id=' + customerId : '/admin/customer/save';
 
-        const handleCancel = () => { history.back(); };
-
-        return { form, countries, handleSubmit, handleCancel };
-    }
-});
-
-const container = document.createElement('div');
-document.getElementById('app')?.appendChild(container);
-app.mount(container);
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    }).then(res => res.json()).then(result => {
+        if (result.success || result.code === 200 || result.code === 1) {
+            alert(result.msg || '保存成功');
+            location.href = '/admin/customer/list';
+        } else {
+            alert(result.msg || '保存失败');
+        }
+    }).catch(err => {
+        console.error('请求出错:', err);
+        alert('网络请求失败');
+    });
+}
 </script>
 {/block}

@@ -109,12 +109,12 @@ class Goods extends \think\Model
     public function getImageUrl(): string
     {
         if (!$this->image) {
-            return '/static/images/no-image.png';
+            return '/static/images/no-image.svg';
         }
 
         // 如果是相对路径，添加 /static/
         if (!str_starts_with($this->image, 'http') && !str_starts_with($this->image, '/')) {
-            return '/static/' . $this->image;
+            return '/' . $this->image;
         }
 
         return $this->image;
