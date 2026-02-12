@@ -1,167 +1,131 @@
 {extend name="layout/admin_base"/}
 
 {block name="content"}
-<div id="roleListApp">
-    <div class="page-header">
-        <div class="page-header-title">角色权限</div>
-        <a-space :size="12">
-            <a-button type="primary" @click="goCreate">+ 新增角色</a-button>
-        </a-space>
+<h1 class="page-title">角色权限</h1>
+
+<div class="card" style="margin-bottom: 16px;">
+    <form method="get" action="/admin/role/list" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #4e5969;">角色名称</label>
+            <input type="text" name="keyword" value="{$keyword}" placeholder="搜索角色名称" style="width: 200px; height: 32px; padding: 0 10px; border: 1px solid #e5e6eb; border-radius: 4px;">
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #4e5969;">状态</label>
+            <select name="status" style="width: 120px; height: 32px; padding: 0 10px; border: 1px solid #e5e6eb; border-radius: 4px; background: #fff;">
+                <option value="">全部</option>
+                <option value="1" {if condition="$status eq '1'"}selected{/if}>正常</option>
+                <option value="0" {if condition="$status eq '0'"}selected{/if}>禁用</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="height: 32px; padding: 0 16px;">搜索</button>
+            <a href="/admin/role/list" class="btn btn-default" style="height: 32px; padding: 0 16px; line-height: 30px;">重置</a>
+        </div>
+        <div style="margin-left: auto;">
+            <a href="/admin/role/form" class="btn btn-primary" style="height: 32px; padding: 0 16px; line-height: 30px;">+ 新增角色</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    {notempty name="roles"}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 80px;">ID</th>
+                <th style="width: 200px;">角色名称</th>
+                <th style="width: 250px;">描述</th>
+                <th style="width: 100px; text-align: center;">用户数</th>
+                <th style="width: 100px; text-align: center;">状态</th>
+                <th style="width: 170px;">创建时间</th>
+                <th style="width: 200px; text-align: center;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {volist name="roles" id="item"}
+            <tr>
+                <td>{$item.id}</td>
+                <td>
+                    <span style="font-weight: 600; color: #1d2129;">{$item.name}</span>
+                    {if condition="$item.id == 1"}
+                    <span style="display: inline-block; padding: 2px 8px; background: #e8f4ff; color: #165dff; border-radius: 3px; font-size: 12px; margin-left: 8px;">超级管理员</span>
+                    {/if}
+                </td>
+                <td style="color: #86909c;">{$item.description|default='-'}</td>
+                <td style="text-align: center; font-weight: 600;">{$item.user_count|default=0}</td>
+                <td style="text-align: center;">
+                    {if condition="$item.status == 1"}
+                    <span style="display: inline-block; padding: 2px 8px; background: #e8ffea; color: #00b42a; border-radius: 3px; font-size: 12px;">正常</span>
+                    {else/}
+                    <span style="display: inline-block; padding: 2px 8px; background: #ffece8; color: #f53f3f; border-radius: 3px; font-size: 12px;">禁用</span>
+                    {/if}
+                </td>
+                <td style="color: #86909c; font-size: 13px;">{$item.create_time|default='-'}</td>
+                <td style="text-align: center; white-space: nowrap; padding: 12px 8px;">
+                    <a href="/admin/role/form?id={$item.id}" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #e8f4ff; color: #165dff; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">编辑</a>
+                    {if condition="$item.id != 1"}
+                    <a href="javascript:void(0)" onclick="toggleStatus({$item.id}, {$item.status}, '{$item.name}')" class="action-btn" style="display: inline-block; padding: 4px 8px; background: {if condition='$item.status == 1'}#fff7e6{else/}#e8ffea{/if}; color: {if condition='$item.status == 1'}#ff7d00{else/}#00b42a{/if}; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">
+                        {if condition="$item.status == 1"}禁用{else/}启用{/if}
+                    </a>
+                    <a href="javascript:void(0)" onclick="deleteRole({$item.id}, '{$item.name}')" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #ffece8; color: #f53f3f; border-radius: 4px; text-decoration: none; font-size: 12px;">删除</a>
+                    {/if}
+                </td>
+            </tr>
+            {/volist}
+        </tbody>
+    </table>
+    {else/}
+    <div style="text-align: center; padding: 60px 0; color: #86909c;">
+        <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
+        <div>暂无角色数据</div>
     </div>
-
-    <!-- 搜索区域 -->
-    <a-card style="margin-bottom: 16px;">
-        <a-form :model="searchForm" layout="inline">
-            <a-form-item label="角色名称">
-                <a-input v-model="searchForm.keyword" placeholder="搜索角色名称" style="width: 200px;" allow-clear />
-            </a-form-item>
-            <a-form-item label="状态">
-                <a-select v-model="searchForm.status" placeholder="全部状态" style="width: 120px;" allow-clear>
-                    <a-option value="">全部</a-option>
-                    <a-option value="1">正常</a-option>
-                    <a-option value="0">禁用</a-option>
-                </a-select>
-            </a-form-item>
-            <a-form-item>
-                <a-button type="primary" @click="handleSearch">搜索</a-button>
-                <a-button @click="handleReset" style="margin-left: 8px;">重置</a-button>
-            </a-form-item>
-        </a-form>
-    </a-card>
-
-    <!-- 表格区域 -->
-    <a-card>
-        <a-table :data="tableData" :pagination="false" :bordered="{cell:true}" :stripe="true" row-key="id">
-            <template #columns>
-                <a-table-column title="ID" data-index="id" :width="80" />
-                <a-table-column title="角色名称" :width="200">
-                    <template #cell="{ record }">
-                        <span style="font-weight: 600;">{{ record.name }}</span>
-                        <a-tag v-if="record.id == 1" color="arcoblue" style="margin-left: 8px;">超级管理员</a-tag>
-                    </template>
-                </a-table-column>
-                <a-table-column title="描述" data-index="description" :width="250">
-                    <template #cell="{ record }">
-                        <span style="color: #86909c;">{{ record.description || '-' }}</span>
-                    </template>
-                </a-table-column>
-                <a-table-column title="用户数" data-index="user_count" :width="100" align="center" />
-                <a-table-column title="状态" :width="100" align="center">
-                    <template #cell="{ record }">
-                        <a-tag v-if="record.status == 1" color="green">正常</a-tag>
-                        <a-tag v-else color="red">禁用</a-tag>
-                    </template>
-                </a-table-column>
-                <a-table-column title="创建时间" data-index="create_time" :width="170" />
-                <a-table-column title="操作" :width="200">
-                    <template #cell="{ record }">
-                        <a-space :size="8">
-                            <a-button type="text" size="small" @click="editRole(record.id)">编辑</a-button>
-                            <template v-if="record.id != 1">
-                                <a-button type="text" size="small" @click="toggleStatus(record)">
-                                    {{ record.status == 1 ? '禁用' : '启用' }}
-                                </a-button>
-                                <a-button type="text" status="danger" size="small" @click="deleteRole(record)">删除</a-button>
-                            </template>
-                        </a-space>
-                    </template>
-                </a-table-column>
-            </template>
-        </a-table>
-    </a-card>
+    {/notempty}
 </div>
 {/block}
 
 {block name="script"}
 <script>
-// 从控制器传递的数据
-const __ROLES__ = {$roles_json|raw};
-const __KEYWORD__ = '{$keyword|addslashes}';
-const __STATUS__ = '{$status|addslashes}';
-
-const { ref, reactive } = Vue;
-
-window.createPageApp({
-    setup() {
-        const searchForm = reactive({
-            keyword: __KEYWORD__,
-            status: __STATUS__
-        });
-
-        const tableData = ref(__ROLES__);
-
-        const handleSearch = () => {
-            const params = [];
-            if (searchForm.keyword) params.push('keyword=' + encodeURIComponent(searchForm.keyword));
-            if (searchForm.status !== '') params.push('status=' + searchForm.status);
-            let url = '/admin/role/list';
-            if (params.length) url += '?' + params.join('&');
-            location.href = url;
-        };
-
-        const handleReset = () => {
-            searchForm.keyword = '';
-            searchForm.status = '';
-            location.href = '/admin/role/list';
-        };
-
-        const goCreate = () => { location.href = '/admin/role/form'; };
-        const editRole = (id) => { location.href = '/admin/role/form?id=' + id; };
-
-        const toggleStatus = (record) => {
-            const action = record.status == 1 ? '禁用' : '启用';
-            ArcoModal.confirm({
-                title: '提示',
-                content: '确定要' + action + '此角色吗？',
-                onOk: () => {
-                    fetch('/admin/role/toggleStatus', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'id=' + record.id
-                    }).then(r => r.json()).then(ret => {
-                        if (ret.success || ret.code == 1) {
-                            ArcoMessage.success(ret.msg || '操作成功');
-                            location.reload();
-                        } else {
-                            ArcoMessage.error(ret.msg || '操作失败');
-                        }
-                    });
-                }
-            });
-        };
-
-        const deleteRole = (record) => {
-            ArcoModal.confirm({
-                title: '提示',
-                content: '确定要删除此角色吗？',
-                onOk: () => {
-                    fetch('/admin/role/delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'id=' + record.id
-                    }).then(r => r.json()).then(ret => {
-                        if (ret.success || ret.code == 1) {
-                            ArcoMessage.success('删除成功');
-                            location.reload();
-                        } else {
-                            ArcoMessage.error(ret.msg || '删除失败');
-                        }
-                    });
-                }
-            });
-        };
-
-        return {
-            searchForm,
-            tableData,
-            handleSearch,
-            handleReset,
-            goCreate,
-            editRole,
-            toggleStatus,
-            deleteRole
-        };
+function toggleStatus(id, currentStatus, name) {
+    const action = currentStatus == 1 ? '禁用' : '启用';
+    if (!confirm('确定要' + action + '角色"' + name + '"吗？')) {
+        return;
     }
-}, 'roleListApp');
+    
+    fetch('/admin/role/toggleStatus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'id=' + id
+    }).then(res => res.json()).then(result => {
+        if (result.success || result.code == 1) {
+            alert(result.msg || '操作成功');
+            location.reload();
+        } else {
+            alert(result.msg || '操作失败');
+        }
+    }).catch(() => {
+        alert('网络请求失败');
+    });
+}
+
+function deleteRole(id, name) {
+    if (!confirm('确定要删除角色"' + name + '"吗？')) {
+        return;
+    }
+    
+    fetch('/admin/role/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'id=' + id
+    }).then(res => res.json()).then(result => {
+        if (result.success || result.code == 1) {
+            alert('删除成功');
+            location.reload();
+        } else {
+            alert(result.msg || '删除失败');
+        }
+    }).catch(() => {
+        alert('网络请求失败');
+    });
+}
 </script>
 {/block}

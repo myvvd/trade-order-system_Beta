@@ -93,9 +93,12 @@ class Employee extends Base
         $roles = Db::name('admin_role')->where('status',1)->select()->toArray();
 
         return View::fetch('admin/employee/form', [
-            'user' => $user,
+            'user' => $user ? $user->toArray() : null,
             'roles' => $roles,
+            'roles_json' => json_encode($roles, JSON_UNESCAPED_UNICODE),
             'title' => $id ? '编辑员工' : '新增员工',
+            'breadcrumb' => $id ? '编辑员工' : '新增员工',
+            'current_page' => 'employee',
         ]);
     }
 

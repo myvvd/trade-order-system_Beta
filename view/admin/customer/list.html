@@ -56,6 +56,7 @@
                 <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 70px;">等级</th>
                 <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 70px;">状态</th>
                 <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 70px;">订单数</th>
+                <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 90px;">未完成订单</th>
                 <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 160px;">操作</th>
             </tr>
         </thead>
@@ -86,16 +87,23 @@
                 </td>
                 <td style="padding: 12px; text-align: center;">{$item.order_count|default=0}</td>
                 <td style="padding: 12px; text-align: center;">
-                    <a href="/admin/customer/edit?id={$item.id}" style="color: #165dff; text-decoration: none; margin-right: 8px;">编辑</a>
-                    <a href="/admin/customer/detail?id={$item.id}" style="color: #165dff; text-decoration: none; margin-right: 8px;">详情</a>
-                    <a href="javascript:;" onclick="deleteCustomer({$item.id}, '{$item.company_name}')" style="color: #f53f3f; text-decoration: none;">删除</a>
+                    {if condition="$item.pending_order_count gt 0"}
+                    <a href="javascript:;" onclick="showPendingOrders({$item.id})" style="color: #f77234; text-decoration: none; font-weight: 600;">{$item.pending_order_count}</a>
+                    {else/}
+                    <span style="color: #86909c;">0</span>
+                    {/if}
+                </td>
+                <td style="padding: 12px; text-align: center; white-space: nowrap;">
+                    <a href="/admin/customer/edit?id={$item.id}" style="display: inline-block; padding: 4px 8px; background: #e8f4ff; color: #165dff; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">编辑</a>
+                    <a href="/admin/customer/detail?id={$item.id}" style="display: inline-block; padding: 4px 8px; background: #f2f3f5; color: #4e5969; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">详情</a>
+                    <a href="javascript:;" onclick="deleteCustomer({$item.id}, '{$item.company_name}')" style="display: inline-block; padding: 4px 8px; background: #ffece8; color: #f53f3f; border-radius: 4px; text-decoration: none; font-size: 12px;">删除</a>
                 </td>
             </tr>
             {/volist}
             {/notempty}
             {empty name="customers"}
             <tr>
-                <td colspan="9" style="padding: 40px; text-align: center; color: #86909c;">暂无数据</td>
+                <td colspan="10" style="padding: 40px; text-align: center; color: #86909c;">暂无数据</td>
             </tr>
             {/empty}
         </tbody>
@@ -109,9 +117,31 @@
         </div>
     </div>
 </div>
+
+<!-- 未完成订单详情弹窗 -->
+<div id="pendingOrderModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; padding: 24px; width: 90%; max-width: 800px; max-height: 80%; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e5e6eb; padding-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 600;">未完成订单详情</h3>
+            <button onclick="closePendingOrderModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #86909c;">&times;</button>
+        </div>
+        <div id="pendingOrderContent">
+            <div style="text-align: center; padding: 40px; color: #86909c;">加载中...</div>
+        </div>
+    </div>
+</div>
 {/block}
 
 {block name="script"}
+<style>
+.order-table { width: 100%; border-collapse: collapse; }
+.order-table th, .order-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #f2f3f5; }
+.order-table th { background: #f7f8fa; font-weight: 600; font-size: 13px; }
+.order-table td { font-size: 13px; }
+.order-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.status-pending { background: #fff7e8; color: #f77234; }
+.status-processing { background: #e8f3ff; color: #165dff; }
+</style>
 <script>
 function deleteCustomer(id, name) {
     if (!confirm('确定要删除客户 "' + name + '" 吗？')) return;
@@ -131,5 +161,86 @@ function deleteCustomer(id, name) {
             alert('请求失败');
         });
 }
+
+function showPendingOrders(customerId) {
+    document.getElementById('pendingOrderModal').style.display = 'block';
+    document.getElementById('pendingOrderContent').innerHTML = '<div style="text-align: center; padding: 40px; color: #86909c;">加载中...</div>';
+    
+    fetch('/admin/customer/pendingOrders?id=' + customerId)
+        .then(r => r.json())
+        .then(ret => {
+            if (ret.success || ret.code === 1) {
+                displayPendingOrders(ret.data || []);
+            } else {
+                document.getElementById('pendingOrderContent').innerHTML = '<div style="text-align: center; padding: 40px; color: #f53f3f;">加载失败：' + (ret.msg || '未知错误') + '</div>';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('pendingOrderContent').innerHTML = '<div style="text-align: center; padding: 40px; color: #f53f3f;">网络错误</div>';
+        });
+}
+
+function displayPendingOrders(orders) {
+    if (!orders || orders.length === 0) {
+        document.getElementById('pendingOrderContent').innerHTML = '<div style="text-align: center; padding: 40px; color: #86909c;">暂无未完成订单</div>';
+        return;
+    }
+    
+    let html = '<table class="order-table">';
+    html += '<thead><tr>';
+    html += '<th>订单编号</th><th>创建时间</th><th>状态</th><th>总金额</th><th>交货日期</th><th>操作</th>';
+    html += '</tr></thead><tbody>';
+    
+    orders.forEach(order => {
+        const statusClass = getStatusClass(order.status);
+        const statusText = getStatusText(order.status);
+        
+        html += '<tr>';
+        html += '<td>' + (order.order_no || order.id) + '</td>';
+        html += '<td>' + (order.create_time || '-') + '</td>';
+        html += '<td><span class="order-status ' + statusClass + '">' + statusText + '</span></td>';
+        html += '<td>¥' + (parseFloat(order.total_amount || 0)).toFixed(2) + '</td>';
+        html += '<td>' + (order.delivery_date || '-') + '</td>';
+        html += '<td><a href="/admin/order/detail?id=' + order.id + '" target="_blank" style="color: #165dff; text-decoration: none;">查看详情</a></td>';
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    document.getElementById('pendingOrderContent').innerHTML = html;
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'pending': return 'status-pending';
+        case 'processing': return 'status-processing';
+        default: return 'status-pending';
+    }
+}
+
+function getStatusText(status) {
+    switch(status) {
+        case 'pending': return '待处理';
+        case 'processing': return '处理中';
+        case 'production': return '生产中';
+        case 'shipped': return '已发货';
+        case 'delivered': return '已送达';
+        case 'completed': return '已完成';
+        case 'cancelled': return '已取消';
+        default: return status || '未知';
+    }
+}
+
+function closePendingOrderModal() {
+    document.getElementById('pendingOrderModal').style.display = 'none';
+}
+
+// 点击模态框外部关闭
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('pendingOrderModal');
+    if (e.target === modal) {
+        closePendingOrderModal();
+    }
+});
 </script>
 {/block}

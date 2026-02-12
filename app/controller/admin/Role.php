@@ -43,7 +43,7 @@ class Role extends Base
         }
 
         return View::fetch('admin/role/list', [
-            'roles'        => $roles,
+            'roles'        => $rolesData, // 传递处理后的数组数据
             'roles_json'   => json_encode($rolesData, JSON_UNESCAPED_UNICODE),
             'keyword'      => $keyword,
             'status'       => $status,

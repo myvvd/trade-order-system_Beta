@@ -21,7 +21,8 @@ Route::group('admin', function () {
     // 默认首页
     Route::get('/', 'admin.Index/index');
 
-    // 万能路由：先匹配带 action 的，再匹配只有 controller 的
+    // 万能路由：先匹配带 action 和参数的，再匹配带 action 的，最后匹配只有 controller 的
+    Route::rule(':controller/:action/:id', 'admin.:controller/:action');
     Route::rule(':controller/:action', 'admin.:controller/:action');
     Route::rule(':controller', 'admin.:controller/index');
 })->middleware(['AdminAuth']);

@@ -41,10 +41,11 @@ class Supplier extends Base
             'page'      => $page,
         ]);
 
-        // 计算接单数
+        // 计算接单数及订单状态统计
         $ids = [];
         foreach ($suppliers as $s) $ids[] = $s->id;
         if (!empty($ids)) {
+            // 总派单数
             $counts = Db::name('order_dispatch')
                 ->whereIn('supplier_id', $ids)
                 ->field(['supplier_id', 'COUNT(*) as cnt'])
@@ -53,7 +54,38 @@ class Supplier extends Base
                 ->toArray();
             $map = [];
             foreach ($counts as $c) $map[$c['supplier_id']] = (int)$c['cnt'];
-            foreach ($suppliers as $s) $s->dispatch_count = $map[$s->id] ?? 0;
+            
+            // 已完成订单数（status >= 100）
+            $completedCounts = Db::name('order_dispatch')
+                ->alias('od')
+                ->join('order o', 'od.order_id = o.id')
+                ->whereIn('od.supplier_id', $ids)
+                ->where('o.status', '>=', 100)
+                ->field(['od.supplier_id', 'COUNT(*) as cnt'])
+                ->group('od.supplier_id')
+                ->select()
+                ->toArray();
+            $completedMap = [];
+            foreach ($completedCounts as $c) $completedMap[$c['supplier_id']] = (int)$c['cnt'];
+            
+            // 未完成订单数（status < 100）
+            $pendingCounts = Db::name('order_dispatch')
+                ->alias('od')
+                ->join('order o', 'od.order_id = o.id')
+                ->whereIn('od.supplier_id', $ids)
+                ->where('o.status', '<', 100)
+                ->field(['od.supplier_id', 'COUNT(*) as cnt'])
+                ->group('od.supplier_id')
+                ->select()
+                ->toArray();
+            $pendingMap = [];
+            foreach ($pendingCounts as $c) $pendingMap[$c['supplier_id']] = (int)$c['cnt'];
+            
+            foreach ($suppliers as $s) {
+                $s->dispatch_count = $map[$s->id] ?? 0;
+                $s->completed_count = $completedMap[$s->id] ?? 0;
+                $s->pending_count = $pendingMap[$s->id] ?? 0;
+            }
         }
 
         // 在控制器中处理好数据，传给视图

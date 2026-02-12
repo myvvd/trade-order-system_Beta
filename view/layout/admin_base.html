@@ -131,7 +131,7 @@
                 <span class="menu-item-text">首页</span>
             </a>
             <!-- 订单管理 -->
-            <div class="menu-item menu-group" onclick="toggleSubmenu(this)">
+            <!-- <div class="menu-item menu-group" onclick="toggleSubmenu(this)">
                 <span class="menu-item-icon">📦</span>
                 <span class="menu-item-text">订单管理</span>
                 <span class="menu-group-arrow">▶</span>
@@ -139,7 +139,13 @@
             <div class="submenu">
                 <a href="/admin/order/list" class="menu-item"><span class="menu-item-text">订单列表</span></a>
                 <a href="/admin/order/create" class="menu-item"><span class="menu-item-text">创建订单</span></a>
-            </div>
+            </div> -->
+
+              <a href="/admin/order/list" class="menu-item">
+                <span class="menu-item-icon">📦</span>
+                <span class="menu-item-text">订单列表</span>
+            </a>
+
             <!-- 客户管理 -->
             <a href="/admin/customer/list" class="menu-item {if isset($current_page) && $current_page == 'customer'}active{/if}">
                 <span class="menu-item-icon">👥</span>

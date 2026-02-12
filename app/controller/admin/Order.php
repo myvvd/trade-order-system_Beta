@@ -220,4 +220,86 @@ class Order extends Base
             return $this->error('操作失败：' . $e->getMessage());
         }
     }
+
+    /**
+     * 初始化订单测试数据
+     */
+    public function initTestData()
+    {
+        if (!$this->isSuper()) {
+            return $this->error('权限不足');
+        }
+
+        try {
+            \think\facade\Db::startTrans();
+
+            // 删除现有测试数据
+            OrderModel::where('order_no', 'like', 'TEST%')->delete();
+            \app\model\OrderItem::where('order_id', 'in', function($query) {
+                $query->table('order')->where('order_no', 'like', 'TEST%')->field('id');
+            })->delete();
+
+            // 创建 10 个测试订单，涵盖所有状态
+            $statuses = [
+                OrderModel::STATUS_PENDING,        // 待派单
+                OrderModel::STATUS_WAIT_CONFIRM,   // 待确认
+                OrderModel::STATUS_REJECTED,       // 已拒绝
+                OrderModel::STATUS_IN_PROGRESS,    // 制作中
+                OrderModel::STATUS_WAIT_RECEIVE,   // 待收货
+                OrderModel::STATUS_RECEIVED,       // 已入库
+                OrderModel::STATUS_SHIPPED,        // 已发货
+                OrderModel::STATUS_COMPLETED,      // 已完成
+                OrderModel::STATUS_CANCELED,       // 已取消
+                OrderModel::STATUS_PENDING,        // 再次添加待派单
+            ];
+
+            $customers = \app\model\Customer::where('delete_time', null)->limit(5)->column('id');
+            if (empty($customers)) {
+                throw new \Exception('请先创建客户数据');
+            }
+
+            for ($i = 1; $i <= 10; $i++) {
+                $orderNo = 'TEST' . date('Ymd') . str_pad($i, 4, '0', STR_PAD_LEFT);
+                $status = $statuses[$i - 1];
+                $customerId = $customers[($i - 1) % count($customers)];
+                
+                // 创建订单
+                $order = OrderModel::create([
+                    'order_no' => $orderNo,
+                    'customer_id' => $customerId,
+                    'status' => $status,
+                    'total_amount' => rand(1000, 50000) / 100,
+                    'currency' => ['CNY', 'USD', 'EUR'][rand(0, 2)],
+                    'delivery_date' => date('Y-m-d', strtotime('+' . rand(10, 90) . ' days')),
+                    'remark' => '测试订单 ' . $i . ' - 状态：' . OrderModel::getStatusText($status),
+                    'creator_id' => $this->getAdminId(),
+                ]);
+
+                // 为每个订单创建 1-3 个订单项
+                $itemCount = rand(1, 3);
+                for ($j = 1; $j <= $itemCount; $j++) {
+                    $unitPrice = rand(100, 2000) / 100;
+                    $quantity = rand(10, 500);
+                    $amount = $unitPrice * $quantity;
+
+                    \app\model\OrderItem::create([
+                        'order_id' => $order->id,
+                        'goods_name' => '测试商品' . $j . '_订单' . $i,
+                        'sku_name' => '规格' . $j,
+                        'quantity' => $quantity,
+                        'unit_price' => $unitPrice,
+                        'amount' => $amount,
+                        'remark' => $j == 1 ? '主要商品' : '配件商品',
+                    ]);
+                }
+            }
+
+            \think\facade\Db::commit();
+            return $this->success([], '测试数据初始化成功！已创建10个不同状态的测试订单');
+            
+        } catch (\Exception $e) {
+            \think\facade\Db::rollback();
+            return $this->error('初始化失败：' . $e->getMessage());
+        }
+    }
 }

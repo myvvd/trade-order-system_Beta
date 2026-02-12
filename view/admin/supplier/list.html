@@ -1,181 +1,133 @@
 {extend name="layout/admin_base"/}
 
 {block name="content"}
-<div id="supplierListApp">
-    <div class="page-header">
-        <div class="page-header-title">供应商管理</div>
-        <a-space :size="12">
-            <a-button type="primary" @click="goCreate">+ 新增供应商</a-button>
-        </a-space>
-    </div>
+<h1 class="page-title">供应商管理</h1>
 
-    <a-card style="margin-bottom: 16px;">
-        <a-form :model="searchForm" layout="inline">
-            <a-form-item label="关键词">
-                <a-input v-model="searchForm.keyword" placeholder="名称/联系人/电话/账号" style="width: 240px;" allow-clear />
-            </a-form-item>
-            <a-form-item label="状态">
-                <a-select v-model="searchForm.status" style="width: 120px;" allow-clear>
-                    <a-option value="">全部</a-option>
-                    <a-option value="1">正常</a-option>
-                    <a-option value="0">禁用</a-option>
-                </a-select>
-            </a-form-item>
-            <a-form-item>
-                <a-button type="primary" @click="handleSearch">搜索</a-button>
-                <a-button @click="handleReset" style="margin-left: 8px;">重置</a-button>
-            </a-form-item>
-        </a-form>
-    </a-card>
-
-    <a-card>
-        <a-table :data="tableData" :pagination="false" :bordered="{cell:true}" :stripe="true" row-key="id">
-            <template #columns>
-                <a-table-column title="名称" data-index="name" :width="220">
-                    <template #cell="{ record }">
-                        <a-link @click="viewDetail(record.id)">{{ record.name }}</a-link>
-                    </template>
-                </a-table-column>
-                <a-table-column title="联系人" data-index="contact" :width="140" />
-                <a-table-column title="电话" data-index="phone" :width="140" />
-                <a-table-column title="登录账号" data-index="login_account" :width="160" />
-                <a-table-column title="状态" data-index="status" :width="80" align="center">
-                    <template #cell="{ record }">
-                        <a-tag v-if="record.status == 1" color="green">正常</a-tag>
-                        <a-tag v-else color="red">禁用</a-tag>
-                    </template>
-                </a-table-column>
-                <a-table-column title="接单数" data-index="dispatch_count" :width="100" align="center" />
-                <a-table-column title="最后登录" data-index="last_login_time" :width="160" />
-                <a-table-column title="操作" :width="260">
-                    <template #cell="{ record }">
-                        <a-space :size="8">
-                            <a-button type="text" size="small" @click="editSupplier(record.id)">编辑</a-button>
-                            <a-button type="text" size="small" @click="viewDetail(record.id)">详情</a-button>
-                            <a-button type="text" size="small" @click="resetPassword(record.id)">重置密码</a-button>
-                            <a-button type="text" status="danger" size="small" @click="deleteSupplier(record)">删除</a-button>
-                        </a-space>
-                    </template>
-                </a-table-column>
-            </template>
-        </a-table>
-
-        <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #86909c;">共 {{ total }} 条记录</span>
-            <a-pagination v-model:current="currentPage" v-model:page-size="pageSize" :total="total" @change="handlePageChange" />
+<div class="card" style="margin-bottom: 16px;">
+    <form method="get" action="/admin/supplier/list" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #4e5969;">关键词</label>
+            <input type="text" name="keyword" value="{$keyword}" placeholder="名称/联系人/电话/账号" style="width: 220px; height: 32px; padding: 0 10px; border: 1px solid #e5e6eb; border-radius: 4px;">
         </div>
-    </a-card>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #4e5969;">状态</label>
+            <select name="status" style="width: 120px; height: 32px; padding: 0 10px; border: 1px solid #e5e6eb; border-radius: 4px; background: #fff;">
+                <option value="">全部</option>
+                <option value="1" {if condition="$status eq '1'"}selected{/if}>正常</option>
+                <option value="0" {if condition="$status eq '0'"}selected{/if}>禁用</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="height: 32px; padding: 0 16px;">搜索</button>
+            <a href="/admin/supplier/list" class="btn btn-default" style="height: 32px; padding: 0 16px; line-height: 30px;">重置</a>
+        </div>
+        <div style="margin-left: auto;">
+            <a href="/admin/supplier/create" class="btn btn-primary" style="height: 32px; padding: 0 16px; line-height: 30px;">+ 新增供应商</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    {notempty name="suppliers"}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 200px;">供应商名称</th>
+                <th style="width: 120px;">联系人</th>
+                <th style="width: 130px;">联系电话</th>
+                <th style="width: 150px;">登录账号</th>
+                <th style="width: 80px; text-align: center;">状态</th>
+                <th style="width: 80px; text-align: center;">接单数</th>
+                <th style="width: 90px; text-align: center;">已完成</th>
+                <th style="width: 90px; text-align: center;">未完成</th>
+                <th style="width: 160px;">最后登录</th>
+                <th style="width: 240px; text-align: center;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {volist name="suppliers" id="item"}
+            <tr>
+                <td>
+                    <a href="/admin/supplier/detail/{$item.id}" style="color: #165dff; text-decoration: none; font-weight: 500;">{$item.name}</a>
+                </td>
+                <td>{$item.contact|default='-'}</td>
+                <td>{$item.phone|default='-'}</td>
+                <td>{$item.login_account|default='-'}</td>
+                <td style="text-align: center;">
+                    {if condition="$item.status == 1"}
+                    <span style="display: inline-block; padding: 2px 8px; background: #e8ffea; color: #00b42a; border-radius: 3px; font-size: 12px;">正常</span>
+                    {else/}
+                    <span style="display: inline-block; padding: 2px 8px; background: #ffece8; color: #f53f3f; border-radius: 3px; font-size: 12px;">禁用</span>
+                    {/if}
+                </td>
+                <td style="text-align: center; font-weight: 600;">{$item.dispatch_count|default=0}</td>
+                <td style="text-align: center; color: #00b42a; font-weight: 600;">{$item.completed_count|default=0}</td>
+                <td style="text-align: center; color: #f53f3f; font-weight: 600;">{$item.pending_count|default=0}</td>
+                <td style="color: #86909c; font-size: 13px;">{$item.last_login_time|default='-'}</td>
+                <td style="text-align: center; white-space: nowrap; padding: 12px 8px;">
+                    <a href="/admin/supplier/edit/{$item.id}" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #e8f4ff; color: #165dff; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">编辑</a>
+                    <a href="/admin/supplier/detail/{$item.id}" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #f2f3f5; color: #4e5969; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">详情</a>
+                    <a href="javascript:void(0)" onclick="resetPassword({$item.id}, '{$item.name}')" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #fff7e6; color: #ff7d00; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">重置密码</a>
+                    <a href="javascript:void(0)" onclick="deleteSupplier({$item.id}, '{$item.name}')" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #ffece8; color: #f53f3f; border-radius: 4px; text-decoration: none; font-size: 12px;">删除</a>
+                </td>
+            </tr>
+            {/volist}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {$suppliers->render()}
+    </div>
+    {else/}
+    <div style="text-align: center; padding: 60px 0; color: #86909c;">
+        <div style="font-size: 48px; margin-bottom: 16px;">🏢</div>
+        <div>暂无供应商数据</div>
+    </div>
+    {/notempty}
 </div>
 {/block}
 
 {block name="script"}
 <script>
-// 从控制器传递的数据（使用ThinkPHP模板变量语法）
-const __SUPPLIERS_LIST__ = {$suppliers_list_json|raw};
-const __TOTAL__ = {$supplier_total};
-const __CURRENT_PAGE__ = {$supplier_current_page};
-const __KEYWORD__ = '{$keyword|addslashes}';
-const __CATEGORY_ID__ = {$categoryId};
-const __STATUS__ = '{$status|addslashes}';
-
-const { ref, reactive } = Vue;
-
-window.createPageApp({
-    setup() {
-        const searchForm = reactive({
-            keyword: __KEYWORD__,
-            categoryId: __CATEGORY_ID__,
-            status: __STATUS__
-        });
-
-        const tableData = ref(__SUPPLIERS_LIST__);
-        const total = ref(__TOTAL__);
-        const currentPage = ref(__CURRENT_PAGE__);
-        const pageSize = ref(15);
-
-        const handleSearch = () => {
-            const params = [];
-            if (searchForm.keyword) params.push('keyword=' + encodeURIComponent(searchForm.keyword));
-            if (searchForm.categoryId) params.push('category_id=' + searchForm.categoryId);
-            if (searchForm.status !== '') params.push('status=' + searchForm.status);
-            let url = '/admin/supplier/list';
-            if (params.length) url += '?' + params.join('&');
-            location.href = url;
-        };
-
-        const handleReset = () => {
-            searchForm.keyword = '';
-            searchForm.categoryId = 0;
-            searchForm.status = '';
-            handleSearch();
-        };
-
-        const handlePageChange = (page) => {
-            const params = [];
-            if (searchForm.keyword) params.push('keyword=' + encodeURIComponent(searchForm.keyword));
-            if (searchForm.categoryId) params.push('category_id=' + searchForm.categoryId);
-            if (searchForm.status !== '') params.push('status=' + searchForm.status);
-            params.push('page=' + page);
-            let url = '/admin/supplier/list';
-            if (params.length) url += '?' + params.join('&');
-            location.href = url;
-        };
-
-        const goCreate = () => { location.href = '/admin/supplier/create'; };
-        const editSupplier = (id) => { location.href = '/admin/supplier/edit/' + id; };
-        const viewDetail = (id) => { location.href = '/admin/supplier/detail/' + id; };
-
-        const deleteSupplier = (record) => {
-            ArcoModal.confirm({
-                title: '提示',
-                content: '确定要删除此供应商吗？',
-                onOk: () => {
-                    fetch('/admin/supplier/delete/' + record.id, { method: 'POST' })
-                        .then(r => r.json())
-                        .then(ret => {
-                            if (ret.success || ret.code == 1) {
-                                ArcoMessage.success('删除成功');
-                                location.reload();
-                            } else {
-                                ArcoMessage.error(ret.msg || '删除失败');
-                            }
-                        });
-                }
-            });
-        };
-
-        const resetPassword = (id) => {
-            const pwd = prompt('输入新密码：');
-            if (!pwd) return;
-            fetch('/admin/supplier/resetPassword/' + id, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'login_password=' + encodeURIComponent(pwd)
-            }).then(r => r.json()).then(ret => {
-                if (ret.success || ret.code == 1) {
-                    ArcoMessage.success('重置成功');
-                } else {
-                    ArcoMessage.error(ret.msg || '重置失败');
-                }
-            });
-        };
-
-        return {
-            searchForm,
-            tableData,
-            total,
-            currentPage,
-            pageSize,
-            handleSearch,
-            handleReset,
-            handlePageChange,
-            goCreate,
-            editSupplier,
-            viewDetail,
-            deleteSupplier,
-            resetPassword
-        };
+function deleteSupplier(id, name) {
+    if (!confirm('确定要删除供应商"' + name + '"吗？')) {
+        return;
     }
-}, 'supplierListApp');
+    
+    fetch('/admin/supplier/delete/' + id, {
+        method: 'POST'
+    }).then(res => res.json()).then(result => {
+        if (result.success || result.code == 1) {
+            alert('删除成功');
+            location.reload();
+        } else {
+            alert(result.msg || '删除失败');
+        }
+    }).catch(() => {
+        alert('网络请求失败');
+    });
+}
+
+function resetPassword(id, name) {
+    const pwd = prompt('请输入供应商"' + name + '"的新密码：');
+    if (!pwd || pwd.length < 6) {
+        if (pwd !== null) alert('密码长度至少6位');
+        return;
+    }
+    
+    fetch('/admin/supplier/resetPassword/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'login_password=' + encodeURIComponent(pwd)
+    }).then(res => res.json()).then(result => {
+        if (result.success || result.code == 1) {
+            alert('重置密码成功');
+        } else {
+            alert(result.msg || '重置失败');
+        }
+    }).catch(() => {
+        alert('网络请求失败');
+    });
+}
 </script>
 {/block}

@@ -1,185 +1,131 @@
 {extend name="layout/admin_base"/}
 
 {block name="content"}
-<div id="inventoryListApp">
-    <div class="page-header">
-        <div class="page-header-title">库存盘点</div>
-        <a-space :size="12">
-            <a-button type="primary" @click="goCreate">+ 创建盘点单</a-button>
-        </a-space>
-    </div>
+<h1 class="page-title">库存盘点</h1>
 
-    <!-- 搜索区域 -->
-    <a-card style="margin-bottom: 16px;">
-        <a-form :model="searchForm" layout="inline">
-            <a-form-item label="状态">
-                <a-select v-model="searchForm.status" placeholder="全部状态" style="width: 150px;" allow-clear>
-                    <a-option value="">全部</a-option>
-                    <a-option value="0">进行中</a-option>
-                    <a-option value="1">已完成</a-option>
-                </a-select>
-            </a-form-item>
-            <a-form-item>
-                <a-button type="primary" @click="handleSearch">搜索</a-button>
-                <a-button @click="handleReset" style="margin-left: 8px;">重置</a-button>
-            </a-form-item>
-        </a-form>
-    </a-card>
-
-    <!-- 表格区域 -->
-    <a-card>
-        <a-table :data="tableData" :pagination="false" :bordered="{cell:true}" :stripe="true" row-key="id">
-            <template #columns>
-                <a-table-column title="盘点单号" data-index="id" :width="120">
-                    <template #cell="{ record }">
-                        <a-link @click="viewDetail(record.id)">#{{ record.id }}</a-link>
-                    </template>
-                </a-table-column>
-                <a-table-column title="盘点范围" :width="120">
-                    <template #cell="{ record }">
-                        <span v-if="record.range === 'all'">全部货品</span>
-                        <span v-else-if="record.range === 'goods'">指定货品</span>
-                        <span v-else-if="record.range === 'category'">按分类</span>
-                        <span v-else>{{ record.range || '-' }}</span>
-                    </template>
-                </a-table-column>
-                <a-table-column title="状态" :width="100" align="center">
-                    <template #cell="{ record }">
-                        <a-tag v-if="record.status == 0" color="orange">进行中</a-tag>
-                        <a-tag v-else color="green">已完成</a-tag>
-                    </template>
-                </a-table-column>
-                <a-table-column title="盘点项数" data-index="item_count" :width="100" align="center" />
-                <a-table-column title="备注" data-index="remark" :width="200">
-                    <template #cell="{ record }">{{ record.remark || '-' }}</template>
-                </a-table-column>
-                <a-table-column title="创建时间" data-index="create_time" :width="170" />
-                <a-table-column title="完成时间" :width="170">
-                    <template #cell="{ record }">{{ record.completed_time || '-' }}</template>
-                </a-table-column>
-                <a-table-column title="操作" :width="220">
-                    <template #cell="{ record }">
-                        <a-space :size="8">
-                            <a-button type="text" size="small" @click="viewDetail(record.id)">查看</a-button>
-                            <template v-if="record.status == 0">
-                                <a-button type="text" size="small" @click="editInventory(record.id)">录入</a-button>
-                                <a-button type="text" size="small" status="success" @click="completeInventory(record)">完成</a-button>
-                                <a-button type="text" size="small" status="danger" @click="deleteInventory(record)">删除</a-button>
-                            </template>
-                        </a-space>
-                    </template>
-                </a-table-column>
-            </template>
-        </a-table>
-
-        <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #86909c;">共 {{ total }} 条记录</span>
-            <a-pagination v-model:current="currentPage" v-model:page-size="pageSize" :total="total" @change="handlePageChange" />
+<div class="card" style="margin-bottom: 16px;">
+    <form method="get" action="/admin/inventory/list" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #4e5969;">状态</label>
+            <select name="status" style="width: 120px; height: 32px; padding: 0 10px; border: 1px solid #e5e6eb; border-radius: 4px; background: #fff;">
+                <option value="">全部</option>
+                <option value="0" {if condition="$status eq '0'"}selected{/if}>草稿</option>
+                <option value="1" {if condition="$status eq '1'"}selected{/if}>进行中</option>
+                <option value="2" {if condition="$status eq '2'"}selected{/if}>已完成</option>
+            </select>
         </div>
-    </a-card>
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="height: 32px; padding: 0 16px;">搜索</button>
+            <a href="/admin/inventory/list" class="btn btn-default" style="height: 32px; padding: 0 16px; line-height: 30px;">重置</a>
+        </div>
+        <div style="margin-left: auto;">
+            <a href="/admin/inventory/create" class="btn btn-primary" style="height: 32px; padding: 0 16px; line-height: 30px;">+ 创建盘点单</a>
+        </div>
+    </form>
+</div>
+<div class="card">
+    {notempty name="list"}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 120px;">盘点单号</th>
+                <th style="width: 120px;">盘点范围</th>
+                <th style="width: 100px; text-align: center;">状态</th>
+                <th style="width: 100px; text-align: center;">盘点项数</th>
+                <th style="width: 200px;">备注</th>
+                <th style="width: 170px;">创建时间</th>
+                <th style="width: 170px;">完成时间</th>
+                <th style="width: 220px; text-align: center;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {volist name="list" id="item"}
+            <tr>
+                <td>
+                    <a href="/admin/inventory/detail/{$item.id}" style="color: #165dff; text-decoration: none; font-weight: 500;">#{$item.inventory_no}</a>
+                </td>
+                <td>
+                    全部货品
+                </td>
+                <td style="text-align: center;">
+                    {switch name="item.status"}
+                        {case value="0"}<span style="display: inline-block; padding: 2px 8px; background: #f2f3f5; color: #86909c; border-radius: 3px; font-size: 12px;">草稿</span>{/case}
+                        {case value="1"}<span style="display: inline-block; padding: 2px 8px; background: #fff7e6; color: #ff7d00; border-radius: 3px; font-size: 12px;">进行中</span>{/case}
+                        {case value="2"}<span style="display: inline-block; padding: 2px 8px; background: #e8ffea; color: #00b42a; border-radius: 3px; font-size: 12px;">已完成</span>{/case}
+                        {default /}<span style="display: inline-block; padding: 2px 8px; background: #f2f3f5; color: #86909c; border-radius: 3px; font-size: 12px;">未知</span>
+                    {/switch}
+                </td>
+                <td style="text-align: center; font-weight: 600;">{$item.item_count|default=0}</td>
+                <td style="color: #4e5969;">{$item.remark|default='-'}</td>
+                <td style="color: #86909c; font-size: 13px;">{$item.create_time|default='-'}</td>
+                <td style="color: #86909c; font-size: 13px;">{$item.check_time|default='-'}</td>
+                <td style="text-align: center; white-space: nowrap; padding: 12px 8px;">
+                    <a href="/admin/inventory/detail/{$item.id}" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #f2f3f5; color: #4e5969; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">查看</a>
+                    {if condition="$item.status == 0 || $item.status == 1"}
+                    <a href="/admin/inventory/edit/{$item.id}" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #e8f4ff; color: #165dff; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">录入</a>
+                    {/if}
+                    {if condition="$item.status == 1"}
+                    <a href="javascript:void(0)" onclick="completeInventory({$item.id}, '{$item.inventory_no}')" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #e8ffea; color: #00b42a; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">完成</a>
+                    {/if}
+                    {if condition="$item.status != 2"}
+                    <a href="javascript:void(0)" onclick="deleteInventory({$item.id}, '{$item.inventory_no}')" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #ffece8; color: #f53f3f; border-radius: 4px; text-decoration: none; font-size: 12px;">删除</a>
+                    {/if}
+                </td>
+            </tr>
+            {/volist}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {$paginate->render()}
+    </div>
+    {else/}
+    <div style="text-align: center; padding: 60px 0; color: #86909c;">
+        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+        <div>暂无盘点数据</div>
+    </div>
+    {/notempty}
 </div>
 {/block}
 
 {block name="script"}
 <script>
-// 从控制器传递的数据
-const __LIST__ = {$list_json|raw};
-const __TOTAL__ = {$total};
-const __CURRENT_PAGE__ = {$page};
-
-const { ref, reactive } = Vue;
-
-window.createPageApp({
-    setup() {
-        const searchForm = reactive({
-            status: ''
-        });
-
-        const tableData = ref(__LIST__);
-        const total = ref(__TOTAL__);
-        const currentPage = ref(__CURRENT_PAGE__);
-        const pageSize = ref(15);
-
-        const handleSearch = () => {
-            const params = [];
-            if (searchForm.status !== '') params.push('status=' + searchForm.status);
-            let url = '/admin/inventory/list';
-            if (params.length) url += '?' + params.join('&');
-            location.href = url;
-        };
-
-        const handleReset = () => {
-            searchForm.status = '';
-            handleSearch();
-        };
-
-        const handlePageChange = (page) => {
-            const params = [];
-            if (searchForm.status !== '') params.push('status=' + searchForm.status);
-            params.push('page=' + page);
-            let url = '/admin/inventory/list';
-            if (params.length) url += '?' + params.join('&');
-            location.href = url;
-        };
-
-        const goCreate = () => { location.href = '/admin/inventory/create'; };
-        const viewDetail = (id) => { location.href = '/admin/inventory/detail/' + id; };
-        const editInventory = (id) => { location.href = '/admin/inventory/edit/' + id; };
-
-        const completeInventory = (record) => {
-            ArcoModal.confirm({
-                title: '确认完成盘点',
-                content: '确定完成盘点并应用库存变动吗？此操作不可撤销。',
-                onOk: () => {
-                    fetch('/admin/inventory/complete/' + record.id, { method: 'POST' })
-                        .then(r => r.json())
-                        .then(ret => {
-                            if (ret.code == 200 || ret.success) {
-                                ArcoMessage.success(ret.msg || '盘点完成');
-                                location.reload();
-                            } else {
-                                ArcoMessage.error(ret.msg || '操作失败');
-                            }
-                        });
-                }
-            });
-        };
-
-        const deleteInventory = (record) => {
-            ArcoModal.confirm({
-                title: '确认删除',
-                content: '确定要删除此盘点单吗？',
-                onOk: () => {
-                    fetch('/admin/inventory/delete/' + record.id, { method: 'POST' })
-                        .then(r => r.json())
-                        .then(ret => {
-                            if (ret.code == 200 || ret.success) {
-                                ArcoMessage.success('删除成功');
-                                location.reload();
-                            } else {
-                                ArcoMessage.error(ret.msg || '删除失败');
-                            }
-                        });
-                }
-            });
-        };
-
-        return {
-            searchForm,
-            tableData,
-            total,
-            currentPage,
-            pageSize,
-            handleSearch,
-            handleReset,
-            handlePageChange,
-            goCreate,
-            viewDetail,
-            editInventory,
-            completeInventory,
-            deleteInventory
-        };
+function completeInventory(id, no) {
+    if (!confirm('确定要完成盘点单"' + no + '"吗？此操作不可撤销。')) {
+        return;
     }
-}, 'inventoryListApp');
+    
+    fetch('/admin/inventory/complete/' + id, {
+        method: 'POST'
+    }).then(res => res.json()).then(result => {
+        if (result.success || result.code == 1) {
+            alert('盘点完成');
+            location.reload();
+        } else {
+            alert(result.msg || '操作失败');
+        }
+    }).catch(() => {
+        alert('网络请求失败');
+    });
+}
+
+function deleteInventory(id, no) {
+    if (!confirm('确定要删除盘点单"' + no + '"吗？')) {
+        return;
+    }
+    
+    fetch('/admin/inventory/delete/' + id, {
+        method: 'POST'
+    }).then(res => res.json()).then(result => {
+        if (result.success || result.code == 1) {
+            alert('删除成功');
+            location.reload();
+        } else {
+            alert(result.msg || '删除失败');
+        }
+    }).catch(() => {
+        alert('网络请求失败');
+    });
+}
 </script>
 {/block}

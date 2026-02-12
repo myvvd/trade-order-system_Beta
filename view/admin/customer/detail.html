@@ -1,50 +1,241 @@
 {extend name="layout/admin_base"/}
-{php}
-$customer = isset($customer) ? ($customer instanceof \think\Model ? $customer->toArray() : $customer) : [];
-$orders = isset($orders) ? $orders : [];
-$stats = isset($stats) ? $stats : ['total_orders'=>0,'total_amount'=>0];
-{/php}
 
 {block name="content"}
-<div class="page-header">
-    <div class="page-header-title">客户详情</div>
+<div id="customerDetailApp">
+    <div class="page-header">
+        <div class="page-header-title">客户详情</div>
+        <div>
+            <a href="/admin/customer/edit?id={$customer.id}" class="btn btn-primary" style="margin-right: 8px;">编辑</a>
+            <a href="/admin/customer/list" class="btn btn-default">返回列表</a>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 20px;">
+        <!-- 左侧：客户基本信息 -->
+        <div style="flex: 1; min-width: 320px;">
+            <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #e5e6eb;">
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1d2129;">基本信息</h3>
+                    <span style="display: inline-block; padding: 4px 12px; background: {if condition="$customer.level eq 2"}#fff7e8{else/}#f2f3f5{/if}; color: {if condition="$customer.level eq 2"}#f77234{else/}#86909c{/if}; border-radius: 4px; font-size: 12px; font-weight: 500;">
+                        {if condition="$customer.level eq 2"}VIP客户{else/}普通客户{/if}
+                    </span>
+                </div>
+                
+                <div class="info-list">
+                    <div class="info-item">
+                        <label>公司名称</label>
+                        <span>{$customer.company_name|default='-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>国家/地区</label>
+                        <span>{$customer.country|default='-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>联系人</label>
+                        <span>{$customer.contact_name|default='-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>电话</label>
+                        <span>{$customer.phone|default='-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>邮箱</label>
+                        <span>{$customer.email|default='-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>地址</label>
+                        <span style="line-height: 1.5;">{$customer.address|default='-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>状态</label>
+                        <span>
+                            {if condition="$customer.status eq 1"}
+                            <span style="display: inline-block; padding: 2px 8px; background: #e8ffea; color: #00b42a; border-radius: 4px; font-size: 12px;">正常</span>
+                            {else/}
+                            <span style="display: inline-block; padding: 2px 8px; background: #ffece8; color: #f53f3f; border-radius: 4px; font-size: 12px;">禁用</span>
+                            {/if}
+                        </span>
+                    </div>
+                    {if condition="$customer.remark"}
+                    <div class="info-item">
+                        <label>备注</label>
+                        <span style="line-height: 1.5; color: #86909c;">{$customer.remark}</span>
+                    </div>
+                    {/if}
+                </div>
+            </div>
+
+            <!-- 统计信息 -->
+            <div class="card" style="margin-top: 20px;">
+                <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #1d2129; padding-bottom: 12px; border-bottom: 1px solid #e5e6eb;">统计概览</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div style="text-align: center; padding: 16px; background: #f7f8fa; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: 600; color: #165dff; margin-bottom: 4px;">{$stats.total_orders|default=0}</div>
+                        <div style="font-size: 13px; color: #86909c;">历史订单</div>
+                    </div>
+                    <div style="text-align: center; padding: 16px; background: #f7f8fa; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: 600; color: #00b42a; margin-bottom: 4px;">¥{$stats.total_amount|default='0.00'}</div>
+                        <div style="font-size: 13px; color: #86909c;">订单总额</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：订单列表 -->
+        <div style="flex: 2; min-width: 500px;">
+            <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #e5e6eb;">
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1d2129;">历史订单</h3>
+                    <a href="/admin/order/create?customer_id={$customer.id}" class="btn btn-primary" style="font-size: 13px; height: 28px; padding: 0 12px;">+ 新建订单</a>
+                </div>
+
+                <div class="table-container">
+                    {notempty name="orders"}
+                    <table class="order-table">
+                        <thead>
+                            <tr>
+                                <th>订单编号</th>
+                                <th>状态</th>
+                                <th>金额</th>
+                                <th>交货日期</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {volist name="orders" id="order"}
+                            <tr>
+                                <td>
+                                    <a href="/admin/order/detail?id={$order.id}" style="color: #165dff; text-decoration: none; font-weight: 500;">
+                                        {$order.order_no|default=$order.id}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-{$order.status|default='unknown'}">{$order.status_text|default=$order.status|default='未知'}</span>
+                                </td>
+                                <td style="font-weight: 600; color: #165dff;">¥{$order.total_amount|default='0.00'}</td>
+                                <td>{$order.delivery_date|default='-'}</td>
+                                <td style="color: #86909c; font-size: 13px;">{$order.create_time|default='-'}</td>
+                                <td>
+                                    <a href="/admin/order/detail?id={$order.id}" style="color: #165dff; text-decoration: none; font-size: 13px;">查看</a>
+                                    {if condition="$order.status neq 'completed' and $order.status neq 'cancelled'"}
+                                    <a href="/admin/order/edit?id={$order.id}" style="color: #165dff; text-decoration: none; font-size: 13px; margin-left: 12px;">编辑</a>
+                                    {/if}
+                                </td>
+                            </tr>
+                            {/volist}
+                        </tbody>
+                    </table>
+                    {else/}
+                    <div style="text-align: center; padding: 60px 20px; color: #86909c;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
+                        <div style="font-size: 15px; margin-bottom: 8px;">暂无订单记录</div>
+                        <div style="font-size: 13px;">
+                            <a href="/admin/order/create?customer_id={$customer.id}" style="color: #165dff; text-decoration: none;">立即创建订单</a>
+                        </div>
+                    </div>
+                    {/notempty}
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<a-row gutter="16">
-    <a-col :span="8">
-        <a-card>
-            <h3>客户信息</h3>
-            <p><strong>公司：</strong> {$customer.company_name}</p>
-            <p><strong>国家：</strong> {$customer.country}</p>
-            <p><strong>联系人：</strong> {$customer.contact_name}</p>
-            <p><strong>电话：</strong> {$customer.phone}</p>
-            <p><strong>邮箱：</strong> {$customer.email}</p>
-            <p><strong>地址：</strong> {$customer.address}</p>
-            <p><strong>等级：</strong> {if condition="$customer.level eq 2"}VIP{else/}普通{/if}</p>
-            <p><strong>备注：</strong> {$customer.remark}</p>
-        </a-card>
-    </a-col>
+<style>
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
 
-    <a-col :span="16">
-        <a-card>
-            <h3>统计信息</h3>
-            <p><strong>总订单数：</strong> {$stats.total_orders}</p>
-            <p><strong>总金额：</strong> ¥{$stats.total_amount}</p>
-        </a-card>
+.info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
 
-        <a-card style="margin-top:16px;">
-            <h3>历史订单</h3>
-            <a-table :data="orders" :pagination="false">
-                <template #columns>
-                    <a-table-column title="订单编号" data-index="order_no" />
-                    <a-table-column title="状态" data-index="status" />
-                    <a-table-column title="总金额" data-index="total_amount" />
-                    <a-table-column title="交货日期" data-index="delivery_date" />
-                    <a-table-column title="创建时间" data-index="create_time" />
-                </template>
-            </a-table>
-        </a-card>
-    </a-col>
-</a-row>
+.info-item label {
+    font-weight: 600;
+    color: #86909c;
+    font-size: 13px;
+    min-width: 80px;
+    margin-top: 2px;
+}
 
+.info-item span {
+    color: #1d2129;
+    font-size: 14px;
+    flex: 1;
+    word-break: break-all;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.order-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.order-table th {
+    background: #f7f8fa;
+    padding: 12px 10px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    color: #4e5969;
+    border-bottom: 1px solid #e5e6eb;
+    white-space: nowrap;
+}
+
+.order-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #f2f3f5;
+    vertical-align: middle;
+}
+
+.order-table tbody tr:hover {
+    background: #fafbfc;
+}
+
+.order-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending { background: #fff7e8; color: #f77234; }
+.status-processing { background: #e8f3ff; color: #165dff; }
+.status-production { background: #e8f7ff; color: #14a9f8; }
+.status-shipped { background: #e8ffea; color: #00b42a; }
+.status-delivered { background: #e8ffea; color: #00b42a; }
+.status-completed { background: #f0f0f0; color: #86909c; }
+.status-cancelled { background: #ffece8; color: #f53f3f; }
+.status-unknown { background: #f2f3f5; color: #86909c; }
+
+@media (max-width: 1200px) {
+    #customerDetailApp > div:first-of-type {
+        flex-direction: column;
+    }
+    
+    #customerDetailApp > div:first-of-type > div {
+        min-width: auto;
+    }
+}
+</style>
+{/block}
+
+{block name="script"}
+<script>
+// 可以添加一些交互功能，比如订单状态的实时更新等
+console.log('Customer detail page loaded');
+</script>
 {/block}

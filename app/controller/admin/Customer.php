@@ -56,6 +56,7 @@ class Customer extends Base
             $ids[] = $c->id;
         }
         if (!empty($ids)) {
+            // 获取总订单数
             $orderCounts = \think\facade\Db::name('order')
                 ->whereIn('customer_id', $ids)
                 ->field(['customer_id', 'COUNT(*) as cnt'])
@@ -63,13 +64,29 @@ class Customer extends Base
                 ->select()
                 ->toArray();
 
+            // 获取未完成订单数 (假设 status 不等于 'completed' 或 'finished')
+            $pendingCounts = \think\facade\Db::name('order')
+                ->whereIn('customer_id', $ids)
+                ->whereNotIn('status', ['completed', 'finished', 'delivered', 'cancelled'])
+                ->field(['customer_id', 'COUNT(*) as cnt'])
+                ->group('customer_id')
+                ->select()
+                ->toArray();
+
             $countMap = [];
+            $pendingMap = [];
+            
             foreach ($orderCounts as $oc) {
                 $countMap[$oc['customer_id']] = (int)$oc['cnt'];
+            }
+            
+            foreach ($pendingCounts as $pc) {
+                $pendingMap[$pc['customer_id']] = (int)$pc['cnt'];
             }
 
             foreach ($customers as $c) {
                 $c->order_count = $countMap[$c->id] ?? 0;
+                $c->pending_order_count = $pendingMap[$c->id] ?? 0;
             }
         }
 
@@ -320,5 +337,47 @@ class Customer extends Base
         echo "\xEF\xBB\xBF";
         echo $csv;
         exit;
+    }
+
+    /**
+     * 获取客户的未完成订单列表
+     * @return Response
+     */
+    public function pendingOrders(): Response
+    {
+        $customerId = input('id/d', 0);
+        if (!$customerId) {
+            return $this->error('参数错误');
+        }
+
+        $customer = CustomerModel::find($customerId);
+        if (!$customer) {
+            return $this->error('客户不存在');
+        }
+
+        try {
+            // 获取未完成的订单（排除已完成、已取消、已交付的状态）
+            $orders = \think\facade\Db::name('order')
+                ->where('customer_id', $customerId)
+                ->whereNotIn('status', ['completed', 'finished', 'delivered', 'cancelled'])
+                ->field([
+                    'id', 'order_no', 'status', 'total_amount', 
+                    'delivery_date', 'create_time', 'update_time'
+                ])
+                ->order('id', 'desc')
+                ->select()
+                ->toArray();
+
+            // 格式化数据
+            foreach ($orders as &$order) {
+                $order['create_time'] = $order['create_time'] ? date('Y-m-d H:i', strtotime($order['create_time'])) : '-';
+                $order['delivery_date'] = $order['delivery_date'] ? date('Y-m-d', strtotime($order['delivery_date'])) : '-';
+                $order['total_amount'] = number_format((float)$order['total_amount'], 2);
+            }
+
+            return $this->success($orders, '获取成功');
+        } catch (\Exception $e) {
+            return $this->error('获取失败：' . $e->getMessage());
+        }
     }
 }

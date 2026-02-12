@@ -12,27 +12,41 @@ class Inventory extends Base
 {
     public function list()
     {
-        $pageSize = input('page_size/d', 15);
-        $query = InventoryModel::order('id', 'desc');
-        $page = $this->paginate($query, $pageSize);
+        // 初始化测试数据
+        $this->initTestData();
         
+        $status = input('status', '');
+        $pageSize = input('page_size/d', 15);
+        
+        $query = InventoryModel::order('id', 'desc');
+        if ($status !== '') {
+            $query->where('status', $status);
+        }
+        
+        $list = $query->paginate([
+            'list_rows' => $pageSize,
+            'page'      => input('page/d', 1),
+        ]);
+
         // 处理列表数据，加载关联的items
         $listData = [];
-        foreach ($page['list'] as $item) {
+        foreach ($list as $item) {
             $data = $item->toArray();
             // 计算项数
             $data['item_count'] = Db::name('inventory_item')->where('inventory_id', $item->id)->count();
+            // 格式化时间
+            $data['create_time'] = $data['create_time'] ? date('Y-m-d H:i', strtotime($data['create_time'])) : '-';
+            $data['check_time'] = $data['check_time'] ? date('Y-m-d H:i', strtotime($data['check_time'])) : '-';
             $listData[] = $data;
         }
         
         View::assign([
             'title'             => '盘点单列表',
-            'list'              => $page['list'],
+            'list'              => $listData, // 传递处理后的数据数组用于显示
+            'paginate'          => $list, // 传递分页对象用于渲染分页
             'list_json'         => json_encode($listData, JSON_UNESCAPED_UNICODE),
-            'total'             => $page['total'],
-            'page'              => $page['page'],
-            'page_size'         => $page['page_size'],
-            'page_total'        => $page['page_total'],
+            'total'             => $list->total(),
+            'status'            => $status,
             'breadcrumb'        => '库存盘点',
             'current_page'      => 'inventory',
         ]);
@@ -145,6 +159,90 @@ class Inventory extends Base
         View::assign(['title'=>'盘点详情','inv'=>$inv]);
         return View::fetch('admin/inventory/detail');
     }
+    
+    /**
+     * 初始化测试数据
+     */
+    private function initTestData()
+    {
+        // 检查是否已经有数据
+        if (Db::name('inventory')->count() > 0) {
+            return;
+        }
+        
+        // 创建测试数据
+        $testData = [
+            [
+                'inventory_no' => 'INV' . date('Ymd') . '001',
+                'status' => 2, // 已完成
+                'remark' => '年终库存盘点',
+                'creator_id' => 1,
+                'create_time' => date('Y-m-d H:i:s', strtotime('-7 days')),
+                'check_time' => date('Y-m-d H:i:s', strtotime('-5 days')),
+            ],
+            [
+                'inventory_no' => 'INV' . date('Ymd') . '002', 
+                'status' => 1, // 进行中
+                'remark' => '月度库存检查',
+                'creator_id' => 1,
+                'create_time' => date('Y-m-d H:i:s', strtotime('-3 days')),
+            ],
+            [
+                'inventory_no' => 'INV' . date('Ymd') . '003',
+                'status' => 0, // 草稿
+                'remark' => '商品A类专项盘点', 
+                'creator_id' => 1,
+                'create_time' => date('Y-m-d H:i:s', strtotime('-1 day')),
+            ],
+            [
+                'inventory_no' => 'INV' . date('Ymd') . '004',
+                'status' => 2, // 已完成
+                'remark' => '新品入库盘点',
+                'creator_id' => 1,
+                'create_time' => date('Y-m-d H:i:s', strtotime('-10 days')),
+                'check_time' => date('Y-m-d H:i:s', strtotime('-8 days')),
+            ],
+            [
+                'inventory_no' => 'INV' . date('Ymd') . '005',
+                'status' => 1, // 进行中
+                'remark' => '仓库B区盘点',
+                'creator_id' => 1,
+                'create_time' => date('Y-m-d H:i:s'),
+            ],
+        ];
+        
+        foreach ($testData as $data) {
+            $id = Db::name('inventory')->insertGetId($data);
+            
+            // 为每个盘点单添加一些盘点项
+            $items = [
+                [
+                    'inventory_id' => $id,
+                    'goods_id' => 1,
+                    'sku_id' => null,
+                    'system_quantity' => rand(50, 200),
+                    'actual_quantity' => rand(45, 205),
+                    'diff_quantity' => 0, // 会在保存时计算
+                    'remark' => '盘点记录'
+                ],
+                [
+                    'inventory_id' => $id,
+                    'goods_id' => 2, 
+                    'sku_id' => null,
+                    'system_quantity' => rand(30, 150),
+                    'actual_quantity' => rand(25, 155),
+                    'diff_quantity' => 0,
+                    'remark' => '盘点记录'
+                ]
+            ];
+            
+            foreach ($items as &$item) {
+                $item['diff_quantity'] = $item['actual_quantity'] - $item['system_quantity'];
+            }
+            
+            Db::name('inventory_item')->insertAll($items);
+        }
+    }
 
     public function delete($id)
     {
@@ -156,5 +254,4 @@ class Inventory extends Base
             $inv->delete();
         });
         return $this->success(null, '已删除');
-    }
-}
+    }}

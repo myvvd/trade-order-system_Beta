@@ -237,6 +237,17 @@ textarea.table-input {
         <div class="form-section" style="margin-bottom: 0;">
             <div class="section-header">
                 <div class="section-title">货品明细</div>
+                <div id="quickSearchContainer" style="display:flex; gap:8px; align-items:center; position:relative;">
+                    <input type="text" class="table-input" v-model="quickQuery" placeholder="快速搜索并添加货品（输入名称）" @input="(e) => quickSearch(e.target.value)" style="width:360px;" />
+                    <div v-if="quickOptions.length">
+                        <div style="position:absolute; top:40px; left:0; width:360px; background:#fff; border:1px solid #e5e6eb; border-radius:4px; box-shadow:0 6px 16px rgba(0,0,0,0.08); z-index:200; max-height:240px; overflow:auto;">
+                            <div v-for="g in quickOptions" :key="g.id" @click="addGoodsToItems(g)" style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #f2f3f5; font-size:13px;">
+                                <div style="font-weight:500;">{{ g.name }}</div>
+                                <div style="font-size:12px; color:#86909c;">{{ g.goods_no }} · ¥{{ g.sale_price }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <button type="button" class="btn-unified btn-outline" @click="addItem">+ 添加明细</button>
             </div>
 
@@ -244,12 +255,12 @@ textarea.table-input {
                 <thead>
                     <tr>
                         <th style="width: 220px;">货品名称</th>
-                        <th style="width: 120px;">规格</th>
-                        <th style="width: 80px;">数量</th>
+                        <th style="width: 120px;">件数</th>
+                        <th style="width: 120px;">每件数量</th>
+                        <th style="width: 80px;">总数量</th>
                         <th style="width: 100px;">单价</th>
-                        <th style="width: 100px;">金额</th>
-                        <th>描述/备注</th>
-                        <th style="width: 70px; text-align: center;">操作</th>
+                        <th style="width: 180px;">描述/备注</th>
+                        <th style="width: 110px; text-align: center;">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -271,23 +282,25 @@ textarea.table-input {
                             </div>
                         </td>
                         <td>
-                            <a-select v-model="item.sku_id" placeholder="规格" allow-clear size="small" style="width: 100%;">
-                                <a-option v-for="s in item._skuOptions || []" :key="s.id" :value="s.id">{{ s.sku_name }}</a-option>
-                            </a-select>
+                            <input type="number" class="table-input table-input-sm" v-model.number="item.pieces" min="1" style="width: 100%;" />
                         </td>
                         <td>
-                            <input type="number" class="table-input table-input-sm" v-model.number="item.quantity" min="1" style="width: 100%;" />
+                            <input type="number" class="table-input table-input-sm" v-model.number="item.per_piece_qty" min="1" style="width: 100%;" />
+                        </td>
+                        <td>
+                            <div style="display:flex; align-items:center; justify-content:flex-start;">
+                                <span class="item-amount">{{ (Number(item.pieces) || 0) * (Number(item.per_piece_qty) || 0) }}</span>
+                            </div>
                         </td>
                         <td>
                             <input type="number" class="table-input" v-model.number="item.price" min="0" step="0.01" />
                         </td>
+                        
                         <td>
-                            <span class="item-amount">¥{{ (item.quantity * item.price).toFixed(2) }}</span>
+                            <textarea class="table-input" v-model="item.remark" placeholder="输入该货品的描述或备注" rows="2" style="width:100%;"></textarea>
                         </td>
-                        <td>
-                            <textarea class="table-input" v-model="item.remark" placeholder="输入该货品的描述或备注" rows="2"></textarea>
-                        </td>
-                        <td style="text-align: center;">
+                        <td style="text-align: center; display:flex; gap:6px; justify-content:center;">
+                            <button type="button" class="btn-unified btn-default" @click="duplicateItem(index)">复制</button>
                             <button type="button" class="delete-btn" @click="removeItem(index)">删除</button>
                         </td>
                     </tr>
@@ -325,7 +338,8 @@ window.createPageApp({
             sku_id: null,
             goods_name: '',
             goods_no: '',
-            quantity: 1,
+            pieces: 1,
+            per_piece_qty: 1,
             price: 0,
             remark: '',
             _goodsOptions: [],
@@ -337,6 +351,9 @@ window.createPageApp({
             customer_id: orderData?.customer_id || null,
             items: orderData?.items?.length ? orderData.items.map(it => ({
                 ...it,
+                // 保持与历史订单兼容：若原来有 quantity，放到 per_piece_qty，pieces 设为 1
+                pieces: it.pieces ?? 1,
+                per_piece_qty: it.per_piece_qty ?? it.quantity ?? 1,
                 _goodsOptions: [],
                 _skuOptions: [],
                 _showSuggestions: false
@@ -345,7 +362,10 @@ window.createPageApp({
         });
 
         const totalAmount = computed(() => {
-            return form.items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
+            return form.items.reduce((sum, item) => {
+                const totalQty = (Number(item.pieces) || 0) * (Number(item.per_piece_qty) || 0);
+                return sum + totalQty * (Number(item.price) || 0);
+            }, 0);
         });
 
         const addItem = () => {
@@ -404,6 +424,73 @@ window.createPageApp({
             } catch (e) { console.error(e); }
         };
 
+        // 快速搜索并添加货品到明细
+        const quickQuery = ref('');
+        const quickOptions = ref([]);
+        let quickTimer = null;
+        const quickSearch = (q) => {
+            quickQuery.value = q;
+            if (!q || q.length < 1) {
+                quickOptions.value = [];
+                return;
+            }
+            if (quickTimer) clearTimeout(quickTimer);
+            quickTimer = setTimeout(() => {
+                fetch('/admin/goods/search?q=' + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.code == 1 || res.success) {
+                            quickOptions.value = (res.data || []).map(d => ({
+                                id: d.id,
+                                name: d.name,
+                                goods_no: d.goods_no || '',
+                                sale_price: d.sale_price || 0
+                            }));
+                        }
+                    }).catch(() => {});
+            }, 250);
+        };
+
+        const addGoodsToItems = (g) => {
+            form.items.push({
+                goods_id: g.id,
+                sku_id: null,
+                goods_name: g.name,
+                goods_no: g.goods_no,
+                pieces: 1,
+                per_piece_qty: 1,
+                price: g.sale_price || 0,
+                remark: '',
+                _goodsOptions: [],
+                _skuOptions: [],
+                _showSuggestions: false
+            });
+            quickOptions.value = [];
+            quickQuery.value = '';
+        };
+
+        const duplicateItem = (index) => {
+            const src = form.items[index];
+            if (!src) return;
+            const copy = JSON.parse(JSON.stringify(src));
+            // reset suggestion lists on the duplicate
+            copy._goodsOptions = [];
+            copy._skuOptions = [];
+            copy._showSuggestions = false;
+            form.items.splice(index + 1, 0, copy);
+        };
+
+        // 当选择 SKU 时，自动填充价格与库存显示
+        const onSkuChange = (skuId, rowIndex) => {
+            const item = form.items[rowIndex];
+            if (!item) return;
+            const sku = (item._skuOptions || []).find(s => String(s.id) === String(skuId));
+            if (sku) {
+                item.price = Number(sku.sale_price ?? sku.price ?? item.price) || 0;
+                item._stock = sku.stock ?? null;
+            }
+        };
+
         const openNewCustomer = () => {
             window.open('/admin/customer/create', '_blank');
         };
@@ -428,7 +515,10 @@ window.createPageApp({
                     goods_id: it.goods_id,
                     goods_name: it.goods_name,
                     sku_id: it.sku_id,
-                    quantity: it.quantity,
+                    // quantity 仍以后端字段名传递，这里按 新规则 计算总数量
+                    quantity: (Number(it.pieces) || 0) * (Number(it.per_piece_qty) || 0),
+                    pieces: it.pieces,
+                    per_piece_qty: it.per_piece_qty,
                     price: it.price,
                     remark: it.remark
                 })),
@@ -463,6 +553,15 @@ window.createPageApp({
             }
         });
 
+        // 点击其他地方关闭快速搜索下拉
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#quickSearchContainer')) {
+                quickOptions.value = [];
+                // 不清除 quickQuery 会让用户看到输入内容，按需可以保留或清空；这里清空以避免残留
+                quickQuery.value = '';
+            }
+        });
+
         return {
             isEdit,
             customers,
@@ -472,6 +571,12 @@ window.createPageApp({
             removeItem,
             searchGoodsByName,
             selectGoods,
+            quickQuery,
+            quickOptions,
+            quickSearch,
+            addGoodsToItems,
+            onSkuChange,
+            duplicateItem,
             openNewCustomer,
             goBack,
             handleSubmit

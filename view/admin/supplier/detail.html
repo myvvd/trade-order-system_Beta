@@ -1,49 +1,88 @@
 {extend name="layout/admin_base"/}
-{php}
-$supplier = isset($supplier) ? ($supplier instanceof \think\Model ? $supplier->toArray() : $supplier) : [];
-$dispatches = isset($dispatches) ? $dispatches : [];
-$stats = isset($stats) ? $stats : ['total'=>0,'accepted'=>0];
-{/php}
 
 {block name="content"}
-<div class="page-header"><div class="page-header-title">供应商详情</div></div>
+<h1 class="page-title">供应商详情</h1>
 
-<a-row gutter="16">
-    <a-col :span="8">
-        <a-card>
-            <h3>供应商信息</h3>
-            <p><strong>名称：</strong> {$supplier.name}</p>
-            <p><strong>分类：</strong> {$supplier.category_id}</p>
-            <p><strong>联系人：</strong> {$supplier.contact}</p>
-            <p><strong>电话：</strong> {$supplier.phone}</p>
-            <p><strong>邮箱：</strong> {$supplier.email}</p>
-            <p><strong>地址：</strong> {$supplier.address}</p>
-            <p><strong>登录账号：</strong> {$supplier.login_account}</p>
-            <p><strong>状态：</strong> {if condition="$supplier.status eq 1"}正常{else/}禁用{/if}</p>
-        </a-card>
-    </a-col>
+<div style="display: flex; gap: 16px; flex-wrap: wrap;">
+    <div style="flex: 0 0 320px; min-width: 300px;">
+        <div class="card">
+            <h3 style="margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid #e5e6eb; color: #1d2129;">供应商信息</h3>
+            <div style="line-height: 1.8; color: #4e5969;">
+                <p style="margin: 8px 0;"><strong style="color: #1d2129;">名称：</strong> {$supplier.name|default='-'}</p>
+                <p style="margin: 8px 0;"><strong style="color: #1d2129;">分类ID：</strong> {$supplier.category_id|default='-'}</p>
+                <p style="margin: 8px 0;"><strong style="color: #1d2129;">联系人：</strong> {$supplier.contact|default='-'}</p>
+                <p style="margin: 8px 0;"><strong style="color: #1d2129;">电话：</strong> {$supplier.phone|default='-'}</p>
+                <p style="margin: 8px 0;"><strong style="color: #1d2129;">邮箱：</strong> {$supplier.email|default='-'}</p>
+                <p style="margin: 8px 0;"><strong style="color: #1d2129;">地址：</strong> {$supplier.address|default='-'}</p>
+                <p style="margin: 8px 0;"><strong style="color: #1d2129;">登录账号：</strong> {$supplier.login_account|default='-'}</p>
+                <p style="margin: 8px 0;"><strong style="color: #1d2129;">状态：</strong> 
+                    {if condition="$supplier.status eq 1"}
+                    <span style="display: inline-block; padding: 2px 8px; background: #e8ffea; color: #00b42a; border-radius: 3px; font-size: 12px;">正常</span>
+                    {else/}
+                    <span style="display: inline-block; padding: 2px 8px; background: #ffece8; color: #f53f3f; border-radius: 3px; font-size: 12px;">禁用</span>
+                    {/if}
+                </p>
+            </div>
+        </div>
+    </div>
 
-    <a-col :span="16">
-        <a-card>
-            <h3>接单统计</h3>
-            <p><strong>总派单数：</strong> {$stats.total}</p>
-            <p><strong>已接单（>=30）：</strong> {$stats.accepted}</p>
-        </a-card>
+    <div style="flex: 1; min-width: 400px;">
+        <div class="card" style="margin-bottom: 16px;">
+            <h3 style="margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid #e5e6eb; color: #1d2129;">接单统计</h3>
+            <div style="display: flex; gap: 32px; line-height: 1.8;">
+                <p style="margin: 8px 0; color: #4e5969;"><strong style="color: #1d2129;">总派单数：</strong> <span style="color: #165dff; font-weight: 600;">{$stats.total|default=0}</span></p>
+                <p style="margin: 8px 0; color: #4e5969;"><strong style="color: #1d2129;">已接单（≥30）：</strong> <span style="color: #00b42a; font-weight: 600;">{$stats.accepted|default=0}</span></p>
+            </div>
+        </div>
 
-        <a-card style="margin-top:16px;">
-            <h3>历史派单记录</h3>
-            <a-table :data="dispatches" :pagination="false">
-                <template #columns>
-                    <a-table-column title="派单编号" data-index="dispatch_no" />
-                    <a-table-column title="订单ID" data-index="order_id" />
-                    <a-table-column title="状态" data-index="status" />
-                    <a-table-column title="要求完成" data-index="require_date" />
-                    <a-table-column title="确认时间" data-index="confirm_time" />
-                    <a-table-column title="发货时间" data-index="ship_time" />
-                </template>
-            </a-table>
-        </a-card>
-    </a-col>
-</a-row>
+        <div class="card">
+            <h3 style="margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid #e5e6eb; color: #1d2129;">历史派单记录</h3>
+            {notempty name="dispatches"}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>派单编号</th>
+                        <th>订单ID</th>
+                        <th style="text-align: center;">状态</th>
+                        <th>要求完成</th>
+                        <th>确认时间</th>
+                        <th>发货时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {volist name="dispatches" id="item"}
+                    <tr>
+                        <td>{$item.dispatch_no|default='-'}</td>
+                        <td><a href="/admin/order/detail/{$item.order_id}" style="color: #165dff; text-decoration: none;">{$item.order_id}</a></td>
+                        <td style="text-align: center;">
+                            {switch name="item.status"}
+                                {case value="10"}<span style="background: #f2f3f5; color: #4e5969; padding: 2px 8px; border-radius: 3px; font-size: 12px;">待确认</span>{/case}
+                                {case value="20"}<span style="background: #fff7e6; color: #ff7d00; padding: 2px 8px; border-radius: 3px; font-size: 12px;">已拒绝</span>{/case}
+                                {case value="30"}<span style="background: #e8f4ff; color: #165dff; padding: 2px 8px; border-radius: 3px; font-size: 12px;">已确认</span>{/case}
+                                {case value="40"}<span style="background: #e8ffea; color: #00b42a; padding: 2px 8px; border-radius: 3px; font-size: 12px;">已发货</span>{/case}
+                                {default /}<span style="background: #f2f3f5; color: #4e5969; padding: 2px 8px; border-radius: 3px; font-size: 12px;">{$item.status}</span>
+                            {/switch}
+                        </td>
+                        <td style="color: #86909c; font-size: 13px;">{$item.require_date|default='-'}</td>
+                        <td style="color: #86909c; font-size: 13px;">{$item.confirm_time|default='-'}</td>
+                        <td style="color: #86909c; font-size: 13px;">{$item.ship_time|default='-'}</td>
+                    </tr>
+                    {/volist}
+                </tbody>
+            </table>
+            {else/}
+            <div style="text-align: center; padding: 40px 0; color: #86909c;">
+                <div style="font-size: 32px; margin-bottom: 12px;">📋</div>
+                <div>暂无派单记录</div>
+            </div>
+            {/notempty}
+        </div>
+    </div>
+</div>
+
+<div style="margin-top: 24px; text-align: center;">
+    <a href="/admin/supplier/list" class="btn btn-default" style="padding: 0 20px;">返回列表</a>
+    <a href="/admin/supplier/edit/{$supplier.id}" class="btn btn-primary" style="padding: 0 20px; margin-left: 12px;">编辑供应商</a>
+</div>
 
 {/block}

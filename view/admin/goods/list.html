@@ -70,11 +70,13 @@
                     <span style="display: inline-block; padding: 2px 8px; background: #ffece8; color: #f53f3f; border-radius: 3px; font-size: 12px;">下架</span>
                     {/if}
                 </td>
-                <td style="text-align: center;">
-                    <a href="/admin/goods/edit/{$item.id}" class="btn-link">编辑</a>
-                    <a href="/admin/goods/detail/{$item.id}" class="btn-link">详情</a>
-                    <a href="javascript:void(0)" onclick="toggleStatus({$item.id}, {$item.status})" class="btn-link">{$item.status eq 1 ? '下架' : '上架'}</a>
-                    <a href="javascript:void(0)" onclick="deleteGoods({$item.id}, '{$item.name}')" class="btn-link" style="color: #f53f3f;">删除</a>
+                <td style="text-align: center; white-space: nowrap; padding: 12px 8px;">
+                    <a href="/admin/goods/edit/{$item.id}" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #e8f4ff; color: #165dff; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">编辑</a>
+                    <a href="/admin/goods/detail/{$item.id}" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #f2f3f5; color: #4e5969; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">详情</a>
+                    <a href="javascript:void(0)" onclick="toggleStatus({$item.id}, {$item.status})" class="action-btn" style="display: inline-block; padding: 4px 8px; background: {if condition="$item.status == 1"}#fff7e6{else/}#e8ffea{/if}; color: {if condition="$item.status == 1"}#ff7d00{else/}#00b42a{/if}; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 6px;">
+                        {if condition="$item.status == 1"}下架{else/}上架{/if}
+                    </a>
+                    <a href="javascript:void(0)" onclick="deleteGoods({$item.id}, '{$item.name}')" class="action-btn" style="display: inline-block; padding: 4px 8px; background: #ffece8; color: #f53f3f; border-radius: 4px; text-decoration: none; font-size: 12px;">删除</a>
                 </td>
             </tr>
             {/volist}

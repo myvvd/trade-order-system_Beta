@@ -9,6 +9,15 @@
         </a-space>
     </div>
 
+    <style>
+        /* 员工列表局部样式：防止表格列溢出、保证文本省略号和垂直居中 */
+        #employeeListApp .table-wrap { overflow-x: auto; }
+        #employeeListApp .arco-table th, #employeeListApp .arco-table td { vertical-align: middle; }
+        #employeeListApp .arco-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* 对描述类列允许换行（若需要可去掉） */
+        #employeeListApp .arco-table td.description { white-space: normal; }
+    </style>
+
     <a-card style="margin-bottom: 16px;">
         <a-form :model="searchForm" layout="inline">
             <a-form-item label="关键词">
@@ -35,33 +44,10 @@
     </a-card>
 
     <a-card>
-        <a-table :data="tableData" :pagination="false" :bordered="{cell:true}" :stripe="true" row-key="id">
-            <template #columns>
-                <a-table-column title="用户名" data-index="username" :width="160" />
-                <a-table-column title="姓名" data-index="real_name" :width="140" />
-                <a-table-column title="角色" :width="140">
-                    <template #cell="{ record }">{{ record.role ? record.role.name : '-' }}</template>
-                </a-table-column>
-                <a-table-column title="手机" data-index="phone" :width="140" />
-                <a-table-column title="邮箱" data-index="email" :width="180" />
-                <a-table-column title="状态" :width="80" align="center">
-                    <template #cell="{ record }">
-                        <a-tag v-if="record.status == 1" color="green">正常</a-tag>
-                        <a-tag v-else color="red">禁用</a-tag>
-                    </template>
-                </a-table-column>
-                <a-table-column title="最后登录" data-index="last_login_time" :width="160" />
-                <a-table-column title="操作" :width="220">
-                    <template #cell="{ record }">
-                        <a-space :size="8">
-                            <a-button type="text" size="small" @click="editUser(record.id)">编辑</a-button>
-                            <a-button type="text" size="small" @click="resetPassword(record.id)">重置密码</a-button>
-                            <a-button type="text" status="danger" size="small" @click="deleteUser(record)">删除</a-button>
-                        </a-space>
-                    </template>
-                </a-table-column>
-            </template>
+        <div class="table-wrap">
+        <a-table :data="tableData" :columns="columns" :pagination="false" :bordered="{cell:true}" :stripe="true" row-key="id">
         </a-table>
+        </div>
 
         <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
             <span style="color: #86909c;">共 {{ total }} 条记录</span>
@@ -97,6 +83,54 @@ window.createPageApp({
         const total = ref(__TOTAL__);
         const currentPage = ref(__CURRENT_PAGE__);
         const pageSize = ref(15);
+
+        // 表格列定义
+        const columns = [
+            { title: '用户名', dataIndex: 'username', width: 160 },
+            { title: '姓名', dataIndex: 'real_name', width: 140 },
+            {
+                title: '角色',
+                width: 140,
+                render: ({ record }) => record.role ? record.role.name : '-'
+            },
+            { title: '手机', dataIndex: 'phone', width: 140 },
+            { title: '邮箱', dataIndex: 'email', width: 180 },
+            {
+                title: '状态',
+                width: 80,
+                align: 'center',
+                render: ({ record }) => {
+                    return Vue.h(ArcoVue.Tag, {
+                        color: record.status == 1 ? 'green' : 'red'
+                    }, record.status == 1 ? '正常' : '禁用');
+                }
+            },
+            { title: '最后登录', dataIndex: 'last_login_time', width: 160 },
+            {
+                title: '操作',
+                width: 220,
+                render: ({ record }) => {
+                    return Vue.h(ArcoVue.Space, { size: 8 }, [
+                        Vue.h(ArcoVue.Button, {
+                            type: 'text',
+                            size: 'small',
+                            onClick: () => editUser(record.id)
+                        }, '编辑'),
+                        Vue.h(ArcoVue.Button, {
+                            type: 'text',
+                            size: 'small',
+                            onClick: () => resetPassword(record.id)
+                        }, '重置密码'),
+                        Vue.h(ArcoVue.Button, {
+                            type: 'text',
+                            status: 'danger',
+                            size: 'small',
+                            onClick: () => deleteUser(record)
+                        }, '删除')
+                    ]);
+                }
+            }
+        ];
 
         const buildUrl = (page) => {
             const params = [];
@@ -158,6 +192,7 @@ window.createPageApp({
         return {
             searchForm,
             tableData,
+            columns,
             roles,
             total,
             currentPage,

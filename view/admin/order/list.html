@@ -1,220 +1,263 @@
 {extend name="layout/admin_base"}
 
 {block name="content"}
-<div id="orderListApp">
+<div id="orderListApp" v-cloak>
     <div class="page-header">
         <div class="page-header-title">订单管理</div>
-        <a-space :size="12">
-            <a-button type="primary" @click="goCreate">+ 新建订单</a-button>
+        <a-space>
+            <a-button type="primary" @click="goCreate">
+                <template #icon><icon-plus /></template>
+                新建订单
+            </a-button>
+            {if condition="$isSuper"}
+            <a-button @click="initTestData">初始化测试数据</a-button>
+            {/if}
         </a-space>
     </div>
 
-    <a-card style="margin-bottom: 16px;">
-        <a-form :model="searchForm" layout="inline">
+    <a-card class="query-card" :bordered="false" style="margin-bottom: 16px;">
+        <a-form :model="searchForm" layout="inline" @submit="handleSearch">
             <a-form-item label="关键词">
-                <a-input v-model="searchForm.keyword" placeholder="订单号/客户/备注" style="width: 240px;" allow-clear />
+                <a-input v-model="searchForm.keyword" placeholder="订单号/客户/备注" allow-clear />
             </a-form-item>
-            <a-form-item label="开始日期">
-                <a-date-picker v-model="searchForm.date_from" style="width: 160px;" />
-            </a-form-item>
-            <a-form-item label="结束日期">
-                <a-date-picker v-model="searchForm.date_to" style="width: 160px;" />
+            <a-form-item label="日期范围">
+                <a-range-picker v-model="dateRange" @change="handleDateChange" />
             </a-form-item>
             <a-form-item>
-                <a-button type="primary" @click="handleSearch">搜索</a-button>
-                <a-button @click="handleReset" style="margin-left: 8px;">重置</a-button>
+                <a-space>
+                    <a-button type="primary" html-type="submit">搜索</a-button>
+                    <a-button @click="handleReset">重置</a-button>
+                </a-space>
             </a-form-item>
         </a-form>
     </a-card>
 
-    <a-card>
+    <a-card class="list-card" :bordered="false">
         <a-tabs v-model:active-key="activeStatus" @change="handleTabChange">
-            <a-tab-pane v-for="(label, key) in tabs" :key="String(key)" :title="label"></a-tab-pane>
+            <!-- 遍历 PHP 的 tabs 数组生成标签页 -->
+            {foreach name="tabs" item="label" key="k"}
+            <a-tab-pane key="{$k}" title="{$label}"></a-tab-pane>
+            {/foreach}
         </a-tabs>
 
-        <a-table :data="tableData" :pagination="false" :bordered="{cell:true}" :stripe="true" style="margin-top: 12px;">
+        <a-table 
+            :data="tableData" 
+            :pagination="pagination" 
+            :loading="loading"
+            @page-change="onPageChange"
+            row-key="id"
+            :bordered="{cell:true}"
+            stripe
+            style="margin-top: 16px;"
+        >
             <template #columns>
-                <a-table-column title="订单号" :width="180">
-                    <template #cell="{ record }">
+                <a-table-column title="订单号" data-index="order_no" :width="180">
+                     <template #cell="{ record }">
                         <a-link @click="goDetail(record.id)">{{ record.order_no }}</a-link>
                     </template>
                 </a-table-column>
-                <a-table-column title="客户" :width="200">
-                    <template #cell="{ record }">{{ record.customer?.company_name || '-' }}</template>
+                <a-table-column title="客户" data-index="customer_name" :width="200"></a-table-column>
+                <a-table-column title="总金额" data-index="total_amount" :width="120" align="right">
+                    <template #cell="{ record }">
+                        ¥{{ record.total_amount }}
+                    </template>
                 </a-table-column>
-                <a-table-column title="总金额" :width="120" align="right">
-                    <template #cell="{ record }">¥{{ record.total_amount }}</template>
-                </a-table-column>
-                <a-table-column title="状态" :width="100" align="center">
+                <a-table-column title="状态" data-index="status_text" :width="100" align="center">
                     <template #cell="{ record }">
                         <a-tag :color="getStatusColor(record.status)">{{ record.status_text }}</a-tag>
                     </template>
                 </a-table-column>
-                <a-table-column title="创建时间" :width="180">
-                    <template #cell="{ record }">{{ record.create_time }}</template>
-                </a-table-column>
+                <a-table-column title="创建时间" data-index="create_time" :width="180"></a-table-column>
                 <a-table-column title="操作" :width="220">
                     <template #cell="{ record }">
-                        <a-space :size="8">
+                        <a-space>
                             <a-button type="text" size="small" @click="goDetail(record.id)">详情</a-button>
-                            <a-button v-if="record.status == pendingStatus" type="text" size="small" @click="goEdit(record.id)">编辑</a-button>
-                            <a-button v-if="record.status == pendingStatus" type="text" size="small" status="danger" @click="deleteOrder(record)">删除</a-button>
-                            <a-button v-if="canCancel(record.status)" type="text" size="small" @click="cancelOrder(record)">取消</a-button>
+                            <a-button 
+                                v-if="record.status == 10" 
+                                type="text" 
+                                size="small" 
+                                @click="goEdit(record.id)"
+                            >编辑</a-button>
+                            <a-popconfirm v-if="record.status == 10" content="确定要删除吗？" @ok="deleteOrder(record.id)">
+                                <a-button type="text" status="danger" size="small">删除</a-button>
+                            </a-popconfirm>
+                             <a-popconfirm v-if="canCancel(record.status)" content="确定要取消吗？" @ok="cancelOrder(record.id)">
+                                <a-button type="text" status="warning" size="small">取消</a-button>
+                            </a-popconfirm>
                         </a-space>
                     </template>
                 </a-table-column>
             </template>
         </a-table>
-
-        <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #86909c;">共 {{ total }} 条记录</span>
-            <a-pagination v-model:current="currentPage" v-model:page-size="pageSize" :total="total" @change="handlePageChange" />
-        </div>
     </a-card>
 </div>
 {/block}
 
 {block name="script"}
 <script>
-const { ref, reactive } = Vue;
-
 window.createPageApp({
     setup() {
-        const tabs = <?php echo json_encode($tabs ?? [], JSON_UNESCAPED_UNICODE); ?>;
-        const activeStatus = ref('<?php echo $status ?? ""; ?>');
+        const { ref, reactive, onMounted } = Vue;
+        const ArcoMessage = Arco.Message;
+
+        // PHP 数据注入
+        const rawOrders = <?php 
+            $data = [];
+            foreach($orders as $item){
+                $arr = $item->toArray();
+                $arr['status_text'] = $item->status_text;
+                $arr['customer_name'] = $item->customer ? $item->customer->company_name : '-';
+                $data[] = $arr;
+            }
+            echo json_encode($data, JSON_UNESCAPED_UNICODE); 
+        ?>;
+        
+        const total = <?php echo $orders->total(); ?>;
+        const currentPage = <?php echo $orders->currentPage(); ?>;
+        const pageSize = <?php echo $orders->listRows(); ?>;
+        
         const searchForm = reactive({
-            keyword: '<?php echo $keyword ?? ""; ?>',
-            date_from: '<?php echo $date_from ?? ""; ?>',
-            date_to: '<?php echo $date_to ?? ""; ?>'
+            keyword: '{$keyword}',
+            status: '{$status}',
+        });
+        
+        const dateRange = ref([
+            '{$date_from}',
+            '{$date_to}'
+        ]);
+
+        const activeStatus = ref('{$status}');
+        const tableData = ref(rawOrders);
+        const loading = ref(false);
+
+        const pagination = reactive({
+            total: total,
+            current: currentPage,
+            pageSize: pageSize,
+            showTotal: true,
+            showPageSize: false
         });
 
-        const ordersData = <?php 
-            $ordersList = [];
-            if (isset($orders)) {
-                $items = $orders->items();
-                foreach ($items as $item) {
-                    $arr = $item->toArray();
-                    $arr['status_text'] = $item->status_text ?? '';
-                    $ordersList[] = $arr;
-                }
-            }
-            echo json_encode($ordersList, JSON_UNESCAPED_UNICODE);
-        ?>;
-        const tableData = ref(ordersData);
-        const total = ref(<?php echo isset($orders) ? $orders->total() : 0; ?>);
-        const currentPage = ref(<?php echo isset($orders) ? $orders->currentPage() : 1; ?>);
-        const pageSize = ref(15);
-
-        const pendingStatus = <?php echo \app\model\Order::STATUS_PENDING ?? 10; ?>;
-        const completedStatus = <?php echo \app\model\Order::STATUS_COMPLETED ?? 70; ?>;
-        const canceledStatus = <?php echo \app\model\Order::STATUS_CANCELED ?? 0; ?>;
-
         const getStatusColor = (status) => {
-            const colors = {
-                10: 'orange',   // 待派单
-                20: 'blue',     // 待确认
-                30: 'cyan',     // 制作中
-                40: 'purple',   // 待收货
-                50: 'green',    // 已入库
-                60: 'arcoblue', // 已发货
-                70: 'gray',     // 已完成
-                0: 'red'        // 已取消
+             const map = {
+                10: 'arcoblue', // 待派单
+                20: 'orange', // 待确认
+                21: 'red', // 已拒绝
+                30: 'cyan', // 制作中
+                40: 'purple', // 待收货
+                50: 'green', // 已入库
+                60: 'gold', // 已发货
+                70: 'green', // 已完成
+                99: 'gray' // 已取消
             };
-            return colors[status] || 'gray';
+            return map[status] || '';
         };
 
         const canCancel = (status) => {
-            return status != canceledStatus && status != completedStatus;
+             return status < 70 && status != 99;
         };
 
-        const buildUrl = (page) => {
-            const params = [];
-            if (searchForm.keyword) params.push('keyword=' + encodeURIComponent(searchForm.keyword));
-            if (searchForm.date_from) params.push('date_from=' + searchForm.date_from);
-            if (searchForm.date_to) params.push('date_to=' + searchForm.date_to);
-            if (activeStatus.value !== '') params.push('status=' + activeStatus.value);
-            if (page) params.push('page=' + page);
-            let url = '/admin/order/list';
-            if (params.length) url += '?' + params.join('&');
-            return url;
+        const handleSearch = () => {
+            const params = new URLSearchParams();
+            if(searchForm.keyword) params.append('keyword', searchForm.keyword);
+            if(activeStatus.value) params.append('status', activeStatus.value);
+            if(dateRange.value && dateRange.value[0]) {
+                params.append('date_from', dateRange.value[0]);
+            }
+            if(dateRange.value && dateRange.value[1]) {
+                params.append('date_to', dateRange.value[1]);
+            }
+            location.href = '?' + params.toString();
         };
 
-        const handleSearch = () => { location.href = buildUrl(1); };
         const handleReset = () => {
-            searchForm.keyword = '';
-            searchForm.date_from = '';
-            searchForm.date_to = '';
-            activeStatus.value = '';
-            handleSearch();
+            location.href = '/admin/order';
         };
-        const handleTabChange = (key) => {
-            activeStatus.value = key;
-            handleSearch();
+
+        const handleTabChange = (val) => {
+             handleSearch();
         };
-        const handlePageChange = (page) => { location.href = buildUrl(page); };
+        
+        const handleDateChange = (val) => {
+            // val is array [start, end]
+        };
 
-        const goCreate = () => { location.href = '/admin/order/create'; };
-        const goEdit = (id) => { location.href = '/admin/order/edit/' + id; };
-        const goDetail = (id) => { location.href = '/admin/order/detail/' + id; };
+        const onPageChange = (page) => {
+             const params = new URLSearchParams(window.location.search);
+             params.set('page', page);
+             location.href = '?' + params.toString();
+        };
 
-        const deleteOrder = (record) => {
-            ArcoModal.confirm({
-                title: '提示',
-                content: '确定要删除此订单吗？',
-                onOk: () => {
-                    fetch('/admin/order/delete/' + record.id, { method: 'POST' })
-                        .then(r => r.json())
-                        .then(ret => {
-                            if (ret.code == 1 || ret.success) {
-                                ArcoMessage.success('删除成功');
-                                location.reload();
-                            } else {
-                                ArcoMessage.error(ret.msg || '删除失败');
-                            }
-                        });
+        const goCreate = () => location.href = '/admin/order/create';
+        const goDetail = (id) => location.href = '/admin/order/detail/' + id;
+        const goEdit = (id) => location.href = '/admin/order/edit/' + id;
+
+        const deleteOrder = async (id) => {
+             try {
+                const res = await fetch('/admin/order/delete/' + id, { method: 'POST' });
+                const json = await res.json();
+                if(json.code == 1) {
+                    ArcoMessage.success('删除成功');
+                    location.reload();
+                } else {
+                    ArcoMessage.error(json.msg || '删除失败');
                 }
-            });
+             } catch(e) {
+                 ArcoMessage.error(e.message);
+             }
         };
 
-        const cancelOrder = (record) => {
-            ArcoModal.confirm({
-                title: '提示',
-                content: '确定要取消此订单吗？',
-                onOk: () => {
-                    fetch('/admin/order/cancel/' + record.id, { method: 'POST' })
-                        .then(r => r.json())
-                        .then(ret => {
-                            if (ret.code == 1 || ret.success) {
-                                ArcoMessage.success('取消成功');
-                                location.reload();
-                            } else {
-                                ArcoMessage.error(ret.msg || '取消失败');
-                            }
-                        });
+        const cancelOrder = async (id) => {
+             try {
+                const res = await fetch('/admin/order/cancel/' + id, { method: 'POST' });
+                const json = await res.json();
+                if(json.code == 1) {
+                    ArcoMessage.success('取消成功');
+                    location.reload();
+                } else {
+                    ArcoMessage.error(json.msg || '取消失败');
                 }
-            });
+             } catch(e) {
+                 ArcoMessage.error(e.message);
+             }
+        };
+
+        const initTestData = async () => {
+              try {
+                if(!confirm('确定要初始化测试数据吗？这将删除现有测试数据。')) return;
+                const res = await fetch('/admin/order/initTestData', { method: 'POST' });
+                const json = await res.json();
+                if(json.code == 1) {
+                    ArcoMessage.success(json.msg);
+                    setTimeout(()=>location.reload(), 1000);
+                } else {
+                    ArcoMessage.error(json.msg || '操作失败');
+                }
+             } catch(e) {
+                 ArcoMessage.error(e.message);
+             }
         };
 
         return {
-            tabs,
-            activeStatus,
             searchForm,
+            dateRange,
+            activeStatus,
             tableData,
-            total,
-            currentPage,
-            pageSize,
-            pendingStatus,
+            loading,
+            pagination,
             getStatusColor,
             canCancel,
             handleSearch,
             handleReset,
             handleTabChange,
-            handlePageChange,
+            handleDateChange,
+            onPageChange,
             goCreate,
-            goEdit,
             goDetail,
+            goEdit,
             deleteOrder,
-            cancelOrder
+            cancelOrder,
+            initTestData
         };
     }
 }, 'orderListApp');
