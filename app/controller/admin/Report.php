@@ -47,10 +47,10 @@ class Report extends Base
         return json(['code'=>200,'data'=>['total_count'=>$total_count,'total_amount'=>$total_amount,'avg_amount'=>$avg,'complete_rate'=>$complete_rate,'trend'=>$trend,'rows'=>$rows]]);
     }
 
-    // 按客户统计页面
+    // 按采购方统计页面
     public function orderByCustomer()
     {
-        View::assign(['title'=>'按客户统计']);
+        View::assign(['title'=>'按采购方统计']);
         return View::fetch('admin/report/by_customer');
     }
 
@@ -118,13 +118,13 @@ class Report extends Base
         // 根据类型构建数据与列
         if ($type === 'summary') {
             $rows = Db::name('order')->whereBetween('created_at', [$start, $end])->select();
-            $columns = ['订单ID','订单号','客户','金额','状态','创建时间'];
+            $columns = ['订单ID','订单号','采购方','金额','状态','创建时间'];
             $data = [];
             foreach ($rows as $r) $data[] = [ $r['id'], $r['order_no'] ?? '', $r['customer_id'] ?? '', $r['total_amount'] ?? 0, $r['status'] ?? '', $r['created_at'] ?? '' ];
             $filename = 'order_summary_'.date('YmdHis').'.xlsx';
         } elseif ($type === 'by_customer') {
             $rows = Db::name('order')->alias('o')->join('customer c','o.customer_id=c.id')->whereBetween('o.created_at',[$start,$end])->group('o.customer_id')->field('o.customer_id,c.name as customer_name,count(*) as cnt,sum(o.total_amount) as amt')->select();
-            $columns = ['客户ID','客户名称','订单数','订单金额'];
+            $columns = ['采购方ID','采购方名称','订单数','订单金额'];
             $data = [];
             foreach ($rows as $r) $data[] = [$r['customer_id'],$r['customer_name'],$r['cnt'],$r['amt']];
             $filename = 'order_by_customer_'.date('YmdHis').'.xlsx';

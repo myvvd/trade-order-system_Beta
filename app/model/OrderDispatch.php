@@ -15,6 +15,11 @@ class OrderDispatch extends \think\Model
     public const STATUS_WAIT_RECEIVE = 40;
     public const STATUS_RECEIVED = 50;
 
+    public static function generateDispatchNo(): string
+    {
+        return 'DP' . date('YmdHis') . substr(uniqid(), -4);
+    }
+
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id');

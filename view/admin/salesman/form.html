@@ -1,0 +1,78 @@
+{extend name="layout/admin_base"/}
+
+{block name="content"}
+<h1 class="page-title">{$title}</h1>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <form id="itemForm" onsubmit="return saveItem(event)">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">姓名 <span style="color: #f53f3f;">*</span></label>
+                <input type="text" name="name" value="{$item.name|default=''}" placeholder="请输入姓名" required
+                    style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">联系方式</label>
+                <input type="text" name="phone" value="{$item.phone|default=''}" placeholder="请输入联系方式"
+                    style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">所属贸易公司</label>
+                <select name="trading_company_id" style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box; background: #fff;">
+                    <option value="">请选择（可不选）</option>
+                    {volist name="tradingCompanies" id="tc"}
+                    <option value="{$tc.id}" {if condition="($item['trading_company_id'] ?? 0) eq $tc['id']"}selected{/if}>{$tc.name}</option>
+                    {/volist}
+                </select>
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">状态</label>
+                <select name="status" style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box; background: #fff;">
+                    <option value="1" {if condition="($item['status'] ?? 1) eq 1"}selected{/if}>正常</option>
+                    <option value="0" {if condition="($item['status'] ?? 1) eq 0"}selected{/if}>禁用</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">备注</label>
+            <textarea name="remark" placeholder="请输入备注信息"
+                style="width: 100%; height: 80px; padding: 10px 12px; border: 1px solid #e5e6eb; border-radius: 4px; resize: vertical; box-sizing: border-box;">{$item.remark|default=''}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+            <button type="submit" class="btn btn-primary" style="flex: 1; height: 40px;">保存</button>
+            <button type="button" class="btn btn-default" onclick="location.href='/admin/salesman/list'" style="flex: 1; height: 40px;">返回</button>
+        </div>
+
+        {if condition="!empty($item['id'])"}
+        <input type="hidden" name="id" value="{$item.id}">
+        {/if}
+    </form>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+function saveItem(event) {
+    event.preventDefault();
+    const form = document.getElementById('itemForm');
+    const formData = new FormData(form);
+    const id = formData.get('id');
+    const url = id ? '/admin/salesman/update?id=' + id : '/admin/salesman/save';
+
+    fetch(url, { method: 'POST', body: formData })
+        .then(r => r.json()).then(res => {
+            if (res.code === 200 || res.success) {
+                alert(res.msg || '保存成功');
+                location.href = '/admin/salesman/list';
+            } else {
+                alert(res.msg || '保存失败');
+            }
+        });
+}
+</script>
+{/block}

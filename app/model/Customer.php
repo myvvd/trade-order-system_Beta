@@ -5,7 +5,7 @@ namespace app\model;
 use think\facade\Db;
 
 /**
- * 客户模型
+ * 采购方模型
  */
 class Customer extends \think\Model
 {

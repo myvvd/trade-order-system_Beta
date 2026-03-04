@@ -5,7 +5,7 @@ namespace app\validate;
 use think\Validate;
 
 /**
- * 客户验证器
+ * 采购方验证器
  */
 class CustomerValidate extends Validate
 {
@@ -29,7 +29,7 @@ class CustomerValidate extends Validate
         'phone.max'            => '电话长度不能超过20个字符',
         'email.email'          => '邮箱格式错误',
         'address.max'          => '地址长度不能超过500个字符',
-        'level.in'             => '客户等级错误',
+        'level.in'             => '采购方等级错误',
         'status.in'            => '状态值错误',
     ];
 

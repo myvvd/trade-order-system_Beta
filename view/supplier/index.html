@@ -1,53 +1,68 @@
 {extend name="layout/supplier_base"/}
 
 {block name="content"}
+<style>
+.order-card.blue-bg {
+    background: linear-gradient(135deg, #165DFF 0%, #4E7CFF 100%);
+    border-left: none;
+    color: #fff;
+}
+.order-card.blue-bg .order-title { color: #fff !important; }
+.order-card.blue-bg .order-date { color: rgba(255,255,255,0.8) !important; }
+.order-card.blue-bg .order-desc { color: rgba(255,255,255,0.9) !important; }
+.order-card.blue-bg .order-amount { color: #fff !important; }
+</style>
+
 <h1 style="font-size: 20px; font-weight: 600; color: #1d2129; margin-bottom: 20px;">我的订单</h1>
 
 <div style="display: flex; gap: 20px; margin-bottom: 24px;">
     <div class="stat-card blue" style="flex: 1;">
         <div class="label">待确认</div>
-        <div class="value">3</div>
+        <div class="value">{$counts['wait_confirm']|default=0}</div>
     </div>
     <div class="stat-card orange" style="flex: 1;">
         <div class="label">制作中</div>
-        <div class="value">5</div>
+        <div class="value">{$counts['producing']|default=0}</div>
     </div>
     <div class="stat-card green" style="flex: 1;">
         <div class="label">已完成</div>
-        <div class="value">28</div>
+        <div class="value">{$counts['completed']|default=0}</div>
     </div>
     <div class="stat-card red" style="flex: 1;">
         <div class="label">已取消</div>
-        <div class="value">1</div>
+        <div class="value">{$counts['canceled']|default=0}</div>
     </div>
 </div>
 
-<div class="order-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <div>
-            <span style="font-weight: 600; color: #1d2129;">订单 #20250130001</span>
-            <span class="status-tag warning" style="margin-left: 12px;">待确认</span>
+{if empty($recent)}
+<div style="text-align:center; padding:40px; color:#86909c;">暂无接单记录</div>
+{else}
+    {foreach $recent as $item}
+    <div class="order-card {if $item.status == 20}blue-bg{else}bg-white{/if}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+                <span class="order-title" style="font-weight: 600; color: #1d2129;">派单 #{$item.dispatch_no|default=$item.id}</span>
+                <span class="status-tag {if $item.status == 20}warning{elseif $item.status >= 40}success{else}primary{/if}" style="margin-left: 12px; {if $item.status==20}background:#fff;color:#ff7d00{/if}">{$item.status_text}</span>
+            </div>
+            <div class="order-date" style="color: #86909c; font-size: 14px;">{$item.create_time|default=''}</div>
         </div>
-        <div style="color: #86909c; font-size: 14px;">2025-01-30</div>
+        <div class="order-desc" style="color: #4e5969; margin-bottom: 8px;">
+            {if !empty($item.items)}
+                {foreach $item.items as $idx => $goods}
+                    {$goods.goods_name}{if $idx < count($item.items)-1} ，{/if}
+                {/foreach}
+            {else}
+                暂无明细
+            {/if}
+        </div>
+        {* 待确认订单按照要求去掉了确认订单和拒绝按钮，因为是在列表里只展示 *}
+        <div style="display: flex; gap: 12px; margin-top: 12px;">
+            <a href="/supplier/order/detail/{$item.id}" class="btn {if $item.status == 20}btn-success{else}btn-primary{/if}" style="{if $item.status==20}background:rgba(255,255,255,0.2);color:#fff;{/if} text-decoration:none;">查看详情</a>
+        </div>
     </div>
-    <div style="color: #4e5969; margin-bottom: 8px;">产品：仿古青铜摆件 x 50</div>
-    <div style="display: flex; gap: 12px; margin-top: 12px;">
-        <button class="btn btn-primary">确认订单</button>
-        <button class="btn btn-danger">拒绝</button>
-    </div>
-</div>
+    {/foreach}
+{/if}
 
-<div class="order-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <div>
-            <span style="font-weight: 600; color: #1d2129;">订单 #20250129005</span>
-            <span class="status-tag success" style="margin-left: 12px;">已完成</span>
-        </div>
-        <div style="color: #86909c; font-size: 14px;">2025-01-29</div>
-    </div>
-    <div style="color: #4e5969; margin-bottom: 8px;">产品：陶瓷茶具套装 x 100</div>
-    <div style="color: #165DFF; font-weight: 600; margin-top: 8px;">订单金额：¥5,800.00</div>
-</div>
 {/block}
 
 {block name="script"}

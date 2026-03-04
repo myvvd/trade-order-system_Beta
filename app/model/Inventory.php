@@ -14,8 +14,8 @@ class Inventory extends Model
         return $this->hasMany(InventoryItem::class, 'inventory_id');
     }
 
-    public function operator()
+    public function creator()
     {
-        return $this->belongsTo(AdminUser::class, 'operator_id');
+        return $this->belongsTo(AdminUser::class, 'creator_id');
     }
 }

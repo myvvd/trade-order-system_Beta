@@ -3,7 +3,7 @@
 {block name="content"}
 <div id="customerDetailApp">
     <div class="page-header">
-        <div class="page-header-title">客户详情</div>
+        <div class="page-header-title">采购方详情</div>
         <div>
             <a href="/admin/customer/edit?id={$customer.id}" class="btn btn-primary" style="margin-right: 8px;">编辑</a>
             <a href="/admin/customer/list" class="btn btn-default">返回列表</a>
@@ -11,13 +11,13 @@
     </div>
 
     <div style="display: flex; gap: 20px;">
-        <!-- 左侧：客户基本信息 -->
+        <!-- 左侧：采购方基本信息 -->
         <div style="flex: 1; min-width: 320px;">
             <div class="card">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #e5e6eb;">
                     <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1d2129;">基本信息</h3>
                     <span style="display: inline-block; padding: 4px 12px; background: {if condition="$customer.level eq 2"}#fff7e8{else/}#f2f3f5{/if}; color: {if condition="$customer.level eq 2"}#f77234{else/}#86909c{/if}; border-radius: 4px; font-size: 12px; font-weight: 500;">
-                        {if condition="$customer.level eq 2"}VIP客户{else/}普通客户{/if}
+                        {if condition="$customer.level eq 2"}VIP采购方{else/}普通采购方{/if}
                     </span>
                 </div>
                 

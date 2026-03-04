@@ -1,7 +1,7 @@
 {extend name="layout/admin_base"/}
 
 {block name="content"}
-<h1 class="page-title">客户管理</h1>
+<h1 class="page-title">采购方管理</h1>
 
 <!-- 搜索区域 -->
 <div class="card" style="margin-bottom: 16px; padding: 16px;">
@@ -37,7 +37,7 @@
             <button type="button" class="btn btn-default" onclick="location.href='/admin/customer/list'" style="height: 32px; padding: 0 16px;">重置</button>
         </div>
         <div style="margin-left: auto; display: flex; gap: 8px;">
-            <a href="/admin/customer/create" class="btn btn-primary" style="height: 32px; padding: 0 16px; display: flex; align-items: center;">+ 新增客户</a>
+            <a href="/admin/customer/create" class="btn btn-primary" style="height: 32px; padding: 0 16px; display: flex; align-items: center;">+ 新增采购方</a>
             <a href="/admin/customer/export?keyword={$keyword|default=''}&country={$country|default=''}&level={$level|default=''}&status={$status|default=''}" class="btn btn-default" style="height: 32px; padding: 0 16px; display: flex; align-items: center;">导出</a>
         </div>
     </form>
@@ -144,7 +144,7 @@
 </style>
 <script>
 function deleteCustomer(id, name) {
-    if (!confirm('确定要删除客户 "' + name + '" 吗？')) return;
+    if (!confirm('确定要删除采购方 "' + name + '" 吗？')) return;
     
     fetch('/admin/customer/delete?id=' + id, { method: 'POST' })
         .then(r => r.json())

@@ -32,11 +32,11 @@
 <script>
 const { createApp } = Vue;
 createApp({
-  data(){ return { range:[null,null], rows:[], columns:[{title:'客户',dataIndex:'customer_name'},{title:'订单数',dataIndex:'cnt'},{title:'订单金额',dataIndex:'amt'},{title:'占比',dataIndex:'amt_percent'}] } },
+  data(){ return { range:[null,null], rows:[], columns:[{title:'采购方',dataIndex:'customer_name'},{title:'订单数',dataIndex:'cnt'},{title:'订单金额',dataIndex:'amt'},{title:'占比',dataIndex:'amt_percent'}] } },
   mounted(){ this.load(); },
   methods:{
     load(){ const s=this.range[0]||''; const e=this.range[1]||''; fetch('/admin/report/data_by_customer?start='+s+'&end='+e).then(r=>r.json()).then(j=>{ if(j.code==200){ this.rows=j.data; this.renderPie(); } }); },
-    renderPie(){ const chart = echarts.init(document.getElementById('pieChart')); chart.setOption({title:{text:'客户占比'}, tooltip:{}, series:[{type:'pie',radius:'55%',data:this.rows.map(i=>({name:i.customer_name,value:i.amt}))}]}); },
+    renderPie(){ const chart = echarts.init(document.getElementById('pieChart')); chart.setOption({title:{text:'采购方占比'}, tooltip:{}, series:[{type:'pie',radius:'55%',data:this.rows.map(i=>({name:i.customer_name,value:i.amt}))}]}); },
     exportData(){ const s=this.range[0]||''; const e=this.range[1]||''; location.href='/admin/report/export/by_customer?start='+s+'&end='+e; }
   }
 }).use(ArcoVue).mount('#byCustomerApp');

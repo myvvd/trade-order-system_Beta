@@ -19,7 +19,7 @@
             <a-col :span="12">
                 <a-card>
                     <h4>订单信息</h4>
-                    <p>客户：<?php echo $order->customer->company_name ?? '-'; ?></p>
+                    <p>采购方：<?php echo $order->customer->company_name ?? '-'; ?></p>
                     <p>总金额：<?php echo $order->total_amount; ?></p>
                 </a-card>
 

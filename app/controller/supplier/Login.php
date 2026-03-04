@@ -40,8 +40,8 @@ class Login extends Base
 
         // 获取登录参数
         $params = $this->post();
-        $account = $params['login_account'] ?? '';
-        $password = $params['login_password'] ?? '';
+        $account = trim($params['login_account'] ?? '');
+        $password = trim($params['login_password'] ?? '');
 
         // 验证参数
         try {
@@ -106,6 +106,6 @@ class Login extends Base
         Session::clear();
 
         // 跳转到登录页
-        return redirect('/supplier/login')->with('success', '已安全退出');
+        return redirect('/admin/login')->with('success', '已安全退出');
     }
 }

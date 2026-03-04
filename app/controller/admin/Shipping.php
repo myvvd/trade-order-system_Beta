@@ -21,7 +21,7 @@ class Shipping extends Base
 
     public function create()
     {
-        // 简单加载客户列表
+        // 简单加载采购方列表
         $customers = CustomerModel::order('id','desc')->select();
         View::assign(['title'=>'创建出货单','customers'=>$customers]);
         return View::fetch('admin/shipping/form');

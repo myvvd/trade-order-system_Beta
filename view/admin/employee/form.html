@@ -74,7 +74,7 @@ let rolesData = [];
 
 {if $user}
 try {
-    userData = {$user|json_encode};
+    userData = {$user|json_encode|raw};
 } catch(e) {
     console.error('User data error:', e);
 }

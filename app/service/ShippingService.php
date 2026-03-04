@@ -7,6 +7,7 @@ use app\model\ShippingItem as ShippingItemModel;
 use app\service\StockService;
 use app\model\Order as OrderModel;
 use app\model\OrderStatusLog as OrderStatusLogModel;
+use app\service\MessageService;
 
 class ShippingService
 {
@@ -83,6 +84,15 @@ class ShippingService
             $ship->shipped_at = date('Y-m-d H:i:s');
             $ship->operator_id = $operatorId;
             $ship->save();
+
+            // 发送站内信通知
+            try {
+                $orderIds = array_unique(array_filter(array_column($ship->items->toArray(), 'order_id')));
+                $msgService = new MessageService();
+                foreach ($orderIds as $oid) {
+                    $msgService->notifyShipped($oid, $ship->shipping_no, $operatorId);
+                }
+            } catch (\Throwable $e) {}
 
             return true;
         });

@@ -4,8 +4,8 @@
 <div>
   <h2>{if condition="$ship"}编辑出货单#{ $ship.id }{else/}新建出货单{/if}</h2>
   <form id="shipForm">
-    <div>客户：<select name="customer_id">{volist name="customers" id="c"}<option value="{$c.id}">{$c.name}</option>{/volist}</select></div>
-    <div>选择订单：<!-- 简化：前端可实现按客户过滤订单 --> <input name="order_search" placeholder="输入订单号搜索" /></div>
+    <div>采购方：<select name="customer_id">{volist name="customers" id="c"}<option value="{$c.id}">{$c.name}</option>{/volist}</select></div>
+    <div>选择订单：<!-- 简化：前端可实现按采购方过滤订单 --> <input name="order_search" placeholder="输入订单号搜索" /></div>
     <div id="items">
       <!-- 货品明细将由前端/后端填充 -->
       {if condition="$ship"}

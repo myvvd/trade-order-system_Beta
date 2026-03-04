@@ -13,85 +13,173 @@
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { height: 100%; background: #f7f8fa; }
-        #app { min-height: 100%; display: flex; flex-direction: column; }
-        .header-wrapper {
-            display: flex; align-items: center; justify-content: space-between;
-            height: 60px; padding: 0 24px; background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 100;
-        }
-        .logo-section { display: flex; align-items: center; gap: 12px; }
-        .logo-icon {
-            width: 36px; height: 36px;
-            background: linear-gradient(135deg, #165DFF 0%, #4E7CFF 100%);
-            border-radius: 8px; display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 14px; font-weight: bold;
-        }
-        .logo-text { font-size: 16px; font-weight: 600; color: #1d2129; }
-        .menu-section { display: flex; gap: 8px; }
-        .menu-item {
-            padding: 8px 20px; border-radius: 6px; cursor: pointer;
-            color: #4e5969; font-size: 14px; transition: all 0.3s;
-        }
-        .menu-item:hover { background: #f2f3f5; }
-        .menu-item.active { background: #e8f3ff; color: #165DFF; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f2f5; }
+        #app { width: 100%; height: 100%; }
+        .supplier-layout { display: flex; width: 100%; height: 100%; }
+        .supplier-sidebar { width: 200px; background: #001529; color: rgba(255,255,255,0.65); display: flex; flex-direction: column; }
+        .sidebar-logo { height: 64px; display: flex; align-items: center; padding: 0 20px; font-size: 16px; font-weight: 600; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-menu { flex: 1; padding-top: 6px; }
+        .menu-item { display: flex; align-items: center; padding: 12px 18px; cursor: pointer; transition: all 0.2s; }
+        .menu-item:hover { color: #fff; background: rgba(255,255,255,0.08); }
+        .menu-item.active { color: #1890ff; background: rgba(24,144,255,0.15); }
+        .menu-icon { width: 20px; text-align: center; margin-right: 10px; }
+        .menu-text { white-space: nowrap; }
+        .supplier-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .supplier-header { height: 56px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: 0 1px 4px rgba(0,21,41,0.08); }
+        .header-title { font-size: 14px; color: rgba(0,0,0,0.65); }
         .user-section { display: flex; align-items: center; gap: 16px; }
         .supplier-name { font-size: 14px; color: #4e5969; }
         .logout-btn {
             display: flex; align-items: center; gap: 4px;
             padding: 6px 16px; border: 1px solid #f2f3f5; border-radius: 6px;
             cursor: pointer; color: #86909c; font-size: 14px; transition: all 0.3s;
+            background: #fff;
         }
         .logout-btn:hover { border-color: #165DFF; color: #165DFF; }
-        .content-wrapper { flex: 1; padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
+        .content-wrapper { flex: 1; overflow-y: auto; padding: 24px; }
+
+        /* 通知铃铛样式 */
+        .notify-bell { position: relative; cursor: pointer; font-size: 20px; line-height: 1; padding: 6px; border-radius: 50%; transition: background 0.2s; }
+        .notify-bell:hover { background: #f2f3f5; }
+        .notify-badge {
+            position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px;
+            background: #f53f3f; color: #fff; font-size: 11px; font-weight: 600;
+            border-radius: 8px; display: none; align-items: center; justify-content: center;
+            padding: 0 4px; line-height: 16px; text-align: center;
+        }
+        .notify-badge.show { display: flex; }
+        @keyframes bellShake { 0%{transform:rotate(0)} 15%{transform:rotate(8deg)} 30%{transform:rotate(-8deg)} 45%{transform:rotate(4deg)} 60%{transform:rotate(-4deg)} 75%{transform:rotate(2deg)} 100%{transform:rotate(0)} }
+        .notify-bell.shake .bell-icon { animation: bellShake 0.6s ease; }
+        /* 消息弹出框 */
+        .notify-popover {
+            position: absolute; top: 44px; right: 0; width: 340px; max-height: 440px;
+            background: #fff; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            z-index: 1000; display: none; overflow: hidden;
+        }
+        .notify-popover.show { display: block; }
+        .notify-popover-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; border-bottom: 1px solid #e5e6eb; font-size: 14px; font-weight: 600;
+        }
+        .notify-popover-header a { font-size: 12px; color: #165DFF; text-decoration: none; cursor: pointer; }
+        .notify-popover-body { max-height: 340px; overflow-y: auto; }
+        .notify-msg-item {
+            display: flex; align-items: flex-start; padding: 12px 16px; cursor: pointer;
+            transition: background 0.2s; border-bottom: 1px solid #f2f3f5;
+        }
+        .notify-msg-item:hover { background: #f7f8fa; }
+        .notify-msg-item.unread { background: #f0f5ff; }
+        .notify-msg-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; margin-right: 10px; }
+        .notify-msg-content { flex: 1; min-width: 0; }
+        .notify-msg-title { font-size: 13px; color: #1d2129; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .notify-msg-item.unread .notify-msg-title { font-weight: 600; }
+        .notify-msg-time { font-size: 12px; color: #c9cdd4; margin-top: 2px; }
+        .notify-popover-footer { padding: 10px 16px; border-top: 1px solid #e5e6eb; text-align: center; }
+        .notify-popover-footer a { color: #165DFF; text-decoration: none; font-size: 13px; }
+
+        /* 右上角通知弹窗（Mac 风格） */
+        .notify-toast {
+            position: fixed; top: 72px; right: 16px; width: 320px;
+            background: #fff; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.16);
+            overflow: hidden; z-index: 2000; transition: transform 0.2s ease, opacity 0.2s ease;
+            opacity: 0; pointer-events: none;
+        }
+        .notify-toast.show { opacity: 1; pointer-events: auto; }
+        .notify-toast.collapsed { transform: translateX(280px); }
+        .notify-toast-handle {
+            position: absolute; right: 0; top: 0; width: 28px; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: #165DFF; color: #fff; font-size: 12px; cursor: pointer;
+        }
+        .notify-toast-content { padding: 12px 16px 14px 16px; cursor: pointer; }
+        .notify-toast-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .notify-toast-close {
+            width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+            font-size: 12px; color: #86909c; border: 1px solid #e5e6eb; cursor: pointer; flex-shrink: 0;
+        }
+        .notify-toast-title { font-size: 13px; font-weight: 600; color: #1d2129; flex: 1; }
+        .notify-toast-msg { font-size: 13px; color: #4e5969; line-height: 1.4; }
+        .notify-toast-time { font-size: 12px; color: #c9cdd4; margin-top: 6px; }
         @media (max-width: 768px) {
-            .header-wrapper { padding: 0 16px; height: 56px; }
-            .logo-text { font-size: 14px; }
-            .menu-item { padding: 6px 12px; font-size: 13px; }
+            .supplier-sidebar { width: 64px; }
+            .menu-text { display: none; }
+            .sidebar-logo { font-size: 12px; justify-content: center; padding: 0; }
+            .supplier-header { padding: 0 12px; }
             .content-wrapper { padding: 16px; }
         }
     </style>
 </head>
 <body>
-<div id="app">
-    <!-- 顶部导航栏 -->
-    <header class="header-wrapper">
-        <div class="logo-section">
-            <div class="logo-icon">OM</div>
-            <div class="logo-text">订单管理系统</div>
-        </div>
-
-        <div class="menu-section">
+<div id="app" class="supplier-layout">
+    <!-- 左侧菜单栏 -->
+    <aside class="supplier-sidebar">
+        <div class="sidebar-logo">订单管理系统</div>
+        <div class="sidebar-menu">
+            <div class="menu-item" :class="{ active: currentPage === 'home' }" @click="navigate('home')">
+                <span class="menu-icon">🏠</span>
+                <span class="menu-text">首页</span>
+            </div>
             <div class="menu-item" :class="{ active: currentPage === 'my_order' }" @click="navigate('my_order')">
-                我的订单
+                <span class="menu-icon">📦</span>
+                <span class="menu-text">订单列表</span>
             </div>
-            <div class="menu-item" :class="{ active: currentPage === 'history' }" @click="navigate('history')">
-                历史订单
-            </div>
-            <div class="menu-item" :class="{ active: currentPage === 'settings' }" @click="navigate('settings')">
-                个人设置
+            <div class="menu-item" :class="{ active: currentPage === 'message' }" @click="navigate('message')">
+                <span class="menu-icon">💬</span>
+                <span class="menu-text">消息列表</span>
             </div>
         </div>
+    </aside>
 
-        <div class="user-section">
-            <div class="supplier-name">
-                🏭 {$supplier_name|default='供应商'}
+    <!-- 右侧主内容 -->
+    <section class="supplier-main">
+        <header class="supplier-header">
+            <div class="header-title">{$title|default='供应商中心'}</div>
+            <div class="user-section">
+                <!-- 通知铃铛 -->
+                <div class="notify-bell" id="notifyBell" onclick="window.__notify.togglePopover()">
+                    <span class="bell-icon">🔔</span>
+                    <span class="notify-badge" id="notifyBadge">0</span>
+                    <!-- 消息弹出框 -->
+                    <div class="notify-popover" id="notifyPopover">
+                        <div class="notify-popover-header">
+                            <span>通知消息</span>
+                            <a onclick="window.__notify.markAllRead(event)">全部已读</a>
+                        </div>
+                        <div class="notify-popover-body" id="notifyList">
+                            <div style="text-align:center;padding:30px;color:#86909c;">暂无消息</div>
+                        </div>
+                        <div class="notify-popover-footer">
+                            <a href="/supplier/message/index">查看全部消息</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="supplier-name">🏭 {$supplier_name|default='供应商'}</div>
+                <div class="logout-btn" @click="logout()">退出登录</div>
             </div>
-            <div class="logout-btn" @click="logout()">
-                退出登录
-            </div>
-        </div>
-    </header>
+        </header>
 
-    <!-- 主内容区域 -->
-    <main class="content-wrapper">
-        {block name="content"}
-        <div style="background: #fff; padding: 40px; border-radius: 8px; text-align: center; color: #86909c;">
-            <h2>内容区域</h2>
-            <p style="margin-top: 16px;">请选择左侧菜单进行操作</p>
+        <main class="content-wrapper">
+            {block name="content"}
+            <div style="background: #fff; padding: 40px; border-radius: 8px; text-align: center; color: #86909c;">
+                <h2>内容区域</h2>
+                <p style="margin-top: 16px;">请选择左侧菜单进行操作</p>
+            </div>
+            {/block}
+        </main>
+    </section>
+</div>
+
+<!-- 右上角通知弹窗 -->
+<div id="notifyToast" class="notify-toast">
+    <div class="notify-toast-handle" onclick="window.__notifyToast && window.__notifyToast.show()">新</div>
+    <div class="notify-toast-content" onclick="window.__notifyToast && window.__notifyToast.open()">
+        <div class="notify-toast-header">
+            <span class="notify-toast-close" onclick="event.stopPropagation(); window.__notifyToast && window.__notifyToast.hide()">✕</span>
+            <span class="notify-toast-title" id="notifyToastTitle">新订单提醒</span>
         </div>
-        {/block}
-    </main>
+        <div class="notify-toast-msg" id="notifyToastMsg">您有新的派单消息</div>
+        <div class="notify-toast-time" id="notifyToastTime">刚刚</div>
+    </div>
 </div>
 
 <!-- Vue 3 -->
@@ -109,9 +197,9 @@ createApp({
         const navigate = (page) => {
             currentPage.value = page;
             const routes = {
+                home: '/supplier/index',
                 my_order: '/supplier/order/my',
-                history: '/supplier/order/history',
-                settings: '/supplier/settings'
+                message: '/supplier/message/index'
             };
             if (routes[page]) {
                 window.location.href = routes[page];
@@ -120,7 +208,7 @@ createApp({
 
         const logout = () => {
             if (confirm('确定要退出登录吗？')) {
-                window.location.href = '/supplier/logout';
+                window.location.href = '/admin/login/logout';
             }
         };
 
@@ -131,6 +219,193 @@ createApp({
         };
     }
 }).mount('#app');
+</script>
+
+<!-- 通知铃铛逻辑(纯JS,不依赖Vue) -->
+<script>
+(function() {
+    const categoryConfig = {
+        order_create:   { color: '#165dff', bg: '#e8f3ff', icon: '📝' },
+        order_edit:     { color: '#ff7d00', bg: '#fff7e8', icon: '✏️' },
+        order_dispatch: { color: '#722ed1', bg: '#f5e8ff', icon: '📋' },
+        order_confirm:  { color: '#165dff', bg: '#e8f3ff', icon: '✅' },
+        order_reject:   { color: '#f53f3f', bg: '#ffece8', icon: '❌' },
+        order_progress: { color: '#0fc6c2', bg: '#e8fffb', icon: '🔄' },
+        order_ship:     { color: '#00b42a', bg: '#e8ffea', icon: '🚚' },
+        order_receive:  { color: '#0fc6c2', bg: '#e8fffb', icon: '📦' },
+        order_cancel:   { color: '#86909c', bg: '#f2f3f5', icon: '🚫' },
+        shipping:       { color: '#00b42a', bg: '#e8ffea', icon: '🚢' },
+        system:         { color: '#86909c', bg: '#f2f3f5', icon: '⚙️' },
+        security:       { color: '#f53f3f', bg: '#ffece8', icon: '🔒' }
+    };
+
+    function getTimeAgo(ts) {
+        if (!ts) return '';
+        const diff = Math.floor(Date.now() / 1000) - ts;
+        if (diff < 60) return '刚刚';
+        if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+        if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+        if (diff < 604800) return Math.floor(diff / 86400) + '天前';
+        const d = new Date(ts * 1000);
+        const pad = n => String(n).padStart(2, '0');
+        return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+    }
+
+    const badge = document.getElementById('notifyBadge');
+    const popover = document.getElementById('notifyPopover');
+    const listEl = document.getElementById('notifyList');
+    const bell = document.getElementById('notifyBell');
+    const toast = document.getElementById('notifyToast');
+    const toastTitle = document.getElementById('notifyToastTitle');
+    const toastMsg = document.getElementById('notifyToastMsg');
+    const toastTime = document.getElementById('notifyToastTime');
+    let popoverVisible = false;
+    let prevCount = 0;
+    let currentToastMsg = null;
+    let toastVisible = false;
+    const toastKey = 'supplier_last_toast_id';
+    let lastToastId = Number(localStorage.getItem(toastKey) || 0);
+
+    function fetchUnreadCount() {
+        fetch('/supplier/message/unreadCount')
+            .then(r => r.json())
+            .then(json => {
+                if (json.code === 200 || json.success) {
+                    const count = (json.data && json.data.count) || 0;
+                    badge.textContent = count > 99 ? '99+' : count;
+                    if (count > 0) {
+                        badge.classList.add('show');
+                        if (count > prevCount && prevCount >= 0) {
+                            bell.classList.remove('shake');
+                            void bell.offsetWidth;
+                            bell.classList.add('shake');
+                        }
+                    } else {
+                        badge.classList.remove('show');
+                    }
+                    prevCount = count;
+                }
+            })
+            .catch(() => {});
+    }
+
+    function fetchLatest() {
+        fetch('/supplier/message/latest')
+            .then(r => r.json())
+            .then(json => {
+                if ((json.code === 200 || json.success) && json.data && json.data.list) {
+                    renderList(json.data.list);
+                    maybeShowToast(json.data.list);
+                }
+            })
+            .catch(() => {});
+    }
+
+    function maybeShowToast(list) {
+        if (!Array.isArray(list) || list.length === 0) return;
+        const target = list.find(m => (m.id > lastToastId) && (m.category === 'order_dispatch' || m.category === 'order_edit'));
+        if (!target) return;
+        currentToastMsg = target;
+        toastTitle.textContent = target.category === 'order_dispatch' ? '新订单提醒' : '订单变更提醒';
+        toastMsg.textContent = target.title || '您有新的消息';
+        toastTime.textContent = getTimeAgo(target.create_time);
+        showToast();
+        lastToastId = target.id;
+        localStorage.setItem(toastKey, String(lastToastId));
+    }
+
+    function showToast() {
+        toast.classList.add('show');
+        toast.classList.remove('collapsed');
+        toastVisible = true;
+    }
+
+    function hideToast() {
+        toast.classList.add('collapsed');
+        toastVisible = true;
+    }
+
+    function openToastMsg() {
+        if (!currentToastMsg) return;
+        const msg = currentToastMsg;
+        // 新派单：点击弹窗后确认接单（进入制作中）
+        const doNavigate = () => { window.location.href = '/supplier/message/detail/' + msg.id; };
+        if (msg.dispatch_id && msg.category === 'order_dispatch') {
+            fetch('/supplier/order/confirm/' + msg.dispatch_id, { method: 'POST' })
+                .finally(() => doNavigate());
+        } else {
+            doNavigate();
+        }
+    }
+
+    function renderList(list) {
+        if (!list || list.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center;padding:30px;color:#86909c;">暂无消息</div>';
+            return;
+        }
+        let html = '';
+        list.forEach(msg => {
+            const cfg = categoryConfig[msg.category] || categoryConfig.system;
+            const cls = msg.is_read ? '' : ' unread';
+            html += '<div class="notify-msg-item' + cls + '" onclick="window.__notify.viewMsg(' + msg.id + ')">'
+                + '<div class="notify-msg-icon" style="background:' + cfg.bg + ';color:' + cfg.color + ';">' + cfg.icon + '</div>'
+                + '<div class="notify-msg-content">'
+                + '<div class="notify-msg-title">' + escHtml(msg.title) + '</div>'
+                + '<div class="notify-msg-time">' + getTimeAgo(msg.create_time) + '</div>'
+                + '</div></div>';
+        });
+        listEl.innerHTML = html;
+    }
+
+    function escHtml(s) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(s || ''));
+        return div.innerHTML;
+    }
+
+    window.__notify = {
+        togglePopover: function() {
+            popoverVisible = !popoverVisible;
+            if (popoverVisible) {
+                popover.classList.add('show');
+                fetchLatest();
+            } else {
+                popover.classList.remove('show');
+            }
+        },
+        viewMsg: function(id) {
+            fetch('/supplier/message/markRead', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: 'id=' + id })
+                .finally(() => { window.location.href = '/supplier/message/detail/' + id; });
+        },
+        markAllRead: function(e) {
+            e.stopPropagation();
+            fetch('/supplier/message/markAllRead', { method: 'POST' })
+                .then(r => r.json())
+                .then(() => { fetchUnreadCount(); fetchLatest(); })
+                .catch(() => {});
+        }
+    };
+
+    window.__notifyToast = {
+        show: function() { showToast(); },
+        hide: function() { hideToast(); },
+        open: function() { openToastMsg(); }
+    };
+
+    // 点击其他区域关闭弹出框
+    document.addEventListener('click', function(e) {
+        if (popoverVisible && !bell.contains(e.target)) {
+            popoverVisible = false;
+            popover.classList.remove('show');
+        }
+    });
+
+    // 初始化 + 轮询
+    fetchUnreadCount();
+    fetchLatest();
+    setInterval(fetchUnreadCount, 30000);
+    setInterval(fetchLatest, 30000);
+})();
 </script>
 
 <!-- 页面脚本区域 -->

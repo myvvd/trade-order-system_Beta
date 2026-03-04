@@ -46,7 +46,7 @@
 <script>
 const { createApp } = Vue;
 createApp({
-  data(){ return { summary:{total_count:0,total_amount:0,avg_amount:0,complete_rate:'0%'}, trend:[], rows:[], range:[null,null], columns:[{title:'订单ID',dataIndex:'id'},{title:'订单号',dataIndex:'order_no'},{title:'客户',dataIndex:'customer_id'},{title:'金额',dataIndex:'total_amount'},{title:'状态',dataIndex:'status'},{title:'创建时间',dataIndex:'created_at'}] } },
+  data(){ return { summary:{total_count:0,total_amount:0,avg_amount:0,complete_rate:'0%'}, trend:[], rows:[], range:[null,null], columns:[{title:'订单ID',dataIndex:'id'},{title:'订单号',dataIndex:'order_no'},{title:'采购方',dataIndex:'customer_id'},{title:'金额',dataIndex:'total_amount'},{title:'状态',dataIndex:'status'},{title:'创建时间',dataIndex:'created_at'}] } },
   mounted(){ this.load(); },
   methods:{
     load(){ const s = this.range[0] ? this.range[0] : ''; const e = this.range[1] ? this.range[1] : ''; fetch('/admin/report/data_summary?start='+s+'&end='+e).then(r=>r.json()).then(j=>{ if(j.code==200){ this.summary.total_count=j.data.total_count; this.summary.total_amount=j.data.total_amount; this.summary.avg_amount=j.data.avg_amount; this.summary.complete_rate=j.data.complete_rate; this.trend=j.data.trend; this.rows=j.data.rows; this.renderTrend(); } }); },

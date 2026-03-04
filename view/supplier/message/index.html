@@ -1,0 +1,143 @@
+{extend name="layout/supplier_base"}
+
+{block name="content"}
+<div id="app">
+    <a-card>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3>站内信</h3>
+            <a-space>
+                <a-select v-model="filterCategory" placeholder="全部分类" allow-clear style="width:140px;" @change="onFilterChange">
+                    <a-option value="">全部分类</a-option>
+                    <a-option v-for="(cfg, key) in categoryConfig" :key="key" :value="key">{{ cfg.label }}</a-option>
+                </a-select>
+                <a-select v-model="filterRead" placeholder="全部状态" allow-clear style="width:120px;" @change="onFilterChange">
+                    <a-option value="">全部</a-option>
+                    <a-option value="0">未读</a-option>
+                    <a-option value="1">已读</a-option>
+                </a-select>
+                <a-button type="primary" @click="markAllRead">全部已读</a-button>
+            </a-space>
+        </div>
+
+        <div v-for="item in messages" :key="item.id"
+            :style="{
+                padding: '16px',
+                marginBottom: '8px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                background: item.is_read ? '#fafafa' : '#f0f5ff',
+                borderLeft: '4px solid ' + getCategoryColor(item.category),
+                boxShadow: item.is_read ? 'none' : '0 1px 4px rgba(22,93,255,0.1)'
+            }"
+            @click="viewDetail(item)">
+            <div style="display: flex; align-items: center;">
+                <!-- 分类图标 -->
+                <span :style="{display:'inline-flex',alignItems:'center',justifyContent:'center',width:'36px',height:'36px',borderRadius:'8px',marginRight:'14px',flexShrink:0,fontSize:'18px',background:getCategoryBg(item.category),color:getCategoryColor(item.category)}" v-html="getCategoryIcon(item.category)"></span>
+
+                <!-- 内容区 -->
+                <div style="flex: 1; overflow: hidden;">
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span v-if="!item.is_read" style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;flex-shrink:0;" :style="{background: getCategoryColor(item.category)}"></span>
+                        <a-tag size="small" :color="getCategoryColor(item.category)" style="margin-right: 8px;">{{ item.category_label }}</a-tag>
+                        <span :style="{fontWeight: item.is_read ? '400' : '600', fontSize: '15px', color: item.is_read ? '#86909c' : '#1d2129', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1}">{{ item.title }}</span>
+                    </div>
+                    <div :style="{fontSize:'13px', color: item.is_read ? '#c9cdd4' : '#4e5969', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingLeft: item.is_read ? '0' : '15px'}">{{ item.content }}</div>
+                </div>
+
+                <!-- 时间 + 状态 -->
+                <div style="text-align: right; margin-left: 16px; flex-shrink: 0;">
+                    <div style="font-size: 12px; color: #86909c; margin-bottom: 4px;">{{ formatTime(item.create_time) }}</div>
+                    <a-tag v-if="!item.is_read" color="red" size="small">未读</a-tag>
+                    <a-tag v-else color="gray" size="small">已读</a-tag>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="messages.length === 0" style="text-align: center; padding: 40px; color: #86909c;">
+            暂无消息
+        </div>
+
+        <!-- 分页 -->
+        <div v-if="total > pageSize" style="display: flex; justify-content: flex-end; margin-top: 16px;">
+            <a-pagination :total="total" :page-size="pageSize" :current="currentPage" @change="onPageChange" show-total />
+        </div>
+    </a-card>
+</div>
+
+<script>
+const { createApp, ref } = Vue;
+createApp({
+    setup() {
+        const filterCategory = ref('<?php echo htmlspecialchars($category ?? '', ENT_QUOTES); ?>');
+        const filterRead = ref('<?php echo htmlspecialchars($is_read ?? '', ENT_QUOTES); ?>');
+
+        const categoryConfig = {
+            order_create:   { label: '订单创建', color: '#165dff', bg: '#e8f3ff', icon: '📝' },
+            order_edit:     { label: '订单修改', color: '#ff7d00', bg: '#fff7e8', icon: '✏️' },
+            order_dispatch: { label: '订单派单', color: '#722ed1', bg: '#f5e8ff', icon: '📋' },
+            order_confirm:  { label: '订单确认', color: '#165dff', bg: '#e8f3ff', icon: '✅' },
+            order_reject:   { label: '订单拒绝', color: '#f53f3f', bg: '#ffece8', icon: '❌' },
+            order_progress: { label: '制作进度', color: '#0fc6c2', bg: '#e8fffb', icon: '🔄' },
+            order_ship:     { label: '订单发货', color: '#00b42a', bg: '#e8ffea', icon: '🚚' },
+            order_receive:  { label: '订单入库', color: '#0fc6c2', bg: '#e8fffb', icon: '📦' },
+            order_cancel:   { label: '订单取消', color: '#86909c', bg: '#f2f3f5', icon: '🚫' },
+            shipping:       { label: '出货通知', color: '#00b42a', bg: '#e8ffea', icon: '🚢' },
+            system:         { label: '系统通知', color: '#86909c', bg: '#f2f3f5', icon: '⚙️' },
+            security:       { label: '安全提醒', color: '#f53f3f', bg: '#ffece8', icon: '🔒' }
+        };
+
+        function getCategoryColor(cat) { return (categoryConfig[cat] || categoryConfig.system).color; }
+        function getCategoryBg(cat)    { return (categoryConfig[cat] || categoryConfig.system).bg; }
+        function getCategoryIcon(cat)  { return (categoryConfig[cat] || categoryConfig.system).icon; }
+
+        const messages = ref(<?php echo json_encode($messages ?? [], JSON_UNESCAPED_UNICODE); ?>);
+        const total = ref(<?php echo (int)($total ?? 0); ?>);
+        const currentPage = ref(<?php echo (int)($page ?? 1); ?>);
+        const pageSize = ref(<?php echo (int)($page_size ?? 15); ?>);
+
+        function formatTime(ts) {
+            if (!ts) return '';
+            const d = new Date(ts * 1000);
+            const pad = n => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+
+        function buildUrl(page) {
+            const params = new URLSearchParams();
+            if (filterCategory.value) params.set('category', filterCategory.value);
+            if (filterRead.value !== '') params.set('is_read', filterRead.value);
+            params.set('page', page);
+            return '/supplier/message/index?' + params.toString();
+        }
+
+        function onFilterChange() { window.location.href = buildUrl(1); }
+        function onPageChange(page) { window.location.href = buildUrl(page); }
+
+        async function markAllRead() {
+            try {
+                const resp = await fetch('/supplier/message/markAllRead', { method: 'POST' });
+                const json = await resp.json();
+                if (json.code === 200 || json.success) {
+                    window.Arco && Arco.Message ? Arco.Message.success('已全部标记为已读') : alert('已全部标记为已读');
+                    setTimeout(() => window.location.reload(), 500);
+                }
+            } catch(e) {
+                window.Arco && Arco.Message ? Arco.Message.error('操作失败') : alert('操作失败');
+            }
+        }
+
+        function viewDetail(item) {
+            window.location.href = '/supplier/message/detail/' + item.id;
+        }
+
+        return {
+            filterCategory, filterRead, categoryConfig,
+            messages, total, currentPage, pageSize,
+            markAllRead, viewDetail, onFilterChange, onPageChange,
+            formatTime, getCategoryColor, getCategoryBg, getCategoryIcon
+        };
+    }
+}).use(window.Arco).mount('#app');
+</script>
+{/block}

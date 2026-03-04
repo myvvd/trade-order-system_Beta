@@ -1,0 +1,106 @@
+{extend name="layout/supplier_base"}
+
+{block name="content"}
+<div id="app">
+    <a-card>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3>消息详情</h3>
+            <a-button @click="goBack">← 返回列表</a-button>
+        </div>
+
+        <template v-if="message">
+            <!-- 标题区 -->
+            <div style="display: flex; align-items: flex-start; padding-bottom: 20px; border-bottom: 1px solid #e5e6eb;">
+                <div :style="{width:'48px',height:'48px',borderRadius:'12px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px',flexShrink:0,marginRight:'16px',background:getCategoryBg(message.category),color:getCategoryColor(message.category)}">
+                    <span v-html="getCategoryIcon(message.category)"></span>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size:18px;font-weight:600;color:#1d2129;margin-bottom:8px;">{{ message.title }}</div>
+                    <a-space>
+                        <a-tag :color="getCategoryColor(message.category)" size="small">{{ message.category_label }}</a-tag>
+                        <span style="font-size:13px;color:#86909c;">🕐 {{ formatTime(message.create_time) }}</span>
+                        <a-tag v-if="message.order_id" color="blue" size="small" @click="goToOrder(message.order_id)" style="cursor: pointer;">
+                            查看订单
+                        </a-tag>
+                    </a-space>
+                </div>
+            </div>
+
+            <!-- 正文区 -->
+            <div style="padding: 24px 0;">
+                <div style="white-space: pre-wrap; line-height: 1.8; font-size: 14px; color: #1d2129;">{{ message.content }}</div>
+            </div>
+
+            <!-- 底部导航：上一条/下一条 -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid #e5e6eb;">
+                <div>
+                    <a-button v-if="prevMsg" @click="goTo(prevMsg.id)">
+                        ← 上一条：{{ prevMsg.title }}
+                        <span :style="{color: prevMsg.is_read ? '#86909c' : '#165dff', marginLeft: '4px', fontWeight: prevMsg.is_read ? '400' : '600'}">{{ prevMsg.is_read ? '（已读）' : '（未读）' }}</span>
+                    </a-button>
+                </div>
+                <div>
+                    <a-button v-if="nextMsg" @click="goTo(nextMsg.id)">
+                        下一条：{{ nextMsg.title }}
+                        <span :style="{color: nextMsg.is_read ? '#86909c' : '#165dff', marginLeft: '4px', fontWeight: nextMsg.is_read ? '400' : '600'}">{{ nextMsg.is_read ? '（已读）' : '（未读）' }}</span>
+                        →
+                    </a-button>
+                </div>
+            </div>
+        </template>
+
+        <div v-else style="text-align: center; padding: 60px; color: #86909c;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
+            <div style="margin-bottom: 16px;">消息不存在或已被删除</div>
+            <a-button type="primary" @click="goBack">返回列表</a-button>
+        </div>
+    </a-card>
+</div>
+
+<script>
+const { createApp, ref } = Vue;
+createApp({
+    setup() {
+        const categoryConfig = {
+            order_create:   { label: '订单创建', color: '#165dff', bg: '#e8f3ff', icon: '📝' },
+            order_edit:     { label: '订单修改', color: '#ff7d00', bg: '#fff7e8', icon: '✏️' },
+            order_dispatch: { label: '订单派单', color: '#722ed1', bg: '#f5e8ff', icon: '📋' },
+            order_confirm:  { label: '订单确认', color: '#165dff', bg: '#e8f3ff', icon: '✅' },
+            order_reject:   { label: '订单拒绝', color: '#f53f3f', bg: '#ffece8', icon: '❌' },
+            order_progress: { label: '制作进度', color: '#0fc6c2', bg: '#e8fffb', icon: '🔄' },
+            order_ship:     { label: '订单发货', color: '#00b42a', bg: '#e8ffea', icon: '🚚' },
+            order_receive:  { label: '订单入库', color: '#0fc6c2', bg: '#e8fffb', icon: '📦' },
+            order_cancel:   { label: '订单取消', color: '#86909c', bg: '#f2f3f5', icon: '🚫' },
+            shipping:       { label: '出货通知', color: '#00b42a', bg: '#e8ffea', icon: '🚢' },
+            system:         { label: '系统通知', color: '#86909c', bg: '#f2f3f5', icon: '⚙️' },
+            security:       { label: '安全提醒', color: '#f53f3f', bg: '#ffece8', icon: '🔒' }
+        };
+
+        function getCategoryColor(cat) { return (categoryConfig[cat] || categoryConfig.system).color; }
+        function getCategoryBg(cat)    { return (categoryConfig[cat] || categoryConfig.system).bg; }
+        function getCategoryIcon(cat)  { return (categoryConfig[cat] || categoryConfig.system).icon; }
+
+        const message = ref(<?php echo json_encode($message ?? null, JSON_UNESCAPED_UNICODE); ?>);
+        const prevMsg = ref(<?php echo json_encode($prev_msg ?? null, JSON_UNESCAPED_UNICODE); ?>);
+        const nextMsg = ref(<?php echo json_encode($next_msg ?? null, JSON_UNESCAPED_UNICODE); ?>);
+
+        function formatTime(ts) {
+            if (!ts) return '';
+            const d = new Date(ts * 1000);
+            const pad = n => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        }
+
+        function goBack() { window.location.href = '/supplier/message/index'; }
+        function goTo(id) { window.location.href = '/supplier/message/detail/' + id; }
+        function goToOrder(orderId) { window.location.href = '/supplier/order/detail/' + orderId; }
+
+        return {
+            message, prevMsg, nextMsg,
+            goBack, goTo, goToOrder, formatTime,
+            getCategoryColor, getCategoryBg, getCategoryIcon
+        };
+    }
+}).use(window.Arco).mount('#app');
+</script>
+{/block}

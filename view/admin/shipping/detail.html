@@ -3,7 +3,7 @@
 {block name="content"}
 <div>
   <h2>出货单详情 - {$ship.shipping_no}</h2>
-  <div>客户：{$ship.customer.name|default='-'}</div>
+  <div>采购方：{$ship.customer.name|default='-'}</div>
   <div>物流公司：{$ship.logistics_company}</div>
   <div>物流单号：{$ship.logistics_no}</div>
   <div>发货日期：{$ship.shipped_at|default='-'}</div>

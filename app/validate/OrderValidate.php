@@ -9,15 +9,15 @@ class OrderValidate extends Validate
     protected $rule = [
         'customer_id' => 'require|integer',
         'items' => 'require|array',
-        'items.*.goods_id' => 'require|integer',
+        'items.*.goods_name' => 'require',
         'items.*.quantity' => 'require|integer|gt:0',
         'items.*.price' => 'require|float',
     ];
 
     protected $message = [
-        'customer_id.require' => '请选择客户',
+        'customer_id.require' => '请选择采购方',
         'items.require' => '请添加货品明细',
-        'items.*.goods_id.require' => '请选择货品',
+        'items.*.goods_name.require' => '请输入货品名称',
         'items.*.quantity.require' => '请输入数量',
         'items.*.quantity.gt' => '数量必须大于0',
         'items.*.price.require' => '请输入单价',
@@ -25,11 +25,11 @@ class OrderValidate extends Validate
 
     public function sceneCreate()
     {
-        return $this->only(['customer_id', 'items', 'items.*.goods_id', 'items.*.quantity', 'items.*.price']);
+        return $this->only(['customer_id', 'items', 'items.*.goods_name', 'items.*.quantity', 'items.*.price']);
     }
 
     public function sceneUpdate()
     {
-        return $this->only(['customer_id', 'items', 'items.*.goods_id', 'items.*.quantity', 'items.*.price']);
+        return $this->only(['customer_id', 'items', 'items.*.goods_name', 'items.*.quantity', 'items.*.price']);
     }
 }

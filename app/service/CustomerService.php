@@ -6,7 +6,7 @@ use app\model\Customer as CustomerModel;
 use think\facade\Db;
 
 /**
- * 客户服务层（导出逻辑）
+ * 采购方服务层（导出逻辑）
  */
 class CustomerService
 {
@@ -40,7 +40,7 @@ class CustomerService
         $rows = $query->order('id', 'desc')->select()->toArray();
 
         $headers = [
-            'ID', '公司名称', '国家', '联系人', '电话', '邮箱', '地址', '客户等级', '状态', '创建时间'
+            'ID', '公司名称', '国家', '联系人', '电话', '邮箱', '地址', '采购方等级', '状态', '创建时间'
         ];
 
         $lines = [];
@@ -107,7 +107,7 @@ class CustomerService
         $sheet = $spreadsheet->getActiveSheet();
 
         $headers = [
-            'ID', '公司名称', '国家', '联系人', '电话', '邮箱', '地址', '客户等级', '状态', '创建时间'
+            'ID', '公司名称', '国家', '联系人', '电话', '邮箱', '地址', '采购方等级', '状态', '创建时间'
         ];
 
         // 写标题

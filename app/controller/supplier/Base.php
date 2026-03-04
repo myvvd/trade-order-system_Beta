@@ -3,6 +3,7 @@
 namespace app\controller\supplier;
 
 use app\controller\Base as ControllerBase;
+use think\facade\View;
 
 /**
  * 供应商端基础控制器

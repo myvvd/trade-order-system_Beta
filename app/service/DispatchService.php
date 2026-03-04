@@ -8,6 +8,7 @@ use app\model\OrderDispatch;
 use app\model\OrderDispatchItem;
 use app\model\OrderItem;
 use app\service\StockService;
+use app\service\MessageService;
 
 class DispatchService
 {
@@ -59,6 +60,7 @@ class DispatchService
 
             $dispatch = new OrderDispatch();
             $dispatch->save([
+                'dispatch_no' => OrderDispatch::generateDispatchNo(),
                 'order_id' => $orderId,
                 'supplier_id' => $supplierId,
                 'status' => OrderDispatch::STATUS_WAIT_CONFIRM,
@@ -78,6 +80,11 @@ class DispatchService
             $order->save();
 
             $this->orderService->logStatus($orderId, $order->status, '创建派单', $adminId, $dispatch->id);
+
+            // 发送站内信通知
+            try {
+                (new MessageService())->notifyDispatchCreated($dispatch, $adminId);
+            } catch (\Throwable $e) {}
 
             return $dispatch->refresh();
         });
@@ -103,6 +110,11 @@ class DispatchService
 
             $this->orderService->logStatus($order->id, $order->status, '派单确认，制作中', $adminId, $dispatch->id);
 
+            // 发送站内信通知
+            try {
+                (new MessageService())->notifyDispatchConfirmed($dispatch, $adminId);
+            } catch (\Throwable $e) {}
+
             return $dispatch->refresh();
         });
     }
@@ -127,6 +139,11 @@ class DispatchService
 
             $this->orderService->logStatus($order->id, $order->status, '派单被拒绝', $adminId, $dispatch->id);
 
+            // 发送站内信通知
+            try {
+                (new MessageService())->notifyDispatchRejected($dispatch, $adminId);
+            } catch (\Throwable $e) {}
+
             return $dispatch->refresh();
         });
     }
@@ -150,6 +167,11 @@ class DispatchService
             $order->save();
 
             $this->orderService->logStatus($order->id, $order->status, '派单已发货', $adminId, $dispatch->id);
+
+            // 发送站内信通知
+            try {
+                (new MessageService())->notifyDispatchShipped($dispatch, $adminId);
+            } catch (\Throwable $e) {}
 
             return $dispatch->refresh();
         });
@@ -204,6 +226,11 @@ class DispatchService
             if ($qc_result) $dispatch->qc_result = $qc_result;
             if ($remark) $dispatch->remark = trim(($dispatch->remark ?? '') . "\n" . $remark);
             $dispatch->save();
+
+            // 发送站内信通知
+            try {
+                (new MessageService())->notifyDispatchReceived($dispatch, $adminId);
+            } catch (\Throwable $e) {}
 
             // 记录状态变更日志
             $this->orderService->logStatus($dispatch->order_id, Order::STATUS_RECEIVED, '派单已入库', $adminId, $dispatch->id);

@@ -1,0 +1,129 @@
+{extend name="layout/admin_base"/}
+
+{block name="content"}
+<h1 class="page-title">业务员管理</h1>
+
+<!-- 搜索区域 -->
+<div class="card" style="margin-bottom: 16px; padding: 16px;">
+    <form id="searchForm" method="get" action="/admin/salesman/list" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #86909c;">关键词</label>
+            <input type="text" name="keyword" value="{$keyword|default=''}" placeholder="姓名/联系方式"
+                style="width: 180px; height: 32px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px;">
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #86909c;">贸易公司</label>
+            <select name="trading_company_id" style="width: 180px; height: 32px; padding: 0 8px; border: 1px solid #e5e6eb; border-radius: 4px; background: #fff;">
+                <option value="">全部</option>
+                {volist name="tradingCompanies" id="tc"}
+                <option value="{$tc.id}" {if condition="$trading_company_id eq $tc['id']"}selected{/if}>{$tc.name}</option>
+                {/volist}
+            </select>
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #86909c;">状态</label>
+            <select name="status" style="width: 100px; height: 32px; padding: 0 8px; border: 1px solid #e5e6eb; border-radius: 4px; background: #fff;">
+                <option value="">全部</option>
+                <option value="1" {if condition="$status eq '1'"}selected{/if}>正常</option>
+                <option value="0" {if condition="$status eq '0'"}selected{/if}>禁用</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="height: 32px; padding: 0 16px;">搜索</button>
+            <button type="button" class="btn btn-default" onclick="location.href='/admin/salesman/list'" style="height: 32px; padding: 0 16px;">重置</button>
+        </div>
+        <div style="margin-left: auto;">
+            <a href="/admin/salesman/create" class="btn btn-primary" style="height: 32px; padding: 0 16px; display: flex; align-items: center;">+ 新增业务员</a>
+        </div>
+    </form>
+</div>
+
+<!-- 表格区域 -->
+<div class="card">
+    <table class="data-table" style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f7f8fa;">
+                <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 60px;">序号</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 100px;">姓名</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 130px;">联系方式</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600;">所属贸易公司</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600;">备注</th>
+                <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 70px;">订单数</th>
+                <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 70px;">状态</th>
+                <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 140px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {notempty name="list"}
+            {volist name="list" id="item"}
+            <tr style="border-bottom: 1px solid #e5e6eb;">
+                <td style="padding: 12px; text-align: center; color: #86909c;">{$i+1}</td>
+                <td style="padding: 12px; font-weight: 500;">{$item.name}</td>
+                <td style="padding: 12px;">{$item.phone|default='-'}</td>
+                <td style="padding: 12px;">{$item.trading_company_name|default='-'}</td>
+                <td style="padding: 12px; color: #86909c; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{$item.remark|default=''}">{$item.remark|default='-'}</td>
+                <td style="padding: 12px; text-align: center;">{$item.order_count|default=0}</td>
+                <td style="padding: 12px; text-align: center;">
+                    {if condition="$item['status'] eq 1"}
+                    <span style="display: inline-block; padding: 2px 8px; background: #e8ffea; color: #00b42a; border-radius: 4px; font-size: 12px;">正常</span>
+                    {else/}
+                    <span style="display: inline-block; padding: 2px 8px; background: #ffece8; color: #f53f3f; border-radius: 4px; font-size: 12px;">禁用</span>
+                    {/if}
+                </td>
+                <td style="padding: 12px; text-align: center; white-space: nowrap;">
+                    <a href="/admin/salesman/edit?id={$item.id}" style="display: inline-block; padding: 4px 8px; background: #e8f4ff; color: #165dff; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 4px;">编辑</a>
+                    <a href="javascript:;" onclick="toggleStatus({$item.id}, this)" style="display: inline-block; padding: 4px 8px; background: #f2f3f5; color: #4e5969; border-radius: 4px; text-decoration: none; font-size: 12px; margin-right: 4px;">{if condition="$item['status'] eq 1"}禁用{else/}启用{/if}</a>
+                    <a href="javascript:;" onclick="deleteItem({$item.id}, '{$item.name}')" style="display: inline-block; padding: 4px 8px; background: #ffece8; color: #f53f3f; border-radius: 4px; text-decoration: none; font-size: 12px;">删除</a>
+                </td>
+            </tr>
+            {/volist}
+            {else/}
+            <tr>
+                <td colspan="8" style="padding: 40px; text-align: center; color: #86909c;">暂无数据</td>
+            </tr>
+            {/notempty}
+        </tbody>
+    </table>
+
+    <!-- 分页 -->
+    {notempty name="list"}
+    <div style="padding: 16px; text-align: right;">
+        {$list->render()|raw}
+    </div>
+    {/notempty}
+</div>
+{/block}
+
+{block name="script"}
+<script>
+function toggleStatus(id, el) {
+    if (!confirm('确认切换状态？')) return;
+    fetch('/admin/salesman/toggle', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id})
+    }).then(r => r.json()).then(res => {
+        if (res.code === 200 || res.success) {
+            location.reload();
+        } else {
+            alert(res.msg || '操作失败');
+        }
+    });
+}
+
+function deleteItem(id, name) {
+    if (!confirm('确认删除业务员"' + name + '"？')) return;
+    fetch('/admin/salesman/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id})
+    }).then(r => r.json()).then(res => {
+        if (res.code === 200 || res.success) {
+            location.reload();
+        } else {
+            alert(res.msg || '删除失败');
+        }
+    });
+}
+</script>
+{/block}

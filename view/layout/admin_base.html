@@ -13,6 +13,10 @@
 
     <script>
         (function() {
+            // 检测是否在 iframe 中加载，若是则添加 in-iframe 类（用于隐藏侧边栏/顶栏）
+            if (window.self !== window.top) {
+                document.documentElement.classList.add('in-iframe');
+            }
             try {
                 const collapsed = localStorage.getItem('admin_sidebar_collapsed') === '1';
                 const openGroups = JSON.parse(localStorage.getItem('admin_sidebar_open_groups') || '[]');
@@ -114,6 +118,31 @@
         .pagination a:hover { background: #f2f3f5; border-color: #165dff; color: #165dff; }
         .pagination .active span { background: #165dff; color: #fff; border-color: #165dff; }
         .pagination .disabled span { color: #c9cdd4; cursor: not-allowed; }
+
+        /* 铃铛抖动动画 */
+        @keyframes bell-shake {
+            0% { transform: rotate(0); }
+            10% { transform: rotate(15deg); }
+            20% { transform: rotate(-12deg); }
+            30% { transform: rotate(10deg); }
+            40% { transform: rotate(-8deg); }
+            50% { transform: rotate(5deg); }
+            60% { transform: rotate(-3deg); }
+            70% { transform: rotate(0); }
+            100% { transform: rotate(0); }
+        }
+        .bell-shaking svg {
+            animation: bell-shake 0.6s ease-in-out;
+            transform-origin: top center;
+        }
+
+        /* ============ iframe 内容模式：隐藏外壳，只显示内容区 ============ */
+        html.in-iframe body { overflow: auto !important; height: auto !important; }
+        html.in-iframe .admin-sidebar,
+        html.in-iframe .admin-header { display: none !important; }
+        html.in-iframe .admin-layout { display: block !important; height: auto !important; overflow: auto !important; }
+        html.in-iframe .admin-main { height: auto !important; width: 100% !important; overflow: visible !important; }
+        html.in-iframe .admin-content { height: auto !important; min-height: 100vh !important; overflow: visible !important; padding: 24px !important; }
     </style>
 </head>
 <body>
@@ -141,16 +170,32 @@
                 <a href="/admin/order/create" class="menu-item"><span class="menu-item-text">创建订单</span></a>
             </div> -->
 
-              <a href="/admin/order/list" class="menu-item">
+                            <a href="/admin/order/list" class="menu-item">
                 <span class="menu-item-icon">📦</span>
                 <span class="menu-item-text">订单列表</span>
             </a>
 
-            <!-- 客户管理 -->
+                        <!-- 消息列表 -->
+                        <a href="/admin/message/index" class="menu-item {if isset($current_page) && $current_page == 'message'}active{/if}">
+                                <span class="menu-item-icon">💬</span>
+                                <span class="menu-item-text">消息列表</span>
+                        </a>
+
+            <!-- 采购方管理 -->
             <a href="/admin/customer/list" class="menu-item {if isset($current_page) && $current_page == 'customer'}active{/if}">
                 <span class="menu-item-icon">👥</span>
-                <span class="menu-item-text">客户管理</span>
+                <span class="menu-item-text">采购方管理</span>
             </a>
+            <!-- 贸易公司管理 -->
+            <div class="menu-item menu-group {if isset($current_page) && ($current_page == 'trading_company' || $current_page == 'salesman')}active{/if}" onclick="toggleSubmenu(this)">
+                <span class="menu-item-icon">🏢</span>
+                <span class="menu-item-text">贸易公司管理</span>
+                <span class="menu-group-arrow">▶</span>
+            </div>
+            <div class="submenu {if isset($current_page) && ($current_page == 'trading_company' || $current_page == 'salesman')}show{/if}">
+                <a href="/admin/trading_company/list" class="menu-item {if isset($current_page) && $current_page == 'trading_company'}active{/if}"><span class="menu-item-text">贸易公司管理</span></a>
+                <a href="/admin/salesman/list" class="menu-item {if isset($current_page) && $current_page == 'salesman'}active{/if}"><span class="menu-item-text">业务员管理</span></a>
+            </div>
             <!-- 供应商管理 -->
             <a href="/admin/supplier/list" class="menu-item {if isset($current_page) && $current_page == 'supplier'}active{/if}">
                 <span class="menu-item-icon">🏭</span>
@@ -197,18 +242,24 @@
                 <span>/</span>
                 <span>{$breadcrumb|default='控制台'}</span>
             </div>
-            <div class="header-user" onclick="toggleDropdown(event)">
-                <div class="user-avatar">{$username|default='A'|substr=0,1}</div>
-                <div class="user-name">{$username|default='管理员'}</div>
-                <div class="dropdown-menu" id="userDropdown">
-                    <div class="dropdown-item" onclick="location.href='/admin/profile'">个人设置</div>
-                    <div class="dropdown-item danger" onclick="logout()">退出登录</div>
+            
+            <div style="display: flex; align-items: center;">
+                <!-- 站内信通知 -->
+                <div id="headerNotificationApp" style="margin-right: 20px; cursor: pointer;"></div>
+
+                <div class="header-user" onclick="toggleDropdown(event)">
+                    <div class="user-avatar">{$username|default='A'|substr=0,1}</div>
+                    <div class="user-name">{$username|default='管理员'}</div>
+                    <div class="dropdown-menu" id="userDropdown">
+                        <div class="dropdown-item" onclick="location.href='/admin/profile'">个人设置</div>
+                        <div class="dropdown-item danger" onclick="logout()">退出登录</div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- 主内容区域 -->
-        <div class="admin-content">
+        <div class="admin-content" id="adminContentArea">
             <div class="content-wrapper">
                 {block name="content"}
                 <p>内容区域</p>
@@ -218,12 +269,226 @@
     </div>
 </div>
 
+<!-- Shell: 将内容区替换为 iframe（在 Vue 脚本前同步执行，避免 Vue 挂载到即将被移除的 DOM）-->
+<script>
+(function() {
+    if (window.self !== window.top) return; // 已在 iframe 中，不做处理
+    var area = document.getElementById('adminContentArea');
+    if (!area) return;
+    var frame = document.createElement('iframe');
+    frame.id = 'mainContentFrame';
+    frame.style.cssText = 'width:100%;height:100%;border:none;display:block;';
+    frame.src = location.href;
+    area.innerHTML = '';       // 清空服务端渲染的内容（避免 Vue 重复挂载）
+    area.style.padding = '0';
+    area.style.overflow = 'hidden';
+    area.appendChild(frame);
+})();
+</script>
+
 <!-- Vue 3 -->
 <script src="/static/libs/vue/vue.global.prod.js"></script>
 <!-- Arco Design JS -->
 <script src="/static/libs/arco/arco-vue.min.js"></script>
+<!-- Arco Design Icon JS -->
+<script src="/static/libs/arco/icon/arco-vue-icon.min.js"></script>
 
 <script>
+    // 初始化全局变量 alias
+    if (window.ArcoVue) {
+        window.Arco = window.ArcoVue;
+    }
+    if (window.ArcoVueIcon) {
+        window.ArcoIcon = window.ArcoVueIcon;
+    }
+
+    // 站内信组件
+    (function() {
+        const { createApp, ref, computed } = Vue;
+        const app = createApp({
+            template: `
+                <a-popover trigger="click" position="br" @popup-visible-change="onPopoverShow">
+                    <a-badge :count="unreadCount">
+                        <span :class="{'bell-shaking': shaking}" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;cursor:pointer;">
+                            <svg viewBox="0 0 48 48" width="20" height="20" fill="#4e5969"><path d="M24 2a5 5 0 0 0-5 5v1.07A14 14 0 0 0 10 22v8.28L6.56 35.5A2 2 0 0 0 8.28 38h10.2a6 6 0 0 0 11.04 0h10.2a2 2 0 0 0 1.72-3.5L38 30.28V22a14 14 0 0 0-9-13.93V7a5 5 0 0 0-5-5Zm0 4a1 1 0 0 1 1 1v.34a14.1 14.1 0 0 0-2 0V7a1 1 0 0 1 1-1ZM14 22a10 10 0 1 1 20 0v8.28c0 .6.13 1.18.39 1.72H13.61c.26-.54.39-1.13.39-1.72V22Z"/></svg>
+                        </span>
+                    </a-badge>
+                    <template #content>
+                        <div style="width: 340px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 0 10px; border-bottom: 1px solid #e5e6eb; margin-bottom: 4px;">
+                                <span style="font-weight: 600; font-size: 15px;">站内信</span>
+                                <span style="font-size: 12px; color: #86909c;">共 {{ unreadCount }} 条未读</span>
+                            </div>
+                            <div style="max-height: 360px; overflow-y: auto;">
+                                <template v-if="latestMessages.length > 0">
+                                    <div v-for="msg in latestMessages" :key="msg.id"
+                                        :style="{
+                                            padding: '12px 10px 12px 14px',
+                                            borderBottom: '1px solid #f2f3f5',
+                                            cursor: 'pointer',
+                                            transition: 'background 0.2s',
+                                            background: msg.is_read ? '#fff' : '#f0f5ff',
+                                            borderLeft: msg.is_read ? '3px solid transparent' : '3px solid ' + getCategoryColor(msg.category)
+                                        }"
+                                        @click="viewMessage(msg)">
+                                        <div style="display: flex; align-items: center; margin-bottom: 6px;">
+                                            <span :style="{display:'inline-flex',alignItems:'center',justifyContent:'center',width:'22px',height:'22px',borderRadius:'4px',marginRight:'8px',flexShrink:0,fontSize:'12px',background:getCategoryBg(msg.category),color:getCategoryColor(msg.category)}" v-html="getCategoryIcon(msg.category)"></span>
+                                            <a-tag size="small" :color="getCategoryColor(msg.category)" style="margin-right: 6px; font-size: 11px;">{{ getCategoryLabel(msg.category) }}</a-tag>
+                                            <span style="font-size: 12px; color: #86909c; margin-left: auto; white-space: nowrap;">{{ getTimeAgo(msg.create_time) }}</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center;">
+                                            <span v-if="!msg.is_read" style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;flex-shrink:0;" :style="{background: getCategoryColor(msg.category)}"></span>
+                                            <span :style="{ fontWeight: msg.is_read ? '400' : '600', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: msg.is_read ? '#86909c' : '#1d2129', flex: 1 }">{{ msg.title }}</span>
+                                        </div>
+                                        <div :style="{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: msg.is_read ? '#c9cdd4' : '#4e5969', marginTop: '4px', paddingLeft: msg.is_read ? '0' : '12px' }">{{ msg.content }}</div>
+                                    </div>
+                                </template>
+                                <template v-else>
+                                    <div style="text-align: center; padding: 20px; color: #86909c;">暂无消息</div>
+                                </template>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e6eb;">
+                                <a-link href="/admin/message/index" style="font-size: 12px;">查看详情</a-link>
+                            </div>
+                        </div>
+                    </template>
+                </a-popover>
+            `,
+             setup() {
+                const { onMounted, onUnmounted, watch } = Vue;
+                const shaking = ref(false);
+                let shakeTimer = null;
+                let pollTimer = null;
+
+                const categoryConfig = {
+                    order_create:   { label: '订单创建', color: '#165dff', bg: '#e8f3ff', icon: '📝' },
+                    order_edit:     { label: '订单修改', color: '#ff7d00', bg: '#fff7e8', icon: '✏️' },
+                    order_dispatch: { label: '订单派单', color: '#722ed1', bg: '#f5e8ff', icon: '📋' },
+                    order_confirm:  { label: '订单确认', color: '#165dff', bg: '#e8f3ff', icon: '✅' },
+                    order_reject:   { label: '订单拒绝', color: '#f53f3f', bg: '#ffece8', icon: '❌' },
+                    order_progress: { label: '制作进度', color: '#0fc6c2', bg: '#e8fffb', icon: '🔄' },
+                    order_ship:     { label: '订单发货', color: '#00b42a', bg: '#e8ffea', icon: '🚚' },
+                    order_receive:  { label: '订单入库', color: '#0fc6c2', bg: '#e8fffb', icon: '📦' },
+                    order_cancel:   { label: '订单取消', color: '#86909c', bg: '#f2f3f5', icon: '🚫' },
+                    shipping:       { label: '出货通知', color: '#00b42a', bg: '#e8ffea', icon: '🚢' },
+                    system:         { label: '系统通知', color: '#86909c', bg: '#f2f3f5', icon: '⚙️' },
+                    security:       { label: '安全提醒', color: '#f53f3f', bg: '#ffece8', icon: '🔒' }
+                };
+
+                function getCategoryLabel(cat) { return (categoryConfig[cat] || categoryConfig.system).label; }
+                function getCategoryColor(cat) { return (categoryConfig[cat] || categoryConfig.system).color; }
+                function getCategoryBg(cat)    { return (categoryConfig[cat] || categoryConfig.system).bg; }
+                function getCategoryIcon(cat)  { return (categoryConfig[cat] || categoryConfig.system).icon; }
+
+                const unreadCount = ref(0);
+                const latestMessages = ref([]);
+
+                // 从后端拉取未读数
+                async function fetchUnreadCount() {
+                    try {
+                        const resp = await fetch('/admin/message/unreadCount');
+                        const json = await resp.json();
+                        if (json.success) unreadCount.value = json.data.count || 0;
+                    } catch(e) {}
+                }
+
+                // 从后端拉取最新消息
+                async function fetchLatest() {
+                    try {
+                        const resp = await fetch('/admin/message/latest');
+                        const json = await resp.json();
+                        if (json.success) latestMessages.value = json.data.list || [];
+                    } catch(e) {}
+                }
+
+                function getTimeAgo(ts) {
+                    if (!ts) return '';
+                    // create_time 是 unix 时间戳
+                    const now = Date.now() / 1000;
+                    const diff = now - ts;
+                    if (diff < 60) return '刚刚';
+                    if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+                    if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+                    return Math.floor(diff / 86400) + '天前';
+                }
+
+                // 铃铛抖动逻辑
+                function startShake() {
+                    if (shakeTimer) clearInterval(shakeTimer);
+                    if (unreadCount.value > 0) {
+                        shakeTimer = setInterval(() => {
+                            shaking.value = true;
+                            setTimeout(() => { shaking.value = false; }, 700);
+                        }, 3000);
+                        shaking.value = true;
+                        setTimeout(() => { shaking.value = false; }, 700);
+                    }
+                }
+                function stopShake() {
+                    if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
+                    shaking.value = false;
+                }
+
+                watch(unreadCount, (val) => {
+                    if (val > 0) startShake();
+                    else stopShake();
+                });
+
+                // 弹出时刷新最新消息
+                function onPopoverShow(visible) {
+                    if (visible) fetchLatest();
+                }
+
+                async function viewMessage(msg) {
+                    // 标记已读
+                    if (!msg.is_read) {
+                        try {
+                            await fetch('/admin/message/markRead', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: 'id=' + msg.id
+                            });
+                        } catch(e) {}
+                    }
+                    window.location.href = '/admin/message/detail/' + msg.id;
+                }
+
+                onMounted(() => {
+                    fetchUnreadCount();
+                    // 每 30 秒轮询未读数
+                    pollTimer = setInterval(fetchUnreadCount, 30000);
+                });
+                onUnmounted(() => {
+                    stopShake();
+                    if (pollTimer) clearInterval(pollTimer);
+                });
+
+                return {
+                    shaking,
+                    unreadCount,
+                    latestMessages,
+                    viewMessage,
+                    onPopoverShow,
+                    getTimeAgo,
+                    getCategoryLabel,
+                    getCategoryColor,
+                    getCategoryBg,
+                    getCategoryIcon
+                };
+             }
+        });
+        
+        // 注册所有 Arco Design 图标
+        if (window.ArcoIcon) {
+            for (const name in window.ArcoIcon) {
+                app.component(name, window.ArcoIcon[name]);
+            }
+        }
+        
+        app.use(window.Arco);
+        app.mount('#headerNotificationApp');
+    })();
+
 // 侧边栏折叠
 function toggleSidebar() {
     const sidebar = document.getElementById('adminSidebar');
@@ -299,6 +564,10 @@ window.ArcoNotification = ArcoVue.Notification;
 window.createPageApp = function(options, mountId) {
     const app = Vue.createApp(options);
     app.use(ArcoVue);
+    // 注册图标库
+    if (window.ArcoVueIcon) {
+        app.use(ArcoVueIcon);
+    }
     const el = document.getElementById(mountId);
     if (el) {
         app.mount(el);
@@ -362,6 +631,60 @@ document.addEventListener('DOMContentLoaded', function() {
     requestAnimationFrame(() => {
         document.documentElement.classList.remove('no-transition');
     });
+
+    // ============ iframe 导航：拦截侧边栏链接 ============
+    if (window.self === window.top) {
+        var mainFrame = document.getElementById('mainContentFrame');
+
+        // iframe 加载完成时同步浏览器 URL 和菜单高亮
+        if (mainFrame) {
+            mainFrame.addEventListener('load', function() {
+                try {
+                    var iLoc = this.contentWindow.location;
+                    var iPath = iLoc.pathname + iLoc.search;
+                    if (iPath && iPath !== location.pathname + location.search) {
+                        history.replaceState({}, '', iPath);
+                    }
+                    _syncActiveMenu(iLoc.pathname);
+                } catch(e) {}
+            });
+        }
+
+        // 拦截侧边栏所有菜单链接点击
+        document.querySelectorAll('.sidebar-menu a.menu-item, .submenu a.menu-item').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                var href = this.getAttribute('href');
+                if (!href || href === '#') return;
+                e.preventDefault();
+                var frame = document.getElementById('mainContentFrame');
+                if (frame) {
+                    frame.src = href;
+                    history.pushState({}, '', href);
+                    _syncActiveMenu(href);
+                }
+            });
+        });
+
+        // 浏览器前进/后退时同步 iframe
+        window.addEventListener('popstate', function() {
+            var frame = document.getElementById('mainContentFrame');
+            if (frame) frame.src = location.href;
+        });
+    }
+
+    function _syncActiveMenu(url) {
+        var urlPath = (url || '').split('?')[0];
+        document.querySelectorAll('a.menu-item').forEach(function(link) {
+            var href = link.getAttribute('href');
+            if (!href) return;
+            var hrefPath = href.split('?')[0];
+            if (urlPath === hrefPath || urlPath.indexOf(hrefPath + '/') === 0) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+    }
 });
 </script>
 

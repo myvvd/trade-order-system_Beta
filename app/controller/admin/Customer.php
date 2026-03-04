@@ -10,12 +10,12 @@ use think\facade\View;
 use think\Response;
 
 /**
- * 客户管理控制器
+ * 采购方管理控制器
  */
 class Customer extends Base
 {
     /**
-     * 客户列表
+     * 采购方列表
      * @return string
      */
     public function list()
@@ -50,7 +50,7 @@ class Customer extends Base
             'page'      => $page,
         ]);
 
-        // 附加订单计数到每个客户
+        // 附加订单计数到每个采购方
         $ids = [];
         foreach ($customers as $c) {
             $ids[] = $c->id;
@@ -96,8 +96,8 @@ class Customer extends Base
             'country'     => $country,
             'level'       => $level,
             'status'      => $status,
-            'title'       => '客户管理',
-            'breadcrumb'  => '客户管理',
+            'title'       => '采购方管理',
+            'breadcrumb'  => '采购方管理',
         ]);
     }
 
@@ -130,7 +130,7 @@ class Customer extends Base
         if ($id) {
             $customer = CustomerModel::find($id);
             if (!$customer) {
-                return redirect('admin/customer/list')->with('error', '客户不存在');
+                return redirect('admin/customer/list')->with('error', '采购方不存在');
             }
         }
 
@@ -144,8 +144,8 @@ class Customer extends Base
         return View::fetch('admin/customer/form', [
             'customer'      => $customerData,
             'countries'     => $countries,
-            'title'         => $id ? '编辑客户' : '新增客户',
-            'breadcrumb'    => $id ? '编辑客户' : '新增客户',
+            'title'         => $id ? '编辑采购方' : '新增采购方',
+            'breadcrumb'    => $id ? '编辑采购方' : '新增采购方',
             'current_page'  => 'customer',
         ]);
     }
@@ -220,7 +220,7 @@ class Customer extends Base
 
         $customer = CustomerModel::find($id);
         if (!$customer) {
-            return $this->error('客户不存在');
+            return $this->error('采购方不存在');
         }
 
         // 检查公司名称唯一
@@ -270,7 +270,7 @@ class Customer extends Base
 
         $customer = CustomerModel::find($id);
         if (!$customer) {
-            return $this->error('客户不存在');
+            return $this->error('采购方不存在');
         }
 
         try {
@@ -295,7 +295,7 @@ class Customer extends Base
         
         $customer = CustomerModel::find($id);
         if (!$customer) {
-            return redirect('/admin/customer/list')->with('error', '客户不存在');
+            return redirect('/admin/customer/list')->with('error', '采购方不存在');
         }
 
         $orders = $customer->getOrders();
@@ -305,8 +305,8 @@ class Customer extends Base
             'customer' => $customer,
             'orders'   => $orders,
             'stats'    => $stats,
-            'title'    => '客户详情',
-            'breadcrumb'=> '客户详情',
+            'title'    => '采购方详情',
+            'breadcrumb'=> '采购方详情',
         ]);
     }
 
@@ -340,7 +340,7 @@ class Customer extends Base
     }
 
     /**
-     * 获取客户的未完成订单列表
+     * 获取采购方的未完成订单列表
      * @return Response
      */
     public function pendingOrders(): Response
@@ -352,7 +352,7 @@ class Customer extends Base
 
         $customer = CustomerModel::find($customerId);
         if (!$customer) {
-            return $this->error('客户不存在');
+            return $this->error('采购方不存在');
         }
 
         try {

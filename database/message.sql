@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS `message` (
+    `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+    `title` varchar(255) NOT NULL DEFAULT '' COMMENT '消息标题',
+    `content` text COMMENT '消息内容',
+    `category` varchar(30) NOT NULL DEFAULT 'system' COMMENT '消息分类',
+    `sender_type` varchar(20) NOT NULL DEFAULT 'system' COMMENT '发送者类型: system/admin/supplier',
+    `sender_id` int(11) unsigned DEFAULT NULL COMMENT '发送者ID',
+    `receiver_type` varchar(20) NOT NULL DEFAULT 'admin' COMMENT '接收者类型: admin/supplier',
+    `receiver_id` int(11) unsigned NOT NULL COMMENT '接收者ID',
+    `order_id` int(11) unsigned DEFAULT NULL COMMENT '关联订单ID',
+    `dispatch_id` int(11) unsigned DEFAULT NULL COMMENT '关联派单ID',
+    `is_read` tinyint(1) unsigned NOT NULL DEFAULT 0 COMMENT '是否已读',
+    `read_time` datetime DEFAULT NULL COMMENT '阅读时间',
+    `create_time` int(11) unsigned DEFAULT NULL COMMENT '创建时间',
+    `update_time` int(11) unsigned DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_receiver` (`receiver_type`, `receiver_id`, `is_read`),
+    KEY `idx_order` (`order_id`),
+    KEY `idx_dispatch` (`dispatch_id`),
+    KEY `idx_category` (`category`),
+    KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内信消息表';

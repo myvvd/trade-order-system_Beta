@@ -82,6 +82,31 @@
             color: #86909c;
             font-size: 13px;
         }
+        .role-switch {
+            display: flex;
+            gap: 8px;
+            background: #f2f3f5;
+            padding: 4px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+        }
+        .role-option {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #4e5969;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .role-option.active {
+            background: #fff;
+            color: #165DFF;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            font-weight: 600;
+        }
         .message {
             padding: 12px;
             border-radius: 4px;
@@ -113,9 +138,13 @@
         </div>
 
         <form class="login-form" @submit.prevent="handleLogin">
+            <div class="role-switch">
+                <div class="role-option" :class="{active: form.role === 'admin'}" @click="form.role='admin'">员工登录</div>
+                <div class="role-option" :class="{active: form.role === 'supplier'}" @click="form.role='supplier'">供应商登录</div>
+            </div>
             <div class="form-item">
-                <label>用户名</label>
-                <input type="text" class="form-input" v-model="form.username" placeholder="请输入用户名" autocomplete="username">
+                <label>{{ form.role === 'supplier' ? '登录账号' : '用户名' }}</label>
+                <input type="text" class="form-input" v-model="form.username" :placeholder="form.role === 'supplier' ? '请输入供应商账号/名称/手机号' : '请输入用户名'" autocomplete="username">
             </div>
 
             <div class="form-item">
@@ -147,7 +176,8 @@ createApp({
         const messageType = ref('');
         const form = reactive({
             username: '',
-            password: ''
+            password: '',
+            role: 'admin'
         });
 
         // 显示消息
@@ -178,6 +208,7 @@ createApp({
                 const formData = new FormData();
                 formData.append('username', form.username);
                 formData.append('password', form.password);
+                formData.append('role', form.role);
 
                 const response = await fetch('/admin/login/login', {
                     method: 'POST',
@@ -208,7 +239,11 @@ createApp({
                 if (result.success) {
                     showMessage('登录成功，正在跳转...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/admin/index/index';
+                        if (form.role === 'supplier') {
+                            window.location.href = '/supplier';
+                        } else {
+                            window.location.href = '/admin/index/index';
+                        }
                     }, 500);
                 } else {
                     showMessage(result.msg || '登录失败', 'error');

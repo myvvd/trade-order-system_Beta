@@ -160,37 +160,38 @@ class Goods extends Base
             return $this->error('请求方式错误');
         }
 
-        $file = request()->file('image');
-        if (!$file) {
-            return $this->error('未选择图片');
-        }
+        try {
+            $file = request()->file('image');
+            if (!$file) {
+                return $this->error('未选择图片');
+            }
 
-        $ext = strtolower($file->extension());
-        $allowExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        if (!in_array($ext, $allowExt, true)) {
-            return $this->error('图片格式不支持');
-        }
+            $ext = strtolower($file->extension());
+            $allowExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            if (!in_array($ext, $allowExt, true)) {
+                return $this->error('图片格式不支持');
+            }
 
-        if ($file->getSize() > 5 * 1024 * 1024) {
-            return $this->error('图片大小不能超过 5MB');
-        }
+            if ($file->getSize() > 5 * 1024 * 1024) {
+                return $this->error('图片大小不能超过 5MB');
+            }
 
-        $tempDir = root_path() . 'public/uploads/cache';
-        if (!is_dir($tempDir)) {
-            mkdir($tempDir, 0755, true);
-        }
+            $tempDir = root_path() . 'public/uploads/cache';
+            if (!is_dir($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
 
-        $filename = 'goods_' . date('YmdHis') . '_' . uniqid() . '.' . $ext;
-        $info = $file->move($tempDir, $filename);
-        if (!$info) {
-            return $this->error('上传失败');
-        }
+            $filename = 'goods_' . date('YmdHis') . '_' . uniqid() . '.' . $ext;
+            $file->move($tempDir, $filename);
 
-        $tempPath = 'uploads/cache/' . $filename;
-        return $this->success([
-            'temp_path' => $tempPath,
-            'url'       => '/' . $tempPath,
-        ], '上传成功');
+            $tempPath = 'uploads/cache/' . $filename;
+            return $this->success([
+                'temp_path' => $tempPath,
+                'url'       => '/' . $tempPath,
+            ], '上传成功');
+        } catch (\Throwable $e) {
+            return $this->error('上传异常：' . $e->getMessage());
+        }
     }
 
     /**
@@ -423,11 +424,15 @@ class Goods extends Base
 
     /**
      * 获取货品的 SKU 列表
-     * @param int $goodsId
      * @return Response
      */
-    public function skuList($goodsId): Response
+    public function skuList(): Response
     {
+        $goodsId = input('id/d', 0);
+        if (!$goodsId) {
+             $goodsId = input('goods_id/d', 0);
+        }
+        
         $skus = GoodsSkuModel::where('goods_id', $goodsId)
             ->order('id', 'asc')
             ->select()
@@ -449,15 +454,17 @@ class Goods extends Base
             $query->whereLike('goods_no|name|description', '%' . $q . '%');
         }
 
-        $rows = $query->order('id', 'desc')->limit($limit)->select()->toArray();
+        $rows = $query->order('id', 'desc')->limit($limit)->select();
         $data = [];
         foreach ($rows as $r) {
+            $imageUrl = $r->getImageUrl();
             $data[] = [
                 'id' => $r['id'],
                 'name' => $r['name'],
                 'goods_no' => $r['goods_no'],
                 'sale_price' => $r['sale_price'] ?? 0,
                 'image' => $r['image'] ?? '',
+                'image_url' => $imageUrl,
             ];
         }
 

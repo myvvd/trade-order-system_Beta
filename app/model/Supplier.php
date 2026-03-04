@@ -48,7 +48,18 @@ class Supplier extends \think\Model
      */
     public function checkPassword(string $password): bool
     {
-        return password_verify($password, $this->login_password);
+        $stored = $this->login_password ?? '';
+        // 已是哈希
+        if (password_get_info($stored)['algo']) {
+            return password_verify($password, $stored);
+        }
+        // 兼容历史明文密码
+        if ($stored !== '' && hash_equals($stored, $password)) {
+            // 自动升级为哈希
+            $this->save(['login_password' => $password]);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -58,8 +69,12 @@ class Supplier extends \think\Model
      */
     public static function getByAccount(string $account): ?Supplier
     {
-        return self::where('login_account', $account)
-            ->where('delete_time', null)
+        return self::where('delete_time', null)
+            ->where(function ($q) use ($account) {
+                $q->where('login_account', $account)
+                  ->whereOr('name', $account)
+                  ->whereOr('phone', $account);
+            })
             ->find();
     }
 

@@ -10,7 +10,10 @@
                 新建订单
             </a-button>
             {if condition="$isSuper"}
-            <a-button @click="initTestData">初始化测试数据</a-button>
+            <a-button @click="exportData" status="warning" type="primary">
+                <template #icon><icon-download /></template>
+                订单下载
+            </a-button>
             {/if}
         </a-space>
     </div>
@@ -18,9 +21,9 @@
     <a-card class="query-card" :bordered="false" style="margin-bottom: 16px;">
         <a-form :model="searchForm" layout="inline" @submit="handleSearch">
             <a-form-item label="关键词">
-                <a-input v-model="searchForm.keyword" placeholder="订单号/客户/备注" allow-clear />
+                <a-input v-model="searchForm.keyword" placeholder="订单号/采购方/备注" allow-clear />
             </a-form-item>
-            <a-form-item label="日期范围">
+            <a-form-item label="订单日期">
                 <a-range-picker v-model="dateRange" @change="handleDateChange" />
             </a-form-item>
             <a-form-item>
@@ -51,53 +54,204 @@
             style="margin-top: 16px;"
         >
             <template #columns>
-                <a-table-column title="订单号" data-index="order_no" :width="180">
-                     <template #cell="{ record }">
-                        <a-link @click="goDetail(record.id)">{{ record.order_no }}</a-link>
+                <a-table-column title="序号" :width="60" align="center" fixed="left">
+                    <template #cell="{ rowIndex }">
+                        {{ getSerial(rowIndex) }}
                     </template>
                 </a-table-column>
-                <a-table-column title="客户" data-index="customer_name" :width="200"></a-table-column>
-                <a-table-column title="总金额" data-index="total_amount" :width="120" align="right">
+                <a-table-column title="订单号" :width="200" fixed="left">
                     <template #cell="{ record }">
-                        ¥{{ record.total_amount }}
+                        <a-link :href="'/admin/order/detail/' + record.id">{{ record.order_no }}</a-link>
                     </template>
                 </a-table-column>
-                <a-table-column title="状态" data-index="status_text" :width="100" align="center">
+                <a-table-column title="采购方" data-index="customer_name" :width="150"></a-table-column>
+                <a-table-column title="订单日期" :width="110" align="center">
+                    <template #cell="{ record }">
+                        {{ record.create_time ? record.create_time.substring(0, 10) : '-' }}
+                    </template>
+                </a-table-column>
+                <a-table-column title="总件数" :width="90" align="center">
+                    <template #cell="{ record }">
+                        {{ getOrderTotalQty(record) }}
+                    </template>
+                </a-table-column>
+                <a-table-column title="总金额" :width="110" align="right">
+                    <template #cell="{ record }">
+                        ¥{{ formatMoney(record.total_amount) }}
+                    </template>
+                </a-table-column>
+                <a-table-column title="已送货" :width="90" align="center">
+                    <template #cell>-</template>
+                </a-table-column>
+                <a-table-column title="未收款项" :width="100" align="right">
+                    <template #cell>-</template>
+                </a-table-column>
+                <a-table-column title="已收款" :width="100" align="right">
+                    <template #cell>-</template>
+                </a-table-column>
+                <a-table-column title="收款状态" :width="100" align="center">
+                    <template #cell>-</template>
+                </a-table-column>
+                <a-table-column title="计划收款日期" :width="130" align="center">
+                    <template #cell>-</template>
+                </a-table-column>
+                <a-table-column title="送货状态" :width="100" align="center">
                     <template #cell="{ record }">
                         <a-tag :color="getStatusColor(record.status)">{{ record.status_text }}</a-tag>
                     </template>
                 </a-table-column>
-                <a-table-column title="创建时间" data-index="create_time" :width="180"></a-table-column>
-                <a-table-column title="操作" :width="220">
+                <a-table-column title="送货日期" :width="110" align="center">
                     <template #cell="{ record }">
-                        <a-space>
-                            <a-button type="text" size="small" @click="goDetail(record.id)">详情</a-button>
-                            <a-button 
-                                v-if="record.status == 10" 
-                                type="text" 
-                                size="small" 
-                                @click="goEdit(record.id)"
-                            >编辑</a-button>
-                            <a-popconfirm v-if="record.status == 10" content="确定要删除吗？" @ok="deleteOrder(record.id)">
+                        {{ record.delivery_date || '-' }}
+                    </template>
+                </a-table-column>
+                <a-table-column title="制单人" data-index="creator_name" :width="100" align="center"></a-table-column>
+                <a-table-column title="操作" :width="100" fixed="right">
+                    <template #cell="{ record }">
+                        <div class="order-table-actions" v-if="canManageOrders">
+                            <a-popconfirm content="确定要删除吗？" @ok="deleteOrder(record.id)">
                                 <a-button type="text" status="danger" size="small">删除</a-button>
                             </a-popconfirm>
-                             <a-popconfirm v-if="canCancel(record.status)" content="确定要取消吗？" @ok="cancelOrder(record.id)">
+                            <a-button 
+                                v-if="showDispatch(record)"
+                                type="text" 
+                                size="small" 
+                                status="success"
+                                @click="openDispatch(record)"
+                            >派单</a-button>
+                            <a-popconfirm v-if="showCancel(record)" content="取消派单并回到待派单状态？" @ok="cancelOrder(record.id)">
                                 <a-button type="text" status="warning" size="small">取消</a-button>
                             </a-popconfirm>
-                        </a-space>
+                        </div>
+                        <span v-else style="color:#c9cdd4;">-</span>
                     </template>
                 </a-table-column>
             </template>
         </a-table>
     </a-card>
+
+    <!-- 派单弹窗 -->
+    <a-modal v-model:visible="dispatchVisible" :title="'派单 - ' + dispatchOrderNo" width="960px" :footer="false" unmount-on-close>
+        <a-spin :loading="dispatchLoading" style="width: 100%;">
+            <!-- 第1区：选择供应商（单选） -->
+            <div style="margin-bottom: 16px;">
+                <a-typography-title :heading="6" style="margin: 0 0 8px 0;">🏭 选择供应商</a-typography-title>
+                <a-table 
+                    :data="dispatchSuppliers" 
+                    :pagination="false" 
+                    size="small" 
+                    :bordered="{cell:true}"
+                    :row-selection="{ type: 'radio' }"
+                    v-model:selected-keys="selectedSupplierIds"
+                    row-key="id"
+                >
+                    <template #columns>
+                        <a-table-column title="供应商名称" data-index="name" :width="140"></a-table-column>
+                        <a-table-column title="联系人" data-index="contact" :width="90"></a-table-column>
+                        <a-table-column title="电话" data-index="phone" :width="120"></a-table-column>
+                        <a-table-column title="派单数量设置">
+                            <template #cell="{ record }">
+                                <div v-if="getAssignedItems(record.id).length > 0"
+                                    style="display:flex;flex-wrap:wrap;gap:6px;">
+                                    <span v-for="ai in getAssignedItems(record.id)" :key="ai.itemId"
+                                        style="display:inline-flex;align-items:center;gap:2px;background:#e8f3ff;color:#165dff;border:1px solid #bedaff;border-radius:4px;padding:2px 6px;font-size:12px;line-height:18px;position:relative;">
+                                        {{ ai.label }}-{{ ai.qty }}
+                                        <span @click.stop="removeAssignedItem(record.id, ai.itemId)"
+                                            style="cursor:pointer;color:#f53f3f;font-size:14px;font-weight:bold;margin-left:3px;line-height:1;">&times;</span>
+                                    </span>
+                                </div>
+                                <span v-else-if="selectedSupplierIds.includes(record.id)" style="color:#c9cdd4;font-size:12px;">请在下方订单明细中设置数量</span>
+                                <span v-else style="color:#c9cdd4;font-size:12px;">请先选择此供应商</span>
+                            </template>
+                        </a-table-column>
+                    </template>
+                </a-table>
+            </div>
+
+            <!-- 第2区：订单明细（编辑派单数量） -->
+            <div style="margin-bottom: 16px;">
+                <a-typography-title :heading="6" style="margin: 0 0 8px 0;">📦 订单明细（选择供应商后设置派单数量）</a-typography-title>
+                <a-table 
+                    :data="availableDispatchItems" 
+                    :pagination="false" 
+                    size="small" 
+                    :bordered="{cell:true}"
+                    row-key="id"
+                >
+                    <template #columns>
+                        <a-table-column title="货品" data-index="goods_name" :width="180">
+                            <template #cell="{ record }">
+                                {{ record.goods_name }}
+                                <span v-if="record.sku_name" style="color:#86909c;"> / {{ record.sku_name }}</span>
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="订单数量" data-index="quantity" :width="80" align="center"></a-table-column>
+                        <a-table-column title="已派数量" data-index="dispatched" :width="80" align="center">
+                            <template #cell="{ record }">
+                                <span :style="{color: record.dispatched > 0 ? '#ff7d00' : '#86909c'}">{{ record.dispatched }}</span>
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="可派数量" :width="80" align="center">
+                            <template #cell="{ record }">
+                                <a-tag :color="getItemRemaining(record.id) > 0 ? 'green' : 'gray'" size="small">{{ getItemRemaining(record.id) }}</a-tag>
+                            </template>
+                        </a-table-column>
+                        <a-table-column title="派单数量" :width="140" align="center">
+                            <template #cell="{ record }">
+                                <a-input-number 
+                                    v-if="selectedSupplierIds.length > 0 && getItemRemaining(record.id) > 0"
+                                    v-model="itemQtyInput[record.id]"
+                                    :min="1"
+                                    :max="getItemRemaining(record.id)"
+                                    size="small"
+                                    style="width:110px;"
+                                    :placeholder="'最多' + getItemRemaining(record.id)"
+                                    @blur="onItemQtyBlur(record)"
+                                    @press-enter="onItemQtyBlur(record)"
+                                ></a-input-number>
+                                <span v-else-if="selectedSupplierIds.length === 0" style="color:#c9cdd4;font-size:12px;">请先选择供应商</span>
+                                <span v-else style="color:#c9cdd4;font-size:12px;">已全部派出</span>
+                            </template>
+                        </a-table-column>
+                    </template>
+                </a-table>
+            </div>
+
+            <!-- 提交按钮 -->
+            <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid #e5e6eb;">
+                <a-button @click="dispatchVisible = false">取消</a-button>
+                <a-button type="primary" :loading="dispatchSubmitting" @click="submitDispatch" :disabled="selectedSupplierIds.length === 0">
+                    <template #icon><icon-send /></template>
+                    确认派单
+                </a-button>
+            </div>
+        </a-spin>
+    </a-modal>
 </div>
+{/block}
+
+{block name="style"}
+<style>
+.order-table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.order-table-actions .arco-btn {
+    min-width: auto;
+    padding: 0 4px;
+    height: 22px;
+    font-size: 12px;
+}
+</style>
 {/block}
 
 {block name="script"}
 <script>
 window.createPageApp({
     setup() {
-        const { ref, reactive, onMounted } = Vue;
+        const { ref, reactive, onMounted, watch } = Vue;
         const ArcoMessage = Arco.Message;
 
         // PHP 数据注入
@@ -107,10 +261,12 @@ window.createPageApp({
                 $arr = $item->toArray();
                 $arr['status_text'] = $item->status_text;
                 $arr['customer_name'] = $item->customer ? $item->customer->company_name : '-';
+                $arr['creator_name'] = $item->creator ? ($item->creator->real_name ?: $item->creator->username) : '-';
                 $data[] = $arr;
             }
             echo json_encode($data, JSON_UNESCAPED_UNICODE); 
         ?>;
+        const canManageOrders = <?php echo !empty($canManageOrders) ? 'true' : 'false'; ?>;
         
         const total = <?php echo $orders->total(); ?>;
         const currentPage = <?php echo $orders->currentPage(); ?>;
@@ -138,6 +294,29 @@ window.createPageApp({
             showPageSize: false
         });
 
+        const getSerial = (rowIndex) => {
+            const base = pagination.total - (pagination.current - 1) * pagination.pageSize;
+            return base - rowIndex;
+        };
+
+        const getItemTotalQty = (it) => {
+            return (Number(it?.pieces || 0) * Number(it?.per_piece_qty || 0)) || 0;
+        };
+
+        const getOrderTotalQty = (record) => {
+            if (!record?.items?.length) return 0;
+            return record.items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+        };
+
+        const getItemTotalPrice = (it) => {
+            return getItemTotalQty(it) * Number(it?.price || 0);
+        };
+
+        const formatMoney = (val) => {
+            const num = Number(val || 0);
+            return num.toFixed(2);
+        };
+
         const getStatusColor = (status) => {
              const map = {
                 10: 'arcoblue', // 待派单
@@ -153,9 +332,25 @@ window.createPageApp({
             return map[status] || '';
         };
 
-        const canCancel = (status) => {
-             return status < 70 && status != 99;
+        const getDispatchSupplierNames = (record) => {
+            if (!record || Number(record.status) === 10) {
+                return [];
+            }
+            const dispatches = Array.isArray(record.dispatches) ? record.dispatches : [];
+            const names = dispatches
+                .filter(d => d && d.status !== 21 && d.supplier && d.supplier.name)
+                .map(d => d.supplier.name);
+            return Array.from(new Set(names));
         };
+
+        const getSupplierDisplay = (record) => {
+            const names = getDispatchSupplierNames(record);
+            return names.length ? names.join(' / ') : '-';
+        };
+
+        const showDispatch = (record) => canManageOrders && Number(record?.status) === 10;
+        const showDelete = (record) => canManageOrders;
+        const showCancel = (record) => canManageOrders && Number(record?.status) === 20;
 
         const handleSearch = () => {
             const params = new URLSearchParams();
@@ -171,7 +366,11 @@ window.createPageApp({
         };
 
         const handleReset = () => {
-            location.href = '/admin/order';
+            searchForm.keyword = '';
+            searchForm.status = '';
+            dateRange.value = ['', ''];
+            activeStatus.value = '';
+            location.href = '/admin/order/list';
         };
 
         const handleTabChange = (val) => {
@@ -189,15 +388,41 @@ window.createPageApp({
         };
 
         const goCreate = () => location.href = '/admin/order/create';
-        const goDetail = (id) => location.href = '/admin/order/detail/' + id;
-        const goEdit = (id) => location.href = '/admin/order/edit/' + id;
+
+        const copyOrder = async (record) => {
+             if (!canManageOrders) {
+                ArcoMessage.error('暂无操作权限');
+                return;
+             }
+             try {
+                const res = await fetch('/admin/order/copy/' + record.id, { method: 'POST' });
+                const json = await res.json();
+                if(json.code === 200 && json.data && json.data.order) {
+                    const newOrder = Object.assign({}, json.data.order, { _isCopyEditing: true });
+                    tableData.value = [newOrder, ...tableData.value];
+                    pagination.total = Number(pagination.total || 0) + 1;
+                    ArcoMessage.success(json.msg || '复制成功，请编辑新订单');
+                    setTimeout(() => {
+                        window.open('/admin/order/edit/' + newOrder.id, '_blank');
+                    }, 200);
+                } else {
+                    ArcoMessage.error(json.msg || '复制失败');
+                }
+             } catch(e) {
+                 ArcoMessage.error(e.message);
+             }
+        };
 
         const deleteOrder = async (id) => {
+             if (!canManageOrders) {
+                ArcoMessage.error('暂无操作权限');
+                return;
+             }
              try {
                 const res = await fetch('/admin/order/delete/' + id, { method: 'POST' });
                 const json = await res.json();
-                if(json.code == 1) {
-                    ArcoMessage.success('删除成功');
+                if(json.code === 200) {
+                    ArcoMessage.success(json.msg || '删除成功');
                     location.reload();
                 } else {
                     ArcoMessage.error(json.msg || '删除失败');
@@ -207,12 +432,16 @@ window.createPageApp({
              }
         };
 
-        const cancelOrder = async (id) => {
+          const cancelOrder = async (id) => {
+                 if (!canManageOrders) {
+                     ArcoMessage.error('暂无操作权限');
+                     return;
+                 }
              try {
                 const res = await fetch('/admin/order/cancel/' + id, { method: 'POST' });
                 const json = await res.json();
-                if(json.code == 1) {
-                    ArcoMessage.success('取消成功');
+                if(json.code === 200) {
+                    ArcoMessage.success(json.msg || '取消成功');
                     location.reload();
                 } else {
                     ArcoMessage.error(json.msg || '取消失败');
@@ -222,20 +451,205 @@ window.createPageApp({
              }
         };
 
-        const initTestData = async () => {
-              try {
-                if(!confirm('确定要初始化测试数据吗？这将删除现有测试数据。')) return;
-                const res = await fetch('/admin/order/initTestData', { method: 'POST' });
+        const exportData = () => {
+            const params = new URLSearchParams();
+            if (searchForm.keyword) params.append('keyword', searchForm.keyword);
+            if (activeStatus.value !== '') params.append('status', activeStatus.value);
+            if (dateRange.value && dateRange.value.length === 2) {
+                params.append('date_from', dateRange.value[0]);
+                params.append('date_to', dateRange.value[1]);
+            }
+            window.location.href = '/admin/order/export?' + params.toString();
+        };
+
+        // ========== 派单弹窗逻辑 ==========
+        const dispatchVisible = ref(false);
+        const dispatchLoading = ref(false);
+        const dispatchSubmitting = ref(false);
+        const dispatchOrderId = ref(0);
+        const dispatchOrderNo = ref('');
+        const dispatchItems = ref([]);       // 原始数据（从接口返回）
+        const dispatchSuppliers = ref([]);
+        const selectedSupplierIds = ref([]); // 单选，数组只会有0或1个元素
+
+        const itemQtyInput = reactive({});   // 货品数量输入框: { itemId: qty }
+        // 已分配数据: { supplierId: [ {itemId, qty, label} ] }
+        const assignedData = reactive({});
+
+        // 只显示 remaining > 0 的订单明细项
+        const availableDispatchItems = Vue.computed(() => {
+            return dispatchItems.value.filter(item => item.remaining > 0);
+        });
+
+
+        // 获取某个货品当前的"可派数量"（原始remaining 减去已分配给当前供应商的数量）
+        const getItemRemaining = (itemId) => {
+            const item = dispatchItems.value.find(i => i.id === itemId);
+            if (!item) return 0;
+            let used = 0;
+            // 遍历所有供应商的分配，计算已使用量
+            for (const sid in assignedData) {
+                const list = assignedData[sid] || [];
+                const found = list.find(a => a.itemId === itemId);
+                if (found) used += found.qty;
+            }
+            return Math.max(0, item.remaining - used);
+        };
+
+        // 获取某个供应商的已分配项目列表
+        const getAssignedItems = (supplierId) => {
+            return assignedData[supplierId] || [];
+        };
+
+        // 货品数量输入框 blur / enter 时，将数值同步到 assignedData
+        const onItemQtyBlur = (record) => {
+            if (selectedSupplierIds.value.length === 0) return;
+            const sid = selectedSupplierIds.value[0];
+            const itemId = record.id;
+            let qty = parseInt(itemQtyInput[itemId]) || 0;
+            if (qty <= 0) return;
+
+            // 限制不超过可派数量（当前remaining不含本项已分配的量）
+            const item = dispatchItems.value.find(i => i.id === itemId);
+            if (!item) return;
+
+            // 先算出除本供应商本项以外的已用量
+            let usedByOthers = 0;
+            for (const s in assignedData) {
+                const list = assignedData[s] || [];
+                const found = list.find(a => a.itemId === itemId);
+                if (found && String(s) !== String(sid)) usedByOthers += found.qty;
+            }
+            // 本供应商本项之前的旧值不计入已用量（会被覆盖）
+            const maxAllowed = item.remaining - usedByOthers;
+            if (qty > maxAllowed) qty = maxAllowed;
+            if (qty <= 0) return;
+
+            const label = record.goods_name + (record.sku_name ? '/' + record.sku_name : '');
+
+            // 更新或添加
+            if (!assignedData[sid]) {
+                assignedData[sid] = [];
+            }
+            const existing = assignedData[sid].find(a => a.itemId === itemId);
+            if (existing) {
+                existing.qty = qty;
+            } else {
+                assignedData[sid].push({ itemId, qty, label });
+            }
+
+            // 清空输入框
+            itemQtyInput[itemId] = undefined;
+        };
+
+        // 删除供应商的某个已分配项
+        const removeAssignedItem = (supplierId, itemId) => {
+            if (!assignedData[supplierId]) return;
+            const idx = assignedData[supplierId].findIndex(a => a.itemId === itemId);
+            if (idx > -1) {
+                assignedData[supplierId].splice(idx, 1);
+            }
+        };
+
+        // 调整派单数量（±10）
+        const adjustQty = (record, delta) => {
+            const itemId = record.id;
+            const max = getItemRemaining(itemId);
+            let current = parseInt(itemQtyInput[itemId]) || 0;
+            let newVal = current + delta;
+            if (newVal < 1) newVal = 1;
+            if (newVal > max) newVal = max;
+            itemQtyInput[itemId] = newVal;
+        };
+
+        // 打开派单弹窗
+        const openDispatch = async (record) => {
+            if (!canManageOrders) {
+                ArcoMessage.error('暂无操作权限');
+                return;
+            }
+            dispatchOrderId.value = record.id;
+            dispatchOrderNo.value = record.order_no;
+            dispatchItems.value = [];
+            dispatchSuppliers.value = [];
+            selectedSupplierIds.value = [];
+            Object.keys(itemQtyInput).forEach(k => delete itemQtyInput[k]);
+            Object.keys(assignedData).forEach(k => delete assignedData[k]);
+            dispatchVisible.value = true;
+            dispatchLoading.value = true;
+
+            try {
+                const res = await fetch('/admin/order/dispatchInfo/' + record.id);
                 const json = await res.json();
-                if(json.code == 1) {
-                    ArcoMessage.success(json.msg);
-                    setTimeout(()=>location.reload(), 1000);
+                if (json.code === 200) {
+                    dispatchItems.value = json.data.items || [];
+                    dispatchSuppliers.value = json.data.suppliers || [];
                 } else {
-                    ArcoMessage.error(json.msg || '操作失败');
+                    ArcoMessage.error(json.msg || '获取派单信息失败');
+                    dispatchVisible.value = false;
                 }
-             } catch(e) {
-                 ArcoMessage.error(e.message);
-             }
+            } catch (e) {
+                ArcoMessage.error('请求失败：' + e.message);
+                dispatchVisible.value = false;
+            } finally {
+                dispatchLoading.value = false;
+            }
+        };
+
+        // 提交派单
+        const submitDispatch = async () => {
+            if (selectedSupplierIds.value.length === 0) {
+                ArcoMessage.warning('请选择一个供应商');
+                return;
+            }
+
+            if (!canManageOrders) {
+                ArcoMessage.error('暂无操作权限');
+                return;
+            }
+
+            const sid = selectedSupplierIds.value[0];
+            const items = (assignedData[sid] || []).filter(a => a.qty > 0);
+
+            if (items.length === 0) {
+                ArcoMessage.warning('请设置至少一个货品的派单数量');
+                return;
+            }
+
+            // 校验数量不超可派
+            for (const a of items) {
+                const orig = dispatchItems.value.find(i => i.id === a.itemId);
+                if (orig && a.qty > orig.remaining) {
+                    ArcoMessage.error(a.label + ' 的派单数量(' + a.qty + ')超出可派数量(' + orig.remaining + ')');
+                    return;
+                }
+            }
+
+            const dispatchesData = [{
+                supplier_id: sid,
+                items: items.map(a => ({ order_item_id: a.itemId, quantity: a.qty }))
+            }];
+
+            dispatchSubmitting.value = true;
+            try {
+                const res = await fetch('/admin/order/dispatchSave/' + dispatchOrderId.value, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dispatches: dispatchesData })
+                });
+                const json = await res.json();
+                if (json.code === 200) {
+                    ArcoMessage.success(json.msg || '派单成功');
+                    dispatchVisible.value = false;
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    ArcoMessage.error(json.msg || '派单失败');
+                }
+            } catch (e) {
+                ArcoMessage.error('请求失败：' + e.message);
+            } finally {
+                dispatchSubmitting.value = false;
+            }
         };
 
         return {
@@ -245,19 +659,45 @@ window.createPageApp({
             tableData,
             loading,
             pagination,
+            getSerial,
+            getItemTotalQty,
+            getOrderTotalQty,
+            getItemTotalPrice,
+            formatMoney,
             getStatusColor,
-            canCancel,
+            getSupplierDisplay,
+            canManageOrders,
+            showDispatch,
+            showDelete,
+            showCancel,
             handleSearch,
             handleReset,
             handleTabChange,
             handleDateChange,
             onPageChange,
             goCreate,
-            goDetail,
-            goEdit,
+            copyOrder,
             deleteOrder,
             cancelOrder,
-            initTestData
+            exportData,
+            // 派单相关
+            dispatchVisible,
+            dispatchLoading,
+            dispatchSubmitting,
+            dispatchOrderNo,
+            dispatchItems,
+            dispatchSuppliers,
+            selectedSupplierIds,
+            itemQtyInput,
+            assignedData,
+            availableDispatchItems,
+            getItemRemaining,
+            getAssignedItems,
+            onItemQtyBlur,
+            removeAssignedItem,
+            adjustQty,
+            openDispatch,
+            submitDispatch
         };
     }
 }, 'orderListApp');

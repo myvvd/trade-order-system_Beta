@@ -1,0 +1,136 @@
+{extend name="layout/admin_base" /}
+
+{block name="content"}
+<div id="messageDetailApp" v-cloak>
+    <div class="page-header">
+        <div class="page-header-title">消息详情</div>
+        <a-button @click="goBack">
+            <template #icon><icon-arrow-left /></template>
+            返回列表
+        </a-button>
+    </div>
+
+    <template v-if="message">
+        <a-card :bordered="false">
+            <!-- 标题区 -->
+            <div style="display: flex; align-items: flex-start; padding-bottom: 20px; border-bottom: 1px solid #e5e6eb;">
+                <a-avatar :size="48" shape="square" :style="{background: getCategoryBg(message.category), color: getCategoryColor(message.category), fontSize: '22px', flexShrink: 0, marginRight: '16px'}">
+                    <span v-html="getCategoryIcon(message.category)"></span>
+                </a-avatar>
+                <div style="flex: 1; min-width: 0;">
+                    <a-typography-title :heading="5" style="margin: 0 0 8px 0;">{{ message.title }}</a-typography-title>
+                    <a-space>
+                        <a-tag :color="getCategoryColor(message.category)" size="small">{{ message.category_label }}</a-tag>
+                        <a-typography-text type="secondary">
+                            <icon-clock-circle style="margin-right: 4px;" />{{ formatTime(message.create_time) }}
+                        </a-typography-text>
+                        <a-tag v-if="message.order_id" color="blue" size="small" @click="goToOrder(message.order_id)" style="cursor: pointer;">
+                            查看订单
+                        </a-tag>
+                    </a-space>
+                </div>
+            </div>
+
+            <!-- 正文区 -->
+            <div style="padding: 24px 0;">
+                <a-typography-paragraph style="white-space: pre-wrap; line-height: 1.8; font-size: 14px; color: #1d2129; margin: 0;">{{ message.content }}</a-typography-paragraph>
+            </div>
+        </a-card>
+
+        <!-- 底部导航：优先未读消息 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
+            <a-space>
+                <a-button v-if="prevMsg" @click="goTo(prevMsg.id)">
+                    <template #icon><icon-left /></template>
+                    上一条：{{ prevMsg.title }}
+                    <span :style="{color: prevMsg.is_read ? '#86909c' : '#165dff', marginLeft: '4px', fontWeight: prevMsg.is_read ? '400' : '600'}">{{ prevMsg.is_read ? '（已读）' : '（未读）' }}</span>
+                </a-button>
+            </a-space>
+            <a-space>
+                <a-button v-if="nextMsg" @click="goTo(nextMsg.id)">
+                    下一条：{{ nextMsg.title }}
+                    <span :style="{color: nextMsg.is_read ? '#86909c' : '#165dff', marginLeft: '4px', fontWeight: nextMsg.is_read ? '400' : '600'}">{{ nextMsg.is_read ? '（已读）' : '（未读）' }}</span>
+                    <template #icon><icon-right /></template>
+                </a-button>
+            </a-space>
+        </div>
+    </template>
+
+    <a-card :bordered="false" v-else>
+        <a-empty description="消息不存在或已被删除">
+            <template #image>
+                <icon-info-circle-fill style="font-size: 48px; color: #c9cdd4;" />
+            </template>
+        </a-empty>
+        <div style="text-align: center; margin-top: 16px;">
+            <a-button type="primary" @click="goBack">返回列表</a-button>
+        </div>
+    </a-card>
+</div>
+{/block}
+
+{block name="script"}
+<script>
+window.createPageApp({
+    setup() {
+        const { ref } = Vue;
+
+        const categoryConfig = {
+            order_create:   { label: '订单创建', color: '#165dff', bg: '#e8f3ff', icon: '📝' },
+            order_edit:     { label: '订单修改', color: '#ff7d00', bg: '#fff7e8', icon: '✏️' },
+            order_dispatch: { label: '订单派单', color: '#722ed1', bg: '#f5e8ff', icon: '📋' },
+            order_confirm:  { label: '订单确认', color: '#165dff', bg: '#e8f3ff', icon: '✅' },
+            order_reject:   { label: '订单拒绝', color: '#f53f3f', bg: '#ffece8', icon: '❌' },
+            order_progress: { label: '制作进度', color: '#0fc6c2', bg: '#e8fffb', icon: '🔄' },
+            order_ship:     { label: '订单发货', color: '#00b42a', bg: '#e8ffea', icon: '🚚' },
+            order_receive:  { label: '订单入库', color: '#0fc6c2', bg: '#e8fffb', icon: '📦' },
+            order_cancel:   { label: '订单取消', color: '#86909c', bg: '#f2f3f5', icon: '🚫' },
+            shipping:       { label: '出货通知', color: '#00b42a', bg: '#e8ffea', icon: '🚢' },
+            system:         { label: '系统通知', color: '#86909c', bg: '#f2f3f5', icon: '⚙️' },
+            security:       { label: '安全提醒', color: '#f53f3f', bg: '#ffece8', icon: '🔒' }
+        };
+
+        function getCategoryColor(cat) { return (categoryConfig[cat] || categoryConfig.system).color; }
+        function getCategoryBg(cat)    { return (categoryConfig[cat] || categoryConfig.system).bg; }
+        function getCategoryIcon(cat)  { return (categoryConfig[cat] || categoryConfig.system).icon; }
+
+        // 后端渲染的数据
+        const message = ref({$message_json|raw} || null);
+        const prevMsg = ref({$prev_msg_json|raw} || null);
+        const nextMsg = ref({$next_msg_json|raw} || null);
+
+        function formatTime(ts) {
+            if (!ts) return '';
+            const d = new Date(ts * 1000);
+            const pad = n => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        }
+
+        function goBack() {
+            window.location.href = '/admin/message/index';
+        }
+
+        function goTo(id) {
+            window.location.href = '/admin/message/detail/' + id;
+        }
+
+        function goToOrder(orderId) {
+            window.location.href = '/admin/order/detail/' + orderId;
+        }
+
+        return {
+            message,
+            prevMsg,
+            nextMsg,
+            goBack,
+            goTo,
+            goToOrder,
+            formatTime,
+            getCategoryColor,
+            getCategoryBg,
+            getCategoryIcon
+        };
+    }
+}, 'messageDetailApp');
+</script>
+{/block}

@@ -21,7 +21,7 @@ class Order extends \think\Model
     public const STATUS_COMPLETED = 70; // 已完成
     public const STATUS_CANCELED = 99; // 已取消
 
-    // 关联: 客户
+    // 关联: 采购方
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');

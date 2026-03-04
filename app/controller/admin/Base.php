@@ -74,6 +74,14 @@ abstract class Base extends ControllerBase
     }
 
     /**
+     * 超管或订单管理员
+     */
+    protected function canManageOrders(): bool
+    {
+        return in_array($this->userInfo['role_id'] ?? 0, [1, 2], true);
+    }
+
+    /**
      * 检查登录状态
      * @return bool
      */

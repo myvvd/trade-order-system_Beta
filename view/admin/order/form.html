@@ -2,279 +2,405 @@
 
 {block name="content"}
 <style>
-/* 页面整体布局 */
-.order-form-container { max-width: 1200px; }
+/* ===================== 页面布局 ===================== */
+.order-form-container { max-width: 1280px; }
 
-/* 区块标题样式 */
+/* ===================== 区块标题 ===================== */
 .section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e5e6eb;
+    margin-bottom: 20px;
 }
 .section-title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: #1d2129;
     display: flex;
     align-items: center;
-    gap: 12px;
+    padding-left: 10px;
+    position: relative;
+    line-height: 1.4;
 }
 .section-title::before {
     content: '';
-    display: inline-block;
-    width: 4px;
-    height: 16px;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 14px;
     background: #165dff;
     border-radius: 2px;
 }
 
-/* 统一按钮样式 */
-.btn-unified {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 0 16px;
-    height: 32px;
-    font-size: 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid transparent;
-    text-decoration: none;
+/* ===================== 基本信息区 ===================== */
+.basic-form-bg {
+    background: #f8f9fc;
+    border: 1px solid #eef0f5;
+    border-radius: 8px;
+    padding: 20px 20px 4px;
 }
-.btn-primary {
-    background: #165dff;
-    color: #fff;
-    border-color: #165dff;
-}
-.btn-primary:hover {
-    background: #4080ff;
-    border-color: #4080ff;
-}
-.btn-success {
-    background: #00b42a;
-    color: #fff;
-    border-color: #00b42a;
-}
-.btn-success:hover {
-    background: #23c343;
-    border-color: #23c343;
-}
-.btn-default {
-    background: #f2f3f5;
+.basic-form-bg .arco-form-item-label-col > label {
     color: #4e5969;
-    border-color: #e5e6eb;
-}
-.btn-default:hover {
-    background: #e5e6eb;
-    border-color: #c9cdd4;
-}
-.btn-outline {
-    background: #fff;
-    color: #165dff;
-    border-color: #165dff;
-}
-.btn-outline:hover {
-    background: #e8f3ff;
+    font-size: 13px;
+    font-weight: 500;
 }
 
-/* 表格样式优化 */
+/* ===================== 货品明细工具栏 ===================== */
+.items-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.quick-search-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+.quick-search-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 340px;
+    background: #fff;
+    border: 1px solid #e5e6eb;
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    z-index: 200;
+    max-height: 240px;
+    overflow: auto;
+}
+.quick-search-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f2f3f5;
+    font-size: 13px;
+    transition: background 0.15s;
+}
+.quick-search-item:hover { background: #f0f5ff; }
+.quick-search-item:last-child { border-bottom: none; }
+
+/* ===================== 表格容器 ===================== */
+.items-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #e5e6eb;
+    border-radius: 6px;
+    margin-top: 4px;
+}
+.items-table-wrap::-webkit-scrollbar { height: 5px; }
+.items-table-wrap::-webkit-scrollbar-track { background: #f2f3f5; }
+.items-table-wrap::-webkit-scrollbar-thumb { background: #c9cdd4; border-radius: 3px; }
+.items-table-wrap::-webkit-scrollbar-thumb:hover { background: #86909c; }
+
+/* ===================== 货品明细表格 ===================== */
 .items-table {
     width: 100%;
     border-collapse: collapse;
     background: #fff;
-    border: 1px solid #e5e6eb;
-    border-radius: 4px;
-    overflow: hidden;
+    table-layout: fixed;
 }
 .items-table th {
-    padding: 12px 10px;
+    padding: 10px 8px;
     text-align: left;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     color: #4e5969;
-    background: #f7f8fa;
-    border-bottom: 1px solid #e5e6eb;
+    background: #f5f7fa;
+    border-bottom: 2px solid #e5e6eb;
     white-space: nowrap;
+    letter-spacing: 0.01em;
+    user-select: none;
 }
 .items-table td {
-    padding: 10px;
-    vertical-align: top;
+    padding: 5px 8px;
+    vertical-align: middle;
     border-bottom: 1px solid #f2f3f5;
+    background: #fff;
+    transition: background 0.12s;
 }
-.items-table tbody tr:hover {
-    background: #fafbfc;
-}
-.items-table tbody tr:last-child td {
-    border-bottom: none;
-}
+.items-table tbody tr:nth-child(even) td { background: #fafbfc; }
+.items-table tbody tr:hover td { background: #eef3ff !important; }
 
-/* 删除按钮 */
-.delete-btn {
-    padding: 4px 10px;
-    font-size: 13px;
-    color: #f53f3f;
-    background: #ffece8;
-    border: none;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-.delete-btn:hover {
-    background: #f53f3f;
-    color: #fff;
-}
+/* 自动计算列（灰底区分只读） */
+.td-auto { background: #f5f7fa !important; }
+.items-table tbody tr:nth-child(even) .td-auto { background: #f0f1f6 !important; }
+.items-table tbody tr:hover .td-auto { background: #e4edff !important; }
 
-/* 金额显示 */
-.item-amount {
-    font-weight: 600;
-    color: #165dff;
-    font-size: 14px;
-}
-
-/* 总金额区域 */
-.total-section {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 16px 0;
-    margin-top: 16px;
-    border-top: 1px solid #e5e6eb;
-}
-.total-label {
-    font-size: 14px;
-    color: #4e5969;
-    margin-right: 16px;
-}
-.total-amount {
-    font-size: 24px;
-    font-weight: 600;
-    color: #165dff;
-}
-
-/* 表单区块 */
-.form-section {
-    margin-bottom: 24px;
-}
-
-/* 输入框统一样式 */
+/* ===================== 表格输入框 ===================== */
 .table-input {
     width: 100%;
-    height: 32px;
-    padding: 0 10px;
+    height: 30px;
+    padding: 0 8px;
     border: 1px solid #e5e6eb;
     border-radius: 4px;
     font-size: 13px;
-    transition: border-color 0.2s;
+    transition: border-color 0.15s, box-shadow 0.15s;
     box-sizing: border-box;
-}
-.table-input:focus {
+    background: #fff;
+    color: #1d2129;
     outline: none;
-    border-color: #165dff;
+    font-family: inherit;
 }
-.table-input-sm {
-    width: 80px;
+.table-input:hover { border-color: #c9cdd4; }
+.table-input:focus {
+    border-color: #165dff;
+    box-shadow: 0 0 0 2px rgba(22,93,255,0.12);
 }
 textarea.table-input {
     height: auto;
-    min-height: 32px;
-    padding: 6px 10px;
-    resize: vertical;
+    min-height: 52px;
+    padding: 5px 8px;
+    resize: none;
+    line-height: 1.5;
+    display: block;
 }
+input[type=number].table-input::-webkit-inner-spin-button,
+input[type=number].table-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number].table-input { -moz-appearance: textfield; }
 
-/* 行内描述输入框 */
-.item-desc-row {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed #e5e6eb;
+/* ===================== 计算字段展示 ===================== */
+.auto-qty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    padding: 2px 10px;
+    background: #e8f3ff;
+    color: #165dff;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 20px;
+    white-space: nowrap;
 }
-.item-desc-label {
-    font-size: 12px;
-    color: #86909c;
-    margin-bottom: 4px;
+.auto-price { font-size: 13px; font-weight: 600; color: #165dff; white-space: nowrap; }
+.auto-volume { font-size: 13px; font-weight: 600; color: #165dff; white-space: nowrap; }
+
+/* ===================== 页脚：总金额 + 录单信息 ===================== */
+.order-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 2px 2px;
+    margin-top: 16px;
+    border-top: 2px solid #f0f1f5;
 }
+.order-meta { display: flex; gap: 24px; font-size: 13px; color: #86909c; }
+.order-meta b { color: #1d2129; font-weight: 500; }
+.order-total-wrap { display: flex; align-items: baseline; gap: 6px; }
+.order-total-label { font-size: 14px; color: #4e5969; font-weight: 500; }
+.order-total-amount { font-size: 28px; font-weight: 700; color: #165dff; line-height: 1; }
+
+/* ===================== 空状态行 ===================== */
+.table-empty-row td {
+    text-align: center !important;
+    padding: 36px 0 !important;
+    color: #c9cdd4;
+    background: #fff !important;
+    font-size: 14px;
+}
+.table-empty-icon { font-size: 32px; display: block; margin-bottom: 8px; }
+
+/* ===================== 行内描述（兼容） ===================== */
+.item-desc-row { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e5e6eb; }
+.item-desc-label { font-size: 12px; color: #86909c; margin-bottom: 4px; }
 </style>
 
 <div id="orderFormApp" class="order-form-container">
     <div class="page-header">
         <div class="page-header-title">{{ isEdit ? '编辑订单' : '新建订单' }}</div>
-        <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn-unified btn-default" @click="goBack">返回</button>
-            <button type="button" class="btn-unified btn-primary" @click="handleSubmit">保存订单</button>
-        </div>
+        <a-space>
+            <a-button @click="goBack">返回</a-button>
+            <a-button type="primary" @click="handleSubmit">保存订单</a-button>
+        </a-space>
     </div>
 
     <a-card style="margin-bottom: 16px;">
-        <div class="form-section">
-            <div class="section-header">
-                <div class="section-title">基本信息</div>
-            </div>
-            <a-row :gutter="24">
+        <div class="section-header">
+            <div class="section-title">基本信息</div>
+        </div>
+        <a-form :model="form" layout="vertical">
+        <div class="basic-form-bg">
+        <a-row :gutter="[24, 0]">
+                <!-- 第一行：订单号 + 录单人 + 录单时间（横向内联） -->
+                <a-col :span="24">
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding: 2px 0 12px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:13px; color:#4e5969; font-weight:500; white-space:nowrap;">订单号：</span>
+                            <a-input v-if="isEdit" :model-value="form.order_no" readonly style="color:#86909c; width:180px;"></a-input>
+                            <a-input v-else v-model="form.order_no" placeholder="请输入订单号" allow-clear style="width:180px;"></a-input>
+                        </div>
+                        <!-- <div style="display:flex; align-items:center; gap:32px;">
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="font-size:13px; color:#86909c; white-space:nowrap;">录单人：</span>
+                                <span style="font-size:13px; color:#1d2129; font-weight:500;">{{ adminName || '-' }}</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="font-size:13px; color:#86909c; white-space:nowrap;">录单时间：</span>
+                                <span style="font-size:13px; color:#1d2129; font-weight:500;">{{ currentTime }}</span>
+                            </div>
+                        </div> -->
+                    </div>
+                </a-col>
+
+                <!-- 分隔线 -->
+                <a-col :span="24">
+                    <div style="border-top: 1px solid #e5e6eb; margin: 4px 0 12px;"></div>
+                </a-col>
+
+                <!-- 第二行：采购方 + 订货日期 + 预计交货日期 -->
                 <a-col :span="8">
-                    <a-form-item label="客户" required>
-                        <div style="display: flex; gap: 8px;">
-                            <a-select v-model="form.customer_id" placeholder="选择客户" style="flex: 1;" allow-search>
-                                <a-option v-for="c in customers" :key="c.id" :value="c.id">{{ c.company_name }}</a-option>
-                            </a-select>
-                            <button type="button" class="btn-unified btn-success" @click="openNewCustomer">+ 新建客户</button>
+                    <a-form-item label="采购方：" required>
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <div style="flex: 1; min-width: 0; overflow: hidden;">
+                                <a-select v-model="form.customer_id" placeholder="选择采购方" style="width: 100%;" allow-search>
+                                    <a-option v-for="c in customers" :key="c.id" :value="c.id">{{ c.company_name }}</a-option>
+                                </a-select>
+                            </div>
+                            <a-button type="primary" status="success" size="small" style="flex-shrink: 0; width: 58px;" @click="openNewCustomer">+ 新建</a-button>
                         </div>
                     </a-form-item>
                 </a-col>
                 <a-col :span="8">
-                    <a-form-item label="交货日期">
-                        <a-date-picker v-model="form.delivery_date" style="width: 100%;" placeholder="选择交货日期" />
+                    <a-form-item label="订货日期：">
+                        <a-date-picker v-model="form.order_date" style="width: 100%;" placeholder="选择订货日期"></a-date-picker>
+                    </a-form-item>
+                </a-col>
+                <a-col :span="8">
+                    <a-form-item label="预计交货日期：">
+                        <a-date-picker v-model="form.delivery_date" style="width: 100%;" placeholder="选择交货日期"></a-date-picker>
+                    </a-form-item>
+                </a-col>
+
+                <!-- 第三行：贸易公司 + 业务员 + 联系方式 -->
+                <a-col :span="8">
+                    <a-form-item label="贸易公司：">
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <div style="flex: 1; min-width: 0; overflow: hidden;">
+                                <a-select v-model="form.trading_company" placeholder="选择贸易公司" style="width: 100%;" allow-search allow-create @change="onTradingCompanyChange">
+                                    <a-option v-for="tc in tcList" :key="tc.id" :value="tc.name">{{ tc.name }}</a-option>
+                                </a-select>
+                            </div>
+                            <a-button type="primary" status="success" size="small" style="flex-shrink: 0; width: 58px;" @click="openNewTradingCompany">+ 新建</a-button>
+                        </div>
+                    </a-form-item>
+                </a-col>
+                <a-col :span="8">
+                    <a-form-item label="业务员：">
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <div style="flex: 1; min-width: 0; overflow: hidden;">
+                                <a-select v-model="form.salesman" placeholder="选择业务员" style="width: 100%;" allow-search allow-create>
+                                    <a-option v-for="sm in filteredSalesmen" :key="sm.id" :value="sm.name">{{ sm.name }}</a-option>
+                                </a-select>
+                            </div>
+                            <a-button type="primary" status="success" size="small" style="flex-shrink: 0; width: 58px;" @click="openNewSalesman">+ 新建</a-button>
+                        </div>
+                    </a-form-item>
+                </a-col>
+                <a-col :span="8">
+                    <a-form-item label="联系方式：">
+                        <a-input v-model="form.contact_phone" placeholder="请输入联系电话" allow-clear></a-input>
                     </a-form-item>
                 </a-col>
             </a-row>
         </div>
+        </a-form>
     </a-card>
 
     <a-card>
-        <div class="form-section" style="margin-bottom: 0;">
+        <div>
             <div class="section-header">
                 <div class="section-title">货品明细</div>
-                <div id="quickSearchContainer" style="display:flex; gap:8px; align-items:center; position:relative;">
-                    <input type="text" class="table-input" v-model="quickQuery" placeholder="快速搜索并添加货品（输入名称）" @input="(e) => quickSearch(e.target.value)" style="width:360px;" />
-                    <div v-if="quickOptions.length">
-                        <div style="position:absolute; top:40px; left:0; width:360px; background:#fff; border:1px solid #e5e6eb; border-radius:4px; box-shadow:0 6px 16px rgba(0,0,0,0.08); z-index:200; max-height:240px; overflow:auto;">
-                            <div v-for="g in quickOptions" :key="g.id" @click="addGoodsToItems(g)" style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #f2f3f5; font-size:13px;">
-                                <div style="font-weight:500;">{{ g.name }}</div>
-                                <div style="font-size:12px; color:#86909c;">{{ g.goods_no }} · ¥{{ g.sale_price }}</div>
+                <div class="items-toolbar">
+                    <div id="quickSearchContainer" class="quick-search-wrap">
+                        <input type="text" class="table-input" v-model="quickQuery" placeholder="输入货品名称快速添加" @input="(e) => quickSearch(e.target.value)" style="width:190px;" />
+                        <div v-if="quickOptions.length" class="quick-search-dropdown">
+                            <div v-for="g in quickOptions" :key="g.id" class="quick-search-item" @click="addGoodsToItems(g)">
+                                <div style="font-weight:500;color:#1d2129;">{{ g.name }}</div>
+                                <div style="font-size:12px;color:#86909c;margin-top:1px;">{{ g.goods_no }} · ¥{{ g.sale_price }}</div>
                             </div>
                         </div>
                     </div>
+                    <a-button type="primary" size="small" @click="openProductSelector">
+                        <template #icon><icon-unordered-list></icon-unordered-list></template>
+                        选择货品
+                    </a-button>
+                    <a-button size="small" @click="addItem">+ 添加空行</a-button>
                 </div>
-                <button type="button" class="btn-unified btn-outline" @click="addItem">+ 添加明细</button>
             </div>
 
-            <table class="items-table">
+            <div class="items-table-wrap">
+            <table class="items-table" style="min-width:1400px;width:100%;">
                 <thead>
                     <tr>
-                        <th style="width: 220px;">货品名称</th>
-                        <th style="width: 120px;">件数</th>
-                        <th style="width: 120px;">每件数量</th>
-                        <th style="width: 80px;">总数量</th>
-                        <th style="width: 100px;">单价</th>
-                        <th style="width: 180px;">描述/备注</th>
-                        <th style="width: 110px; text-align: center;">操作</th>
+                        <th style="width:50px;text-align:center;">序号</th>
+                        <th style="width:120px;">采购方货号</th>
+                        <th style="width:72px;text-align:center;">照片</th>
+                        <th style="width:180px;">货品名称</th>
+                        <th style="width:240px;">描述</th>
+                        <th style="width:88px;">包材</th>
+                        <th style="width:70px;">件数</th>
+                        <th style="width:80px;">每件数量</th>
+                        <th style="width:66px;text-align:center;">总数量</th>
+                        <th style="width:90px;">单价</th>
+                        <th style="width:100px;text-align:right;padding-right:8px;">总价</th>
+                        <th style="width:80px;">体积</th>
+                        <th style="width:90px;text-align:right;padding-right:8px;">总体积</th>
+                        <th style="width:120px;">标签</th>
+                        <th style="width:76px;text-align:center;">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr v-for="(item, index) in form.items" :key="index">
+                        <td style="text-align:center;color:#86909c;font-size:12px;">{{ form.items.length - index }}</td>
                         <td>
-                            <input type="text" class="table-input" v-model="item.goods_name" placeholder="输入货品名称"
-                                @input="(e) => searchGoodsByName(e.target.value, index)" />
-                            <div v-if="item._showSuggestions && item._goodsOptions.length > 0" 
-                                style="position: relative;">
-                                <div style="position: absolute; top: 2px; left: 0; right: 0; background: #fff; border: 1px solid #e5e6eb; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 100; max-height: 200px; overflow-y: auto;">
-                                    <div v-for="g in item._goodsOptions" :key="g.id" 
-                                        @click="selectGoods(g, index)"
-                                        style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f2f3f5; font-size: 13px;"
-                                        onmouseover="this.style.background='#f7f8fa'" onmouseout="this.style.background='#fff'">
+                            <input type="text" class="table-input" v-model="item.customer_goods_no" placeholder="采购方货号" />
+                        </td>
+                        <td style="padding:6px;">
+                            <div style="position:relative;" data-photo-dd>
+                                <div @click="togglePhotoDropdown(index, $event)" class="table-input" style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:0 6px;overflow:hidden;height:32px;">
+                                    <img v-if="item.photo_url" :src="item.photo_url" style="width:22px;height:22px;object-fit:cover;border-radius:2px;flex-shrink:0;" />
+                                    <span v-if="item.photo_url" style="flex:1;font-size:11px;color:#1d2129;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">已选</span>
+                                    <span v-else style="flex:1;font-size:11px;color:#c9cdd4;">选择</span>
+                                    <span style="color:#86909c;font-size:9px;flex-shrink:0;">▼</span>
+                                </div>
+                                <div v-if="item._showPhotoDropdown"
+                                    :style="{position:'fixed',top:item._photoDropTop+'px',left:item._photoDropLeft+'px',width:'220px',background:'#fff',border:'1px solid #e5e6eb',borderRadius:'6px',boxShadow:'0 6px 20px rgba(0,0,0,0.12)',zIndex:'9999',maxHeight:'280px',overflowY:'auto',padding:'4px 0'}">
+                                    <div @mousedown.prevent="openUploadModal(index)" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #e5e6eb;color:#165dff;font-size:13px;font-weight:500;" onmouseover="this.style.background='#f2f7ff'" onmouseout="this.style.background='#fff'">
+                                        <span style="width:32px;height:32px;border:1.5px dashed #165dff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">+</span>
+                                        <span>上传新图片</span>
+                                    </div>
+                                    <div v-if="item.photo_url" @mousedown.prevent="item.photo_url='';item._showPhotoDropdown=false" style="padding:6px 12px;cursor:pointer;font-size:12px;color:#f53f3f;border-bottom:1px solid #f2f3f5;" onmouseover="this.style.background='#fff3f0'" onmouseout="this.style.background='#fff'">
+                                        ✕ 清除已选
+                                    </div>
+                                    <div v-for="(img, imgIdx) in allGoodsImages" :key="'pi-'+imgIdx"
+                                        @mousedown.prevent="item.photo_url=img.url;item._showPhotoDropdown=false"
+                                        style="padding:6px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;"
+                                        :style="{background: item.photo_url===img.url ? '#e8f3ff' : '#fff'}"
+                                        onmouseover="if(this.style.background!='rgb(232, 243, 255)')this.style.background='#f7f8fa'" onmouseout="if(this.style.background!='rgb(232, 243, 255)')this.style.background='#fff'">
+                                        <img :src="img.url" style="width:32px;height:32px;object-fit:cover;border-radius:3px;flex-shrink:0;border:1px solid #e5e6eb;" />
+                                        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ img.name || '货品图片' }}</span>
+                                        <span v-if="item.photo_url===img.url" style="color:#165dff;font-size:14px;font-weight:bold;">✓</span>
+                                    </div>
+                                    <div v-if="allGoodsImages.length===0" style="padding:12px;text-align:center;font-size:12px;color:#c9cdd4;">暂无货品图片</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="text" class="table-input" v-model="item.goods_name" placeholder="输入名称或选择货品"
+                                @focus="(e) => onGoodsInputFocus(e, index)"
+                                @input="(e) => searchGoodsByName(e.target.value, index)"
+                             />
+                            <div v-if="item._showSuggestions && item._goodsOptions.length > 0"
+                                :style="{position:'fixed', top:item._dropdownTop+'px', left:item._dropdownLeft+'px', width:item._dropdownWidth+'px', background:'#fff', border:'1px solid #e5e6eb', borderRadius:'4px', boxShadow:'0 4px 10px rgba(0,0,0,0.12)', zIndex:'9999', maxHeight:'220px', overflowY:'auto'}">
+                                <div v-for="g in item._goodsOptions" :key="g.id"
+                                    @mousedown.prevent="selectGoods(g, index)"
+                                    style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f2f3f5; font-size: 13px; display:flex; align-items:center; gap:8px;"
+                                    onmouseover="this.style.background='#f7f8fa'" onmouseout="this.style.background='#fff'">
+                                    <img v-if="g.image_url" :src="g.image_url" style="width:28px;height:28px;object-fit:cover;border-radius:2px;flex-shrink:0;" />
+                                    <div>
                                         <div style="font-weight: 500;">{{ g.name }}</div>
                                         <div style="font-size: 12px; color: #86909c;">{{ g.goods_no }} · ¥{{ g.sale_price }}</div>
                                     </div>
@@ -282,42 +408,125 @@ textarea.table-input {
                             </div>
                         </td>
                         <td>
-                            <input type="number" class="table-input table-input-sm" v-model.number="item.pieces" min="1" style="width: 100%;" />
+                            <textarea class="table-input" v-model="item.remark" placeholder="描述/备注" rows="2" style="width:100%;"></textarea>
                         </td>
                         <td>
-                            <input type="number" class="table-input table-input-sm" v-model.number="item.per_piece_qty" min="1" style="width: 100%;" />
+                            <select class="table-input" v-model="item.packing_material" style="height:32px;cursor:pointer;">
+                                <option value="">-</option>
+                                <option value="定制">定制</option>
+                                <option value="非定制">非定制</option>
+                            </select>
                         </td>
                         <td>
-                            <div style="display:flex; align-items:center; justify-content:flex-start;">
-                                <span class="item-amount">{{ (Number(item.pieces) || 0) * (Number(item.per_piece_qty) || 0) }}</span>
-                            </div>
+                            <input type="number" class="table-input" v-model.number="item.pieces" min="1" style="width:100%;" />
+                        </td>
+                        <td>
+                            <input type="number" class="table-input" v-model.number="item.per_piece_qty" min="1" style="width:100%;" />
+                        </td>
+                        <td class="td-auto" style="text-align:center;vertical-align:middle;">
+                            <span class="auto-qty">{{ (Number(item.pieces)||0) * (Number(item.per_piece_qty)||0) }}</span>
                         </td>
                         <td>
                             <input type="number" class="table-input" v-model.number="item.price" min="0" step="0.01" />
                         </td>
-                        
-                        <td>
-                            <textarea class="table-input" v-model="item.remark" placeholder="输入该货品的描述或备注" rows="2" style="width:100%;"></textarea>
+                        <td class="td-auto" style="text-align:right;vertical-align:middle;padding-right:10px;">
+                            <span class="auto-price">¥{{ (((Number(item.pieces)||0)*(Number(item.per_piece_qty)||0))*(Number(item.price)||0)).toFixed(2) }}</span>
                         </td>
-                        <td style="text-align: center; display:flex; gap:6px; justify-content:center;">
-                            <button type="button" class="btn-unified btn-default" @click="duplicateItem(index)">复制</button>
-                            <button type="button" class="delete-btn" @click="removeItem(index)">删除</button>
+                        <td>
+                            <input type="number" class="table-input" v-model.number="item.volume" min="0" step="0.0001" placeholder="m³" />
+                        </td>
+                        <td class="td-auto" style="text-align:right;vertical-align:middle;padding-right:10px;">
+                            <span class="auto-volume">{{ getTotalVolume(item) !== '-' ? getTotalVolume(item) + ' m³' : '-' }}</span>
+                        </td>
+                        <td>
+                            <input type="text" class="table-input" v-model="item.label" placeholder="标签" />
+                        </td>
+                        <td style="text-align:center;vertical-align:middle;padding:4px 6px;">
+                            <a-space direction="vertical" :size="4">
+                                <a-button size="mini" @click="duplicateItem(index)">复制</a-button>
+                                <a-button size="mini" status="danger" @click="removeItem(index)">删除</a-button>
+                            </a-space>
                         </td>
                     </tr>
-                    <tr v-if="form.items.length === 0">
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #86909c;">
-                            暂无货品明细，请点击"添加明细"按钮添加
+                    <tr v-if="form.items.length === 0" class="table-empty-row">
+                        <td colspan="15">
+                            <span class="table-empty-icon">📦</span>
+                            暂无货品明细，请点击「选择货品」或「添加空行」
                         </td>
                     </tr>
                 </tbody>
             </table>
+            </div><!-- /overflow-x -->
 
-            <div class="total-section">
-                <span class="total-label">订单总金额：</span>
-                <span class="total-amount">¥{{ totalAmount.toFixed(2) }}</span>
+            <div class="order-footer">
+                <div style="display: flex; align-items: center; gap: 32px;">
+                    <div style="display: flex; align-items: baseline; gap: 6px;">
+                        <span style="font-size: 14px; color: #4e5969; font-weight: 500;">总件数</span>
+                        <span style="font-size: 22px; font-weight: 700; color: #1d2129; line-height: 1;">{{ totalPieces }}</span>
+                        <span style="font-size: 13px; color: #86909c;">件</span>
+                    </div>
+                    <div style="display: flex; align-items: baseline; gap: 6px;">
+                        <span style="font-size: 14px; color: #4e5969; font-weight: 500;">总体积</span>
+                        <span style="font-size: 22px; font-weight: 700; color: #1d2129; line-height: 1;">{{ totalVolume.toFixed(4) }}</span>
+                        <span style="font-size: 13px; color: #86909c;">m³</span>
+                    </div>
+                    <div class="order-total-wrap">
+                        <span class="order-total-label">订单总金额</span>
+                        <span class="order-total-amount">¥{{ totalAmount.toFixed(2) }}</span>
+                    </div>
+                </div>
+                <div class="order-meta">
+                    <span>录单人：<b>{{ adminName }}</b></span>
+                    <span>录单时间：<b>{{ currentTime }}</b></span>
+                </div>
             </div>
         </div>
     </a-card>
+
+    <!-- 货品选择 Modal -->
+    <a-modal v-model:visible="productPickerVisible" title="选择货品" width="800px" @ok="handleProductPickerOk" @cancel="productPickerVisible=false">
+        <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+            <a-input v-model="productPickerQuery" placeholder="搜索货品名称/编号" allow-clear style="width: 240px" @press-enter="fetchProductList"></a-input>
+            <a-button type="primary" @click="fetchProductList">搜索</a-button>
+        </div>
+        <a-table :data="productPickerList" :loading="productPickerLoading" :pagination="false" row-key="id" 
+            :row-selection="{ type: 'checkbox', showCheckedAll: true }" 
+            v-model:selected-keys="productPickerSelectedKeys"
+            :scroll="{y: 400}"
+        >
+            <template #columns>
+                <a-table-column title="图片" :width="80">
+                    <template #cell="{ record }">
+                        <img v-if="record.image_url" :src="record.image_url" style="width:40px;height:40px;object-fit:cover;border-radius:2px;">
+                        <span v-else>-</span>
+                    </template>
+                </a-table-column>
+                <a-table-column title="货品编号" data-index="goods_no" :width="120"></a-table-column>
+                <a-table-column title="名称" data-index="name"></a-table-column>
+                <a-table-column title="售价" data-index="sale_price" :width="100">
+                    <template #cell="{ record }">¥{{ record.sale_price }}</template>
+                </a-table-column>
+            </template>
+        </a-table>
+        <div style="margin-top: 12px; text-align: right;">
+            <a-pagination v-model:current="productPickerPage" :total="productPickerTotal" :page-size="10" @change="fetchProductList" size="small"></a-pagination>
+        </div>
+    </a-modal>
+    <!-- 图片上传弹窗 -->
+    <a-modal v-model:visible="uploadModalVisible" title="上传图片" :width="420" :footer="false" @cancel="uploadModalVisible=false">
+        <div
+            @dragover.prevent="uploadDragActive=true"
+            @dragleave="uploadDragActive=false"
+            @drop.prevent="handleUploadDrop($event)"
+            @click="triggerUploadModalFile"
+            :style="{border: uploadDragActive ? '2px dashed #165dff' : '2px dashed #c9cdd4', borderRadius:'8px', padding:'40px 20px', textAlign:'center', cursor:'pointer', background: uploadDragActive ? '#f2f7ff' : '#fafbfc', transition:'all 0.2s'}"
+        >
+            <div style="font-size:40px;color:#165dff;margin-bottom:12px;">⇧</div>
+            <div style="font-size:14px;color:#1d2129;font-weight:500;">点击选择图片或将图片拖拽到此处</div>
+            <div style="font-size:12px;color:#86909c;margin-top:8px;">支持 JPG、PNG、GIF、WebP，最大 5MB</div>
+        </div>
+        <div v-if="uploadingPhoto" style="text-align:center;padding:16px 0;color:#165dff;font-size:13px;">上传中...</div>
+    </a-modal>
 </div>
 {/block}
 
@@ -329,36 +538,217 @@ window.createPageApp({
     setup() {
         const orderData = <?php echo json_encode($order ?? null, JSON_UNESCAPED_UNICODE); ?>;
         const customersData = <?php echo json_encode($customers ?? [], JSON_UNESCAPED_UNICODE); ?>;
+        const tradingCompaniesData = <?php echo json_encode($trading_companies ?? [], JSON_UNESCAPED_UNICODE); ?>;
+        const tcListData = <?php echo json_encode($tc_list ?? [], JSON_UNESCAPED_UNICODE); ?>;
+        const salesmenListData = <?php echo json_encode($salesmen_list ?? [], JSON_UNESCAPED_UNICODE); ?>;
         
         const isEdit = ref(!!orderData);
         const customers = ref(customersData);
+        const tradingCompanies = ref(tradingCompaniesData);
+
+        // 新建订单时自动生成订单号
+        if (!isEdit.value) {
+            fetch('/admin/order/getNextOrderNo')
+                .then(r => r.json())
+                .then(res => {
+                    if ((res.code == 1 || res.code == 200 || res.success) && res.data && res.data.order_no) {
+                        form.order_no = res.data.order_no;
+                    }
+                })
+                .catch(() => {});
+        }
+        const tcList = ref(tcListData);
+        const salesmenList = ref(salesmenListData);
+
+        // 录单人和录单时间
+        const adminName = ref('<?php echo addslashes($admin_name ?? ""); ?>');
+        const currentTime = ref('');
+        const updateCurrentTime = () => {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            currentTime.value = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+        };
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+
+        // 照片下拉 & 上传弹窗
+        let _uploadTargetIndex = -1;
+        const uploadModalVisible = ref(false);
+        const uploadDragActive = ref(false);
+        const uploadingPhoto = ref(false);
+
+        const togglePhotoDropdown = (index, e) => {
+            const item = form.items[index];
+            // 关闭其他行的下拉
+            form.items.forEach((it, i) => { if (i !== index) it._showPhotoDropdown = false; });
+            if (item._showPhotoDropdown) {
+                item._showPhotoDropdown = false;
+                return;
+            }
+            const r = e.currentTarget.getBoundingClientRect();
+            item._photoDropLeft = r.left;
+            item._photoDropTop = r.bottom + 2;
+            item._showPhotoDropdown = true;
+        };
+
+        const openUploadModal = (index) => {
+            _uploadTargetIndex = index;
+            form.items[index]._showPhotoDropdown = false;
+            uploadModalVisible.value = true;
+            uploadDragActive.value = false;
+        };
+
+        const triggerUploadModalFile = () => {
+            const inp = document.createElement('input');
+            inp.type = 'file';
+            inp.accept = 'image/*';
+            inp.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) doUploadPhoto(file);
+            };
+            inp.click();
+        };
+
+        const handleUploadDrop = (e) => {
+            uploadDragActive.value = false;
+            const file = e.dataTransfer.files[0];
+            if (file) doUploadPhoto(file);
+        };
+
+        const doUploadPhoto = async (file) => {
+            if (!file || !file.type.startsWith('image/')) {
+                ArcoMessage.warning('请选择图片文件');
+                return;
+            }
+            uploadingPhoto.value = true;
+            const fd = new FormData();
+            fd.append('image', file);
+            try {
+                const res = await fetch('/admin/goods/uploadTempImage', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                });
+                const contentType = res.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    ArcoMessage.error('上传接口返回异常，请检查登录状态或刷新页面');
+                    uploadingPhoto.value = false;
+                    return;
+                }
+                const json = await res.json();
+                if ((json.code == 1 || json.code == 200 || json.success) && json.data && json.data.url) {
+                    if (_uploadTargetIndex >= 0 && form.items[_uploadTargetIndex]) {
+                        form.items[_uploadTargetIndex].photo_url = json.data.url;
+                    }
+                    uploadModalVisible.value = false;
+                    ArcoMessage.success('上传成功');
+                } else {
+                    ArcoMessage.error(json.msg || '图片上传失败');
+                }
+            } catch (e) {
+                ArcoMessage.error('上传失败：' + e.message);
+            }
+            uploadingPhoto.value = false;
+        };
+
+        // 点击页面其他地方关闭照片下拉（延迟执行，避免与togglePhotoDropdown冲突）
+        document.addEventListener('mousedown', (e) => {
+            // 如果点击的是照片下拉相关区域，不处理
+            const td = e.target.closest('td');
+            if (td && td.querySelector('[data-photo-dd]')) return;
+            form.items.forEach(it => { it._showPhotoDropdown = false; });
+        });
+
+        // 搜索防抖定时器
+        const searchTimers = {};
+
+        // 所有已上架货品图片（页面初始化时加载）
+        const allGoodsImages = ref([]);
+        const loadAllGoodsImages = () => {
+            fetch('/admin/goods/search?q=&limit=100')
+                .then(r => r.json())
+                .then(res => {
+                    if (res.code == 200 || res.success) {
+                        const imgs = [];
+                        (res.data || []).forEach(d => {
+                            const url = d.image_url || d.image || '';
+                            if (url && url !== '/static/images/no-image.svg') {
+                                imgs.push({ url: url, name: d.name || '' });
+                            }
+                        });
+                        allGoodsImages.value = imgs;
+                    }
+                }).catch(() => {});
+        };
+        loadAllGoodsImages();
+
+        // 聚焦货品名称输入框时，记录弹出位置并触发搜索
+        const onGoodsInputFocus = (e, rowIndex) => {
+            const r = e.target.getBoundingClientRect();
+            const item = form.items[rowIndex];
+            item._dropdownLeft = r.left;
+            item._dropdownTop = r.bottom + 2;
+            item._dropdownWidth = Math.max(260, r.width);
+            searchGoodsByName(e.target.value, rowIndex, true);
+        };
 
         const defaultItem = () => ({
             goods_id: null,
             sku_id: null,
+            customer_goods_no: '',
             goods_name: '',
             goods_no: '',
             pieces: 1,
             per_piece_qty: 1,
             price: 0,
+            box_size: '',
+            photo_url: '',
             remark: '',
+            packing_material: '定制',
+            volume: '',
+            label: '',
+            _goodsImages: [],
             _goodsOptions: [],
             _skuOptions: [],
-            _showSuggestions: false
+            _showSuggestions: false,
+            _dropdownLeft: 0,
+            _dropdownTop: 0,
+            _dropdownWidth: 260,
+            _showPhotoDropdown: false,
+            _photoDropLeft: 0,
+            _photoDropTop: 0
         });
 
         const form = reactive({
+            order_no: orderData?.order_no || '',
             customer_id: orderData?.customer_id || null,
+            delivery_date: orderData?.delivery_date || '',
+            order_date: orderData?.order_date || '',
+            trading_company: orderData?.trading_company || '',
+            salesman: orderData?.salesman || '',
+            contact_phone: orderData?.contact_phone || '',
             items: orderData?.items?.length ? orderData.items.map(it => ({
                 ...it,
-                // 保持与历史订单兼容：若原来有 quantity，放到 per_piece_qty，pieces 设为 1
+                customer_goods_no: it.customer_goods_no ?? '',
                 pieces: it.pieces ?? 1,
                 per_piece_qty: it.per_piece_qty ?? it.quantity ?? 1,
+                price: it.unit_price ?? it.price ?? 0,
+                box_size: it.box_size ?? '',
+                photo_url: it.photo_url ?? '',
+                packing_material: it.packing_material ?? '定制',
+                volume: it.volume ?? '',
+                label: it.label ?? '',
+                _goodsImages: [],
                 _goodsOptions: [],
                 _skuOptions: [],
-                _showSuggestions: false
+                _showSuggestions: false,
+                _dropdownLeft: 0,
+                _dropdownTop: 0,
+                _dropdownWidth: 260,
+                _showPhotoDropdown: false,
+                _photoDropLeft: 0,
+                _photoDropTop: 0
             })) : [defaultItem()],
-            delivery_date: orderData?.delivery_date || ''
         });
 
         const totalAmount = computed(() => {
@@ -368,6 +758,25 @@ window.createPageApp({
             }, 0);
         });
 
+        const totalPieces = computed(() => {
+            return form.items.reduce((sum, item) => sum + (Number(item.pieces) || 0), 0);
+        });
+
+        const totalVolume = computed(() => {
+            return form.items.reduce((sum, item) => {
+                const pieces = Number(item.pieces) || 0;
+                const vol = Number(item.volume) || 0;
+                return sum + pieces * vol;
+            }, 0);
+        });
+
+        const getTotalVolume = (item) => {
+            const pieces = Number(item.pieces) || 0;
+            const vol = Number(item.volume) || 0;
+            if (!pieces || !vol) return '-';
+            return (pieces * vol).toFixed(4);
+        };
+
         const addItem = () => {
             form.items.push(defaultItem());
         };
@@ -376,17 +785,19 @@ window.createPageApp({
             form.items.splice(index, 1);
         };
 
-        let searchTimers = {};
-        const searchGoodsByName = (query, rowIndex) => {
+        const searchGoodsByName = (query, rowIndex, forceShow) => {
             const item = form.items[rowIndex];
-            if (!query || query.length < 1) {
-                item._showSuggestions = false;
-                item._goodsOptions = [];
-                return;
+            // 清空关联的 goods_id（输入时需重新选择）
+            if (!forceShow) {
+                item.goods_id = null;
             }
+            item._showSuggestions = false;
+            item._goodsOptions = [];
+
             if (searchTimers[rowIndex]) clearTimeout(searchTimers[rowIndex]);
+            const delay = (!query || query.length < 1) ? 0 : 300;
             searchTimers[rowIndex] = setTimeout(() => {
-                fetch('/admin/goods/search?q=' + encodeURIComponent(query))
+                fetch('/admin/goods/search?q=' + encodeURIComponent(query || ''))
                     .then(r => r.json())
                     .then(res => {
                         if (res.code == 1 || res.success) {
@@ -395,12 +806,14 @@ window.createPageApp({
                                 name: d.name,
                                 goods_no: d.goods_no || '',
                                 sale_price: d.sale_price || 0,
-                                image: d.image || ''
+                                image: d.image || '',
+                                image_url: d.image_url || ''
                             }));
+                            // 有匹配结果才展开下拉，不强制要求必须选择
                             item._showSuggestions = item._goodsOptions.length > 0;
                         }
                     }).catch(() => {});
-            }, 300);
+            }, delay);
         };
 
         const selectGoods = async (goods, rowIndex) => {
@@ -409,6 +822,11 @@ window.createPageApp({
             item.goods_name = goods.name;
             item.goods_no = goods.goods_no;
             item.price = goods.sale_price || item.price || 0;
+            // 收集货品所有可用图片（image_url 优先，image 作备选）
+            const imgUrls = [];
+            if (goods.image_url && goods.image_url !== '/static/images/no-image.svg') imgUrls.push(goods.image_url);
+            else if (goods.image && goods.image !== '/static/images/no-image.svg') imgUrls.push(goods.image);
+            item._goodsImages = imgUrls;
             item._showSuggestions = false;
             
             // 加载 SKU
@@ -455,11 +873,15 @@ window.createPageApp({
             form.items.push({
                 goods_id: g.id,
                 sku_id: null,
+                customer_goods_no: '',
                 goods_name: g.name,
                 goods_no: g.goods_no,
                 pieces: 1,
                 per_piece_qty: 1,
                 price: g.sale_price || 0,
+                box_size: '',
+                photo_url: '',
+                _goodsImages: (() => { const imgs=[]; if(g.image_url && g.image_url !== '/static/images/no-image.svg') imgs.push(g.image_url); else if(g.image && g.image !== '/static/images/no-image.svg') imgs.push(g.image); return imgs; })(),
                 remark: '',
                 _goodsOptions: [],
                 _skuOptions: [],
@@ -469,6 +891,59 @@ window.createPageApp({
             quickQuery.value = '';
         };
 
+        // --- 货品选择 Modal 相关 ---
+        const productPickerVisible = ref(false);
+        const productPickerLoading = ref(false);
+        const productPickerList = ref([]);
+        const productPickerTotal = ref(0);
+        const productPickerPage = ref(1);
+        const productPickerQuery = ref('');
+        const productPickerSelectedKeys = ref([]);
+
+        const openProductSelector = () => {
+            productPickerVisible.value = true;
+            fetchProductList();
+        };
+
+        const fetchProductList = () => {
+            productPickerLoading.value = true;
+            const params = new URLSearchParams();
+            params.append('page', productPickerPage.value);
+            params.append('page_size', 10);
+            if(productPickerQuery.value) params.append('keyword', productPickerQuery.value);
+            // 假设有一个 /admin/goods/listApi 或者直接用 list 页面 json? 
+            // Goods.php list returns HTML. search returns JSON.
+            // We need a JSON list endpoint. search acts like one but fields might be limited.
+            // Let's use search?q=... for now, or assume list can return json if requested?
+            // Goods.php list method does not check request type. 
+            // Use search endpoint which returns JSON.
+            fetch('/admin/goods/search?limit=10&page='+productPickerPage.value+'&q=' + encodeURIComponent(productPickerQuery.value))
+                .then(r => r.json())
+                .then(res => {
+                    if (res.code == 1 || res.success) {
+                         // search 接口可能没有返回 total 和分页，简单处理
+                        productPickerList.value = res.data || [];
+                        // 这是一个简易搜索，分页可能不支持
+                    }
+                    productPickerLoading.value = false;
+                }).catch(() => {
+                     productPickerLoading.value = false;
+                });
+        };
+
+        const handleProductPickerOk = () => {
+            // 根据 selectedKeys 找到 item
+            // 由于 search 接口返回的不一定是全量，且 selection keys 是 IDs
+            // 我们需要从 productPickerList 中查找，或者重新 fetch
+            const selected = productPickerList.value.filter(p => productPickerSelectedKeys.value.includes(p.id));
+            selected.forEach(g => {
+                addGoodsToItems(g);
+            });
+            productPickerSelectedKeys.value = [];
+            productPickerVisible.value = false;
+        };
+        // -------------------------
+
         const duplicateItem = (index) => {
             const src = form.items[index];
             if (!src) return;
@@ -477,7 +952,7 @@ window.createPageApp({
             copy._goodsOptions = [];
             copy._skuOptions = [];
             copy._showSuggestions = false;
-            form.items.splice(index + 1, 0, copy);
+            form.items.push(copy);
         };
 
         // 当选择 SKU 时，自动填充价格与库存显示
@@ -495,32 +970,86 @@ window.createPageApp({
             window.open('/admin/customer/create', '_blank');
         };
 
+        const openNewTradingCompany = () => {
+            window.open('/admin/trading_company/create', '_blank');
+        };
+
+        const openNewSalesman = () => {
+            window.open('/admin/salesman/create', '_blank');
+        };
+
+        // 按选中贸易公司过滤业务员
+        const filteredSalesmen = Vue.computed(() => {
+            if (!form.trading_company) return salesmenList.value;
+            const tc = tcList.value.find(t => t.name === form.trading_company);
+            if (!tc) return salesmenList.value;
+            return salesmenList.value.filter(s => s.trading_company_id === tc.id);
+        });
+
+        const onTradingCompanyChange = () => {
+            // 当切换贸易公司时，若当前业务员不属于新公司则清空
+            if (!form.salesman) return;
+            const sm = salesmenList.value.find(s => s.name === form.salesman);
+            if (!sm) return;
+            const tc = tcList.value.find(t => t.name === form.trading_company);
+            if (tc && sm.trading_company_id !== tc.id) {
+                form.salesman = '';
+            }
+        };
+
+        // 选中业务员后自动填充联系方式
+        Vue.watch(() => form.salesman, (val) => {
+            if (!val) return;
+            const sm = salesmenList.value.find(s => s.name === val);
+            if (sm && sm.phone) {
+                form.contact_phone = sm.phone;
+            }
+        });
+
         const goBack = () => {
             location.href = '/admin/order/list';
         };
 
         const handleSubmit = () => {
             if (!form.customer_id) {
-                ArcoMessage.warning('请选择客户');
+                ArcoMessage.warning('请选择采购方');
                 return;
             }
-            if (form.items.length === 0 || !form.items.some(it => it.goods_name)) {
+            if (form.items.length === 0) {
                 ArcoMessage.warning('请添加货品明细');
+                return;
+            }
+            
+            // 过滤空行（只要有货品名称就算有效，允许手动输入新货品）
+            const validItems = form.items.filter(it => it.goods_name && it.goods_name.trim());
+            if (validItems.length === 0) {
+                ArcoMessage.warning('请添加有效的货品明细');
                 return;
             }
 
             const payload = {
+                order_no: form.order_no || '',
                 customer_id: form.customer_id,
-                items: form.items.filter(it => it.goods_name).map(it => ({
-                    goods_id: it.goods_id,
+                delivery_date: form.delivery_date,
+                order_date: form.order_date,
+                trading_company: form.trading_company,
+                salesman: form.salesman,
+                contact_phone: form.contact_phone,
+                items: validItems.map(it => ({
+                    goods_id: it.goods_id || null,
                     goods_name: it.goods_name,
+                    customer_goods_no: it.customer_goods_no || '',
                     sku_id: it.sku_id,
-                    // quantity 仍以后端字段名传递，这里按 新规则 计算总数量
                     quantity: (Number(it.pieces) || 0) * (Number(it.per_piece_qty) || 0),
                     pieces: it.pieces,
                     per_piece_qty: it.per_piece_qty,
                     price: it.price,
-                    remark: it.remark
+                    box_size: it.box_size || '',
+                    photo_url: it.photo_url || '',
+                    remark: it.remark,
+                    packing_material: it.packing_material || null,
+                    volume: it.volume !== '' ? it.volume : null,
+                    label: it.label || null,
                 })),
                 delivery_date: form.delivery_date,
                 total_amount: totalAmount.value
@@ -565,8 +1094,26 @@ window.createPageApp({
         return {
             isEdit,
             customers,
+            tradingCompanies,
+            tcList,
+            salesmenList,
+            filteredSalesmen,
             form,
             totalAmount,
+            totalPieces,
+            totalVolume,
+            getTotalVolume,
+            adminName,
+            currentTime,
+            allGoodsImages,
+            togglePhotoDropdown,
+            openUploadModal,
+            triggerUploadModalFile,
+            handleUploadDrop,
+            uploadModalVisible,
+            uploadDragActive,
+            uploadingPhoto,
+            onGoodsInputFocus,
             addItem,
             removeItem,
             searchGoodsByName,
@@ -578,8 +1125,22 @@ window.createPageApp({
             onSkuChange,
             duplicateItem,
             openNewCustomer,
+            openNewTradingCompany,
+            openNewSalesman,
+            onTradingCompanyChange,
             goBack,
-            handleSubmit
+            handleSubmit,
+            // Modal
+            productPickerVisible,
+            productPickerLoading,
+            productPickerList,
+            productPickerTotal,
+            productPickerPage,
+            productPickerQuery,
+            productPickerSelectedKeys,
+            openProductSelector,
+            fetchProductList,
+            handleProductPickerOk
         };
     }
 }, 'orderFormApp');
