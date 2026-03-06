@@ -562,8 +562,8 @@ class Order extends Base
      */
     public function dispatchInfo($id)
     {
-        if (!$this->canManageOrders()) {
-            return $this->error('暂无操作权限');
+        if (!$this->isSuperAdmin()) {
+            return $this->error('仅超级管理员可执行派单操作');
         }
 
         $order = OrderModel::with(['items'])->find($id);
@@ -631,8 +631,8 @@ class Order extends Base
             return $this->error('请求方式错误');
         }
 
-        if (!$this->canManageOrders()) {
-            return $this->error('暂无操作权限');
+        if (!$this->isSuperAdmin()) {
+            return $this->error('仅超级管理员可执行派单操作');
         }
 
         $order = OrderModel::with(['items'])->find($id);

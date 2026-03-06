@@ -149,16 +149,16 @@
                             <a-popconfirm content="确定要删除吗？" @ok="deleteOrder(record.id)">
                                 <a-button type="text" status="danger" size="small">删除</a-button>
                             </a-popconfirm>
-                            <a-button 
+                            <!-- <a-button 
                                 v-if="showDispatch(record)"
                                 type="text" 
                                 size="small" 
                                 status="success"
                                 @click="openDispatch(record)"
-                            >派单</a-button>
-                            <a-popconfirm v-if="showCancel(record)" content="取消派单并回到待派单状态？" @ok="cancelOrder(record.id)">
+                            >派单</a-button> -->
+                            <!-- <a-popconfirm v-if="showCancel(record)" content="取消派单并回到待派单状态？" @ok="cancelOrder(record.id)">
                                 <a-button type="text" status="warning" size="small">取消</a-button>
-                            </a-popconfirm>
+                            </a-popconfirm> -->
                         </div>
                         <span v-else style="color:#c9cdd4;">-</span>
                     </template>

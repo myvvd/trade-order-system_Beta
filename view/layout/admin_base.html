@@ -155,11 +155,13 @@
             <span>OM</span>
         </div>
         <div class="sidebar-menu">
-            <!-- 首页 -->
+            <!-- 首页（仅超管可见） -->
+            {if $is_super_admin}
             <a href="/admin" class="menu-item {if isset($current_page) && $current_page == 'dashboard'}active{/if}">
                 <span class="menu-item-icon">📊</span>
                 <span class="menu-item-text">首页</span>
             </a>
+            {/if}
             <!-- 订单管理 -->
             <!-- <div class="menu-item menu-group" onclick="toggleSubmenu(this)">
                 <span class="menu-item-icon">📦</span>
@@ -182,6 +184,7 @@
                                 <span class="menu-item-text">消息列表</span>
                         </a>
 
+            {if $is_super_admin}
             <!-- 采购方管理 -->
             <a href="/admin/customer/list" class="menu-item {if isset($current_page) && $current_page == 'customer'}active{/if}">
                 <span class="menu-item-icon">👥</span>
@@ -228,6 +231,7 @@
                 <a href="/admin/role/list" class="menu-item"><span class="menu-item-text">角色权限</span></a>
                 <a href="/admin/system/logs" class="menu-item"><span class="menu-item-text">操作日志</span></a>
             </div>
+            {/if}
         </div>
         <div class="sidebar-toggle" onclick="toggleSidebar()">
             <span id="toggleIcon">◀</span>

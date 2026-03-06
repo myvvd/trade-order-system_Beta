@@ -307,6 +307,7 @@
         <div class="page-header-title">
             <span style="margin-right:10px;">{{ order.order_no }}</span>
             <a-tag :color="getDeliveryStatusColor(order.delivery_status)" size="large">{{ getDeliveryStatusText(order.delivery_status) }}</a-tag>
+            <span>&nbsp;</span>
             <a-tag :color="getPaymentStatusColor(order.payment_status)" size="large">{{ getPaymentStatusText(order.payment_status) }}</a-tag>
         </div>
         <a-space>

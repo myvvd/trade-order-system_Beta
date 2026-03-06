@@ -25,7 +25,7 @@ Route::group('admin', function () {
     Route::rule(':controller/:action/:id', 'admin.:controller/:action');
     Route::rule(':controller/:action', 'admin.:controller/:action');
     Route::rule(':controller', 'admin.:controller/index');
-})->middleware(['AdminAuth']);
+})->middleware(['AdminAuth', 'Permission']);
 
 // ==================== 供应商端路由组 ====================
 Route::group('supplier', function () {
