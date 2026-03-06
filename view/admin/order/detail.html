@@ -96,12 +96,12 @@
 }
 .items-table th {
     padding: 10px 8px;
-    text-align: left;
+    text-align: center;
     font-weight: 600;
     font-size: 12px;
     color: #4e5969;
     background: #f5f7fa;
-    border-bottom: 2px solid #e5e6eb;
+    border: 1px solid #d9d9d9;
     white-space: nowrap;
     letter-spacing: 0.01em;
     user-select: none;
@@ -109,7 +109,7 @@
 .items-table td {
     padding: 8px 8px;
     vertical-align: middle;
-    border-bottom: 1px solid #f2f3f5;
+    border: 1px solid #d9d9d9;
     background: #fff;
     font-size: 13px;
     color: #1d2129;
@@ -137,7 +137,7 @@
     white-space: nowrap;
 }
 .auto-price { font-size: 13px; font-weight: 600; color: #165dff; white-space: nowrap; }
-.auto-volume { font-size: 12px; color: #4e5969; white-space: nowrap; }
+.auto-volume { font-size: 13px; font-weight: 600; color: #165dff; white-space: nowrap; }
 
 /* ===================== 页脚 ===================== */
 .order-footer {
@@ -176,6 +176,59 @@
     white-space: nowrap;
 }
 .tag-packing.non { background: #f5f7fa; color: #86909c; }
+
+/* ===================== 行内编辑 ===================== */
+.edit-input {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid #165dff;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+    box-sizing: border-box;
+}
+.edit-input:focus {
+    box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.15);
+}
+.edit-select {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid #165dff;
+    border-radius: 4px;
+    font-size: 12px;
+    outline: none;
+    background: #fff;
+    cursor: pointer;
+}
+.action-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+}
+.action-btn {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid;
+    white-space: nowrap;
+    transition: all 0.2s;
+    background: none;
+    line-height: 1.6;
+}
+.action-btn-edit { color: #165dff; border-color: #bedaff; background: #e8f3ff; }
+.action-btn-edit:hover { background: #d4e8ff; }
+.action-btn-dispatch { color: #722ed1; border-color: #d4bbff; background: #f5e8ff; }
+.action-btn-dispatch:hover { background: #eddcff; }
+.action-btn-delete { color: #f53f3f; border-color: #fdcdc5; background: #ffece8; }
+.action-btn-delete:hover { background: #ffe0d8; }
+.action-btn-save { color: #00b42a; border-color: #b9e986; background: #e8ffea; }
+.action-btn-save:hover { background: #d4ffda; }
+.action-btn-cancel { color: #86909c; border-color: #e5e6eb; background: #f7f8fa; }
+.action-btn-cancel:hover { background: #e5e6eb; }
+.editing-row td { background: #fffbe6 !important; }
 
 /* ===================== 派单记录 ===================== */
 .dispatch-table { width: 100%; border-collapse: collapse; }
@@ -253,7 +306,8 @@
     <div class="page-header">
         <div class="page-header-title">
             <span style="margin-right:10px;">{{ order.order_no }}</span>
-            <a-tag :color="getStatusColor(order.status)" size="large">{{ getStatusText(order.status) }}</a-tag>
+            <a-tag :color="getDeliveryStatusColor(order.delivery_status)" size="large">{{ getDeliveryStatusText(order.delivery_status) }}</a-tag>
+            <a-tag :color="getPaymentStatusColor(order.payment_status)" size="large">{{ getPaymentStatusText(order.payment_status) }}</a-tag>
         </div>
         <a-space>
             <a-button @click="goBack">返回</a-button>
@@ -354,74 +408,133 @@
             <div class="section-title">货品明细</div>
         </div>
         <div class="items-table-wrap">
-            <table class="items-table" style="min-width:1300px;width:100%;">
+            <table class="items-table" style="min-width:1580px;width:100%;">
                 <thead>
                     <tr>
-                        <th style="width:50px;text-align:center;">序号</th>
-                        <th style="width:120px;">采购方货号</th>
-                        <th style="width:72px;text-align:center;">照片</th>
-                        <th style="width:180px;">货品名称</th>
-                        <th style="width:180px;">描述</th>
-                        <th style="width:88px;">包材</th>
-                        <th style="width:70px;text-align:center;">件数</th>
-                        <th style="width:80px;text-align:center;">每件数量</th>
-                        <th style="width:70px;text-align:center;">总数量</th>
-                        <th style="width:90px;text-align:right;padding-right:10px;">单价</th>
-                        <th style="width:100px;text-align:right;padding-right:10px;">总价</th>
-                        <th style="width:80px;text-align:center;">体积(m³)</th>
-                        <th style="width:90px;text-align:right;padding-right:10px;">总体积</th>
-                        <th style="width:120px;">标签</th>
+                        <th style="width:44px;text-align:center;">序号</th>
+                        <th style="width:110px;text-align:center;">采购方货号</th>
+                        <th style="width:65px;text-align:center;">照片</th>
+                        <th style="width:160px;text-align:center;">货品名称</th>
+                        <th style="width:150px;text-align:center;">描述</th>
+                        <th style="width:60px;text-align:center;">包材</th>
+                        <th style="width:60px;text-align:center;">件数</th>
+                        <th style="width:70px;text-align:center;">每件数量</th>
+                        <th style="width:60px;text-align:center;">总数量</th>
+                        <th style="width:80px;text-align:center;">单价</th>
+                        <th style="width:90px;text-align:center;">总价</th>
+                        <th style="width:70px;text-align:center;">体积(m³)</th>
+                        <th style="width:90px;text-align:center;">总体积(m³)</th>
+                        <th style="width:100px;text-align:center;">标签</th>
+                        <th style="width:80px;text-align:center;">状态</th>
+                        <th style="width:70px;text-align:center;">操作</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="(item, index) in order.items" :key="item.id || index">
+                    <tr v-for="(item, index) in order.items" :key="item.id || index" :class="{'editing-row': editingItemId === item.id}">
                         <td style="text-align:center;color:#86909c;font-size:12px;">{{ order.items.length - index }}</td>
-                        <td>
-                            <span style="font-size:13px;">{{ item.customer_goods_no || '-' }}</span>
+                        <!-- 采购方货号 -->
+                        <td style="text-align:center;padding:6px 8px;">
+                            <input v-if="editingItemId === item.id" type="text" class="edit-input" v-model="editForm.customer_goods_no" placeholder="采购方货号" />
+                            <span v-else style="font-size:13px;">{{ item.customer_goods_no || '-' }}</span>
                         </td>
+                        <!-- 照片 -->
                         <td style="text-align:center;padding:6px 8px;">
                             <img v-if="item.photo_url" :src="item.photo_url"
                                 style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e5e6eb;cursor:pointer;"
                                 @click="previewImage(item.photo_url)" />
                             <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
                         </td>
+                        <!-- 货品名称 -->
+                        <td style="text-align:center;padding:6px 8px;">
+                            <input v-if="editingItemId === item.id" type="text" class="edit-input" v-model="editForm.goods_name" placeholder="货品名称" />
+                            <span v-else style="font-weight:500;">{{ item.goods_name || '-' }}</span>
+                        </td>
+                        <!-- 描述 -->
                         <td>
-                            <span style="font-weight:500;">{{ item.goods_name || '-' }}</span>
+                            <input v-if="editingItemId === item.id" type="text" class="edit-input" v-model="editForm.remark" placeholder="描述" />
+                            <span v-else style="font-size:12px;color:#4e5969;white-space:pre-wrap;word-break:break-all;">{{ item.remark || '-' }}</span>
                         </td>
-                        <td>
-                            <span style="font-size:12px;color:#4e5969;white-space:pre-wrap;word-break:break-all;">{{ item.remark || '-' }}</span>
+                        <!-- 包材 -->
+                        <td style="text-align:center;padding:6px 8px;">
+                            <select v-if="editingItemId === item.id" class="edit-select" v-model="editForm.packing_material">
+                                <!-- <option value="">-</option> -->
+                                <option value="定制">定制</option>
+                                <option value="非定制">非定制</option>
+                            </select>
+                            <template v-else>
+                                <span v-if="item.packing_material" class="tag-packing" :class="{ non: item.packing_material !== '定制' }">
+                                    {{ item.packing_material }}
+                                </span>
+                                <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
+                            </template>
                         </td>
-                        <td>
-                            <span v-if="item.packing_material" class="tag-packing" :class="{ non: item.packing_material !== '定制' }">
-                                {{ item.packing_material }}
-                            </span>
-                            <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
-                        </td>
-                        <td style="text-align:center;">{{ item.pieces || '-' }}</td>
-                        <td style="text-align:center;">{{ item.per_piece_qty || '-' }}</td>
-                        <td class="td-auto" style="text-align:center;">
-                            <span class="auto-qty">{{ (Number(item.pieces)||0) * (Number(item.per_piece_qty)||0) }}</span>
-                        </td>
-                        <td style="text-align:right;padding-right:10px;">
-                            <span v-if="item.unit_price">¥{{ Number(item.unit_price).toFixed(2) }}</span>
-                            <span v-else style="color:#c9cdd4;">-</span>
-                        </td>
-                        <td class="td-auto" style="text-align:right;padding-right:10px;">
-                            <span class="auto-price">¥{{ (((Number(item.pieces)||0)*(Number(item.per_piece_qty)||0))*(Number(item.unit_price)||0)).toFixed(2) }}</span>
-                        </td>
+                        <!-- 件数 -->
                         <td style="text-align:center;">
-                            <span v-if="item.volume" class="auto-volume">{{ item.volume }}</span>
-                            <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
+                            <input v-if="editingItemId === item.id" type="number" class="edit-input" v-model.number="editForm.pieces" min="0" style="width:55px;" />
+                            <span v-else>{{ item.pieces || '-' }}</span>
                         </td>
-                        <td class="td-auto" style="text-align:right;padding-right:10px;">
-                            <span class="auto-volume">{{ getTotalVolume(item) }}</span>
+                        <!-- 每件数量 -->
+                        <td style="text-align:center;">
+                            <input v-if="editingItemId === item.id" type="number" class="edit-input" v-model.number="editForm.per_piece_qty" min="0" style="width:60px;" />
+                            <span v-else>{{ item.per_piece_qty || '-' }}</span>
                         </td>
-                        <td>
-                            <span style="font-size:12px;color:#4e5969;">{{ item.label || '-' }}</span>
+                        <!-- 总数量 -->
+                        <td class="td-auto" style="text-align:center;">
+                            <span v-if="editingItemId === item.id" class="auto-qty">{{ (Number(editForm.pieces)||0) * (Number(editForm.per_piece_qty)||0) }}</span>
+                            <span v-else class="auto-qty">{{ (Number(item.pieces)||0) * (Number(item.per_piece_qty)||0) }}</span>
+                        </td>
+                        <!-- 单价 -->
+                        <td style="text-align:center;padding-right:10px;">
+                            <input v-if="editingItemId === item.id" type="number" class="edit-input" v-model.number="editForm.unit_price" min="0" step="0.01" style="width:75px;" />
+                            <template v-else>
+                                <span v-if="item.unit_price">¥{{ Number(item.unit_price).toFixed(2) }}</span>
+                                <span v-else style="color:#c9cdd4;">-</span>
+                            </template>
+                        </td>
+                        <!-- 总价 -->
+                        <td class="td-auto" style="text-align:center;padding-right:10px;">
+                            <span v-if="editingItemId === item.id" class="auto-price">¥{{ (((Number(editForm.pieces)||0)*(Number(editForm.per_piece_qty)||0))*(Number(editForm.unit_price)||0)).toFixed(2) }}</span>
+                            <span v-else class="auto-price">¥{{ (((Number(item.pieces)||0)*(Number(item.per_piece_qty)||0))*(Number(item.unit_price)||0)).toFixed(2) }}</span>
+                        </td>
+                        <!-- 体积 -->
+                        <td style="text-align:center;">
+                            <input v-if="editingItemId === item.id" type="number" class="edit-input" v-model.number="editForm.volume" min="0" step="0.0001" style="width:65px;" />
+                            <template v-else>
+                                <span v-if="item.volume" class="auto-volume">{{ item.volume }}</span>
+                                <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
+                            </template>
+                        </td>
+                        <!-- 总体积 -->
+                        <td class="td-auto" style="text-align:center;padding-right:10px;">
+                            <span v-if="editingItemId === item.id" class="auto-volume">{{ getEditTotalVolume() }}</span>
+                            <span v-else class="auto-volume">{{ getTotalVolume(item) }}</span>
+                        </td>
+                        <!-- 标签 -->
+                        <td style="text-align:center;padding-right:10px;">
+                            <input v-if="editingItemId === item.id" type="text" class="edit-input" v-model="editForm.label" placeholder="标签" />
+                            <span v-else style="font-size:12px;color:#4e5969;">{{ item.label || '-' }}</span>
+                        </td>
+                        <!-- 状态 -->
+                        <td style="text-align:center;">
+                            <a-tag :color="getItemStatusColor(item.item_status)" size="small">{{ getItemStatusText(item.item_status) }}</a-tag>
+                        </td>
+                        <!-- 操作 -->
+                        <td style="text-align:center;">
+                            <div v-if="editingItemId === item.id" class="action-btns">
+                                <button class="action-btn action-btn-save" @click="saveEdit">保存</button>
+                                <button class="action-btn action-btn-cancel" @click="cancelEdit">取消</button>
+                            </div>
+                            <div v-else class="action-btns">
+                                <button class="action-btn action-btn-edit" @click="startEdit(item)">修改</button>
+                                <button v-if="isSuper" class="action-btn action-btn-dispatch" @click="openDispatch(item)">派单</button>
+                                <a-popconfirm content="确定要删除此明细项吗？" @ok="deleteItemRow(item)">
+                                    <button class="action-btn action-btn-delete">删除</button>
+                                </a-popconfirm>
+                            </div>
                         </td>
                     </tr>
                     <tr v-if="!order.items || order.items.length === 0" class="table-empty-row">
-                        <td colspan="14">
+                        <td colspan="16">
                             <span class="table-empty-icon">📦</span>
                             暂无货品明细
                         </td>
@@ -443,7 +556,7 @@
     </a-card>
 
     <!-- 派单记录 -->
-    <a-card v-if="order.dispatches && order.dispatches.length > 0" style="margin-bottom: 16px;">
+    <a-card v-if="isSuper && order.dispatches && order.dispatches.length > 0" style="margin-bottom: 16px;">
         <div class="section-header">
             <div class="section-title">派单记录</div>
         </div>
@@ -451,6 +564,8 @@
             <thead>
                 <tr>
                     <th>供应商</th>
+                    <th>货品名称</th>
+                    <th>派单数量</th>
                     <th>派单时间</th>
                     <th>状态</th>
                     <th>备注</th>
@@ -459,6 +574,18 @@
             <tbody>
                 <tr v-for="d in order.dispatches" :key="d.id">
                     <td>{{ d.supplier ? d.supplier.name : '-' }}</td>
+                    <td>
+                        <div v-if="d.items && d.items.length" style="display:flex;flex-direction:column;gap:2px;">
+                            <span v-for="di in d.items" :key="di.id" style="font-size:13px;">{{ di.orderItem ? di.orderItem.goods_name : '-' }}</span>
+                        </div>
+                        <span v-else style="color:#c9cdd4;">-</span>
+                    </td>
+                    <td style="text-align:center;">
+                        <div v-if="d.items && d.items.length" style="display:flex;flex-direction:column;gap:2px;">
+                            <span v-for="di in d.items" :key="di.id" style="font-size:13px;">{{ di.quantity }}</span>
+                        </div>
+                        <span v-else style="color:#c9cdd4;">-</span>
+                    </td>
                     <td>{{ d.create_time }}</td>
                     <td>
                         <a-tag :color="getDispatchStatusColor(d.status)">{{ getDispatchStatusText(d.status) }}</a-tag>
@@ -493,12 +620,73 @@
             <img :src="previewUrl" style="max-width:100%;max-height:60vh;border-radius:4px;" />
         </div>
     </a-modal>
+
+    <!-- 派单弹窗 -->
+    <a-modal v-model:visible="dispatchVisible" :title="'派单 - ' + order.order_no" width="640px" :footer="false" unmount-on-close>
+        <a-spin :loading="dispatchLoading" style="width: 100%;">
+            <!-- 当前货品信息 -->
+            <div v-if="dispatchCurrentItem" style="margin-bottom: 20px;">
+                <div style="font-size:13px;color:#4e5969;margin-bottom:8px;font-weight:500;">货品派单数量</div>
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#f5f7fa;">
+                            <th style="padding:10px 12px;text-align:left;font-size:13px;font-weight:600;color:#4e5969;border:1px solid #e5e6eb;">货品名称</th>
+                            <th style="padding:10px 12px;text-align:center;font-size:13px;font-weight:600;color:#4e5969;border:1px solid #e5e6eb;width:80px;">状态</th>
+                            <th style="padding:10px 12px;text-align:center;font-size:13px;font-weight:600;color:#4e5969;border:1px solid #e5e6eb;width:90px;">已派单数量</th>
+                            <th style="padding:10px 12px;text-align:center;font-size:13px;font-weight:600;color:#4e5969;border:1px solid #e5e6eb;width:80px;">总数量</th>
+                            <th style="padding:10px 12px;text-align:center;font-size:13px;font-weight:600;color:#4e5969;border:1px solid #e5e6eb;width:140px;">可派单数量</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding:10px 12px;font-size:13px;color:#1d2129;border:1px solid #e5e6eb;">{{ dispatchCurrentItem.goods_name }}</td>
+                            <td style="padding:10px 12px;text-align:center;border:1px solid #e5e6eb;">
+                                <a-tag size="small" :color="getItemStatusColor(dispatchCurrentItem.item_status)">{{ getItemStatusText(dispatchCurrentItem.item_status) }}</a-tag>
+                            </td>
+                            <td style="padding:10px 12px;text-align:center;font-size:13px;border:1px solid #e5e6eb;">
+                                <span :style="{color: dispatchCurrentItem.dispatched > 0 ? '#ff7d00' : '#86909c'}">{{ dispatchCurrentItem.dispatched || 0 }}</span>
+                            </td>
+                            <td style="padding:10px 12px;text-align:center;font-size:13px;color:#1d2129;border:1px solid #e5e6eb;">{{ dispatchCurrentItem.quantity }}</td>
+                            <td style="padding:10px 12px;text-align:center;border:1px solid #e5e6eb;">
+                                <a-input-number
+                                    v-model="dispatchQty"
+                                    :min="0"
+                                    :max="dispatchCurrentItem.remaining"
+                                    size="small"
+                                    style="width:110px;"
+                                ></a-input-number>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 选择供应商 -->
+            <div style="margin-bottom: 20px;">
+                <div style="font-size:13px;color:#4e5969;margin-bottom:8px;font-weight:500;">选择供应商</div>
+                <a-select v-model="selectedSupplierId" placeholder="请选择供应商" style="width:100%;" allow-clear>
+                    <a-option v-for="s in dispatchSuppliers" :key="s.id" :value="s.id">{{ s.name }}</a-option>
+                </a-select>
+            </div>
+
+            <!-- 提交按钮 -->
+            <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:16px;border-top:1px solid #e5e6eb;">
+                <a-button @click="dispatchVisible = false">取消</a-button>
+                <a-button type="primary" :loading="dispatchSubmitting" @click="submitDispatch" :disabled="!selectedSupplierId">
+                    <template #icon><icon-send /></template>
+                    确认派单
+                </a-button>
+            </div>
+        </a-spin>
+    </a-modal>
 </div>
 {/block}
 
 {block name="script"}
 <script>
 const __ORDER__ = {$order|json_encode|raw};
+const __IS_SUPER__ = {$isSuper|json_encode|raw};
+const __CAN_MANAGE__ = {$canManageOrders|json_encode|raw};
 
 window.createPageApp({
     setup() {
@@ -506,6 +694,8 @@ window.createPageApp({
         const ArcoMessage = Arco.Message;
 
         const order = reactive(__ORDER__);
+        const isSuper = __IS_SUPER__;
+        const canManageOrders = __CAN_MANAGE__;
 
         const previewVisible = ref(false);
         const previewUrl = ref('');
@@ -531,6 +721,24 @@ window.createPageApp({
         const DISPATCH_COLOR = { 20: 'orange', 21: 'red', 30: 'cyan', 40: 'purple', 50: 'green' };
         const getDispatchStatusText = (status) => DISPATCH_TEXT[status] || String(status);
         const getDispatchStatusColor = (status) => DISPATCH_COLOR[status] || '';
+
+        // 货品状态
+        const ITEM_STATUS_TEXT = { 10: '待派单', 20: '已派单', 30: '制作中', 40: '待收货', 50: '已入库', 60: '已发货', 70: '已完成' };
+        const ITEM_STATUS_COLOR = { 10: 'arcoblue', 20: 'orange', 30: 'cyan', 40: 'purple', 50: 'green', 60: 'gold', 70: 'green' };
+        const getItemStatusText = (status) => ITEM_STATUS_TEXT[status] || '待派单';
+        const getItemStatusColor = (status) => ITEM_STATUS_COLOR[status] || 'arcoblue';
+
+        // 送货状态
+        const DELIVERY_STATUS_TEXT = { 0: '未送货', 1: '部分送货', 2: '全部送货' };
+        const DELIVERY_STATUS_COLOR = { 0: 'arcoblue', 1: 'orange', 2: 'green' };
+        const getDeliveryStatusText = (status) => DELIVERY_STATUS_TEXT[status] || '未送货';
+        const getDeliveryStatusColor = (status) => DELIVERY_STATUS_COLOR[status] || 'arcoblue';
+
+        // 收款状态
+        const PAYMENT_STATUS_TEXT = { 0: '未收款', 1: '部分收款', 2: '全部收款' };
+        const PAYMENT_STATUS_COLOR = { 0: 'red', 1: 'orange', 2: 'green' };
+        const getPaymentStatusText = (status) => PAYMENT_STATUS_TEXT[status] || '未收款';
+        const getPaymentStatusColor = (status) => PAYMENT_STATUS_COLOR[status] || 'red';
 
         const canCancel = (status) => status < 70 && status != 99;
 
@@ -570,14 +778,219 @@ window.createPageApp({
             }
         };
 
+        // ========== 行内编辑逻辑 ==========
+        const editingItemId = ref(null);
+        const editForm = reactive({
+            customer_goods_no: '',
+            goods_name: '',
+            remark: '',
+            packing_material: '',
+            pieces: 0,
+            per_piece_qty: 0,
+            unit_price: 0,
+            volume: 0,
+            label: ''
+        });
+
+        const startEdit = (item) => {
+            editingItemId.value = item.id;
+            editForm.customer_goods_no = item.customer_goods_no || '';
+            editForm.goods_name = item.goods_name || '';
+            editForm.remark = item.remark || '';
+            editForm.packing_material = item.packing_material || '';
+            editForm.pieces = Number(item.pieces) || 0;
+            editForm.per_piece_qty = Number(item.per_piece_qty) || 0;
+            editForm.unit_price = Number(item.unit_price) || 0;
+            editForm.volume = Number(item.volume) || 0;
+            editForm.label = item.label || '';
+        };
+
+        const cancelEdit = () => {
+            editingItemId.value = null;
+        };
+
+        const getEditTotalVolume = () => {
+            const qty = (Number(editForm.pieces) || 0) * (Number(editForm.per_piece_qty) || 0);
+            const vol = Number(editForm.volume) || 0;
+            if (!qty || !vol) return '-';
+            return (qty * vol).toFixed(4) + ' m³';
+        };
+
+        const saveEdit = async () => {
+            const itemId = editingItemId.value;
+            if (!itemId) return;
+            try {
+                const res = await fetch('/admin/order/updateItem/' + itemId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customer_goods_no: editForm.customer_goods_no,
+                        goods_name: editForm.goods_name,
+                        remark: editForm.remark,
+                        packing_material: editForm.packing_material,
+                        pieces: editForm.pieces,
+                        per_piece_qty: editForm.per_piece_qty,
+                        unit_price: editForm.unit_price,
+                        volume: editForm.volume,
+                        label: editForm.label
+                    })
+                });
+                const json = await res.json();
+                if (json.code === 200) {
+                    ArcoMessage.success('修改成功');
+                    // 更新本地数据
+                    const idx = order.items.findIndex(i => i.id === itemId);
+                    if (idx !== -1 && json.data) {
+                        Object.assign(order.items[idx], json.data);
+                    }
+                    editingItemId.value = null;
+                } else {
+                    ArcoMessage.error(json.msg || '修改失败');
+                }
+            } catch (e) {
+                ArcoMessage.error('请求失败：' + e.message);
+            }
+        };
+
+        // ========== 删除明细项 ==========
+        const deleteItemRow = async (item) => {
+            try {
+                const res = await fetch('/admin/order/deleteItem/' + item.id, { method: 'POST' });
+                const json = await res.json();
+                if (json.code === 200) {
+                    ArcoMessage.success('删除成功');
+                    const idx = order.items.findIndex(i => i.id === item.id);
+                    if (idx !== -1) {
+                        order.items.splice(idx, 1);
+                    }
+                } else {
+                    ArcoMessage.error(json.msg || '删除失败');
+                }
+            } catch (e) {
+                ArcoMessage.error('请求失败：' + e.message);
+            }
+        };
+
+        // ========== 派单弹窗逻辑 ==========
+        const dispatchVisible = ref(false);
+        const dispatchLoading = ref(false);
+        const dispatchSubmitting = ref(false);
+        const dispatchCurrentItem = ref(null); // 当前派单的单个货品
+        const dispatchSuppliers = ref([]);
+        const selectedSupplierId = ref(null);
+        const dispatchQty = ref(0);
+
+        // 监听供应商选择变化，自动填入最大可派数量
+        Vue.watch(selectedSupplierId, () => {
+            if (selectedSupplierId.value && dispatchCurrentItem.value) {
+                dispatchQty.value = dispatchCurrentItem.value.remaining;
+            }
+        });
+
+        const openDispatch = async (clickedItem) => {
+            if (!canManageOrders) {
+                ArcoMessage.error('暂无操作权限');
+                return;
+            }
+            dispatchCurrentItem.value = null;
+            dispatchSuppliers.value = [];
+            selectedSupplierId.value = null;
+            dispatchQty.value = 0;
+            dispatchVisible.value = true;
+            dispatchLoading.value = true;
+            try {
+                const res = await fetch('/admin/order/dispatchInfo/' + order.id);
+                const json = await res.json();
+                if (json.code === 200) {
+                    const allItems = json.data.items || [];
+                    // 只取当前点击的那一条货品
+                    const matched = allItems.find(i => i.id === clickedItem.id);
+                    if (matched) {
+                        dispatchCurrentItem.value = matched;
+                    } else {
+                        dispatchCurrentItem.value = {
+                            id: clickedItem.id,
+                            goods_name: clickedItem.goods_name,
+                            quantity: (Number(clickedItem.pieces)||0) * (Number(clickedItem.per_piece_qty)||0),
+                            remaining: 0,
+                            item_status: clickedItem.item_status || 10,
+                            dispatched: 0
+                        };
+                    }
+                    dispatchSuppliers.value = json.data.suppliers || [];
+                } else {
+                    ArcoMessage.error(json.msg || '获取派单信息失败');
+                    dispatchVisible.value = false;
+                }
+            } catch (e) {
+                ArcoMessage.error('请求失败：' + e.message);
+                dispatchVisible.value = false;
+            } finally {
+                dispatchLoading.value = false;
+            }
+        };
+
+        const submitDispatch = async () => {
+            if (!selectedSupplierId.value) {
+                ArcoMessage.warning('请选择一个供应商');
+                return;
+            }
+            const qty = parseInt(dispatchQty.value) || 0;
+            if (qty <= 0) {
+                ArcoMessage.warning('请设置派单数量');
+                return;
+            }
+            if (dispatchCurrentItem.value && qty > dispatchCurrentItem.value.remaining) {
+                ArcoMessage.error('派单数量(' + qty + ')超出可派数量(' + dispatchCurrentItem.value.remaining + ')');
+                return;
+            }
+            const dispatchesData = [{
+                supplier_id: selectedSupplierId.value,
+                items: [{ order_item_id: dispatchCurrentItem.value.id, quantity: qty }]
+            }];
+            dispatchSubmitting.value = true;
+            try {
+                const res = await fetch('/admin/order/dispatchSave/' + order.id, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dispatches: dispatchesData })
+                });
+                const json = await res.json();
+                if (json.code === 200) {
+                    ArcoMessage.success(json.msg || '派单成功');
+                    dispatchVisible.value = false;
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    ArcoMessage.error(json.msg || '派单失败');
+                }
+            } catch (e) {
+                ArcoMessage.error('请求失败：' + e.message);
+            } finally {
+                dispatchSubmitting.value = false;
+            }
+        };
+
         return {
-            order,
+            order, isSuper, canManageOrders,
             previewVisible, previewUrl, previewImage,
             getStatusText, getStatusColor,
             getDispatchStatusText, getDispatchStatusColor,
+            getItemStatusText, getItemStatusColor,
+            getDeliveryStatusText, getDeliveryStatusColor,
+            getPaymentStatusText, getPaymentStatusColor,
             canCancel, getTotalVolume, totalAmount,
             goBack, goEdit, cancelOrder,
-            downloadExcel, printOrder
+            downloadExcel, printOrder,
+            // 行内编辑
+            editingItemId, editForm,
+            startEdit, cancelEdit, saveEdit, getEditTotalVolume,
+            // 删除
+            deleteItemRow,
+            // 派单
+            dispatchVisible, dispatchLoading, dispatchSubmitting,
+            dispatchCurrentItem, dispatchSuppliers,
+            selectedSupplierId, dispatchQty,
+            openDispatch, submitDispatch
         };
     }
 }, 'orderDetailApp');

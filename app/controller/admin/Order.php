@@ -30,7 +30,8 @@ class Order extends Base
     public function list()
     {
         $keyword = input('keyword', '');
-        $status = input('status', '');
+        $delivery_status = input('delivery_status', '');
+        $payment_status = input('payment_status', '');
         $date_from = input('date_from', '');
         $date_to = input('date_to', '');
         $page = input('page/d', 1);
@@ -48,8 +49,12 @@ class Order extends Base
             });
         }
 
-        if ($status !== '') {
-            $query->where('status', $status);
+        if ($delivery_status !== '') {
+            $query->where('delivery_status', $delivery_status);
+        }
+
+        if ($payment_status !== '') {
+            $query->where('payment_status', $payment_status);
         }
 
         if ($date_from) {
@@ -64,24 +69,21 @@ class Order extends Base
             'page' => $page,
         ]);
 
-        $tabs = [
+        $deliveryTabs = [
             '' => '全部',
-            OrderModel::STATUS_PENDING => '待派单',
-            OrderModel::STATUS_WAIT_CONFIRM => '待确认',
-            OrderModel::STATUS_IN_PROGRESS => '制作中',
-            OrderModel::STATUS_WAIT_RECEIVE => '待收货',
-            OrderModel::STATUS_RECEIVED => '已入库',
-            OrderModel::STATUS_SHIPPED => '已发货',
-            OrderModel::STATUS_COMPLETED => '已完成',
+            OrderModel::DELIVERY_NONE => '未送货',
+            OrderModel::DELIVERY_PARTIAL => '部分送货',
+            OrderModel::DELIVERY_ALL => '全部送货',
         ];
 
         return View::fetch('admin/order/list', [
             'orders' => $orders,
             'keyword' => $keyword,
-            'status' => $status,
+            'delivery_status' => $delivery_status,
+            'payment_status' => $payment_status,
             'date_from' => $date_from,
             'date_to' => $date_to,
-            'tabs' => $tabs,
+            'deliveryTabs' => $deliveryTabs,
             'title' => '订单管理',
             'isSuper' => $this->isSuperAdmin(),
             'canManageOrders' => $this->canManageOrders(),
@@ -288,7 +290,9 @@ class Order extends Base
     {
         $order = OrderModel::with([
             'items', 
-            'dispatches.supplier', 
+            'dispatches' => function($query) {
+                $query->with(['supplier', 'items.orderItem']);
+            },
             'statusLogs.admin', 
             'attachments', 
             'customer', 
@@ -302,6 +306,8 @@ class Order extends Base
         return View::fetch('admin/order/detail', [
             'order' => $order,
             'title' => '订单详情',
+            'isSuper' => $this->isSuperAdmin(),
+            'canManageOrders' => $this->canManageOrders(),
         ]);
     }
 
@@ -594,6 +600,7 @@ class Order extends Base
                 'quantity'    => (int)$item->quantity,
                 'dispatched'  => $dispatched,
                 'remaining'   => $remaining,
+                'item_status' => (int)($item->item_status ?? 10),
                 'unit_price'  => $item->unit_price,
                 'remark'      => $item->remark,
             ];
@@ -615,9 +622,8 @@ class Order extends Base
     }
 
     /**
-     * API: 批量派单保存
+     * API: 批量派单保存（简化版：不拆单，直接对原订单创建派单记录）
      * 请求格式: { dispatches: [{ supplier_id: 1, items: [{order_item_id:1, quantity:5}, ...] }, ...] }
-     * 若派单后仍有未派明细，则将派单部分拆分为新子订单，原订单保留未派部分
      */
     public function dispatchSave($id)
     {
@@ -632,9 +638,6 @@ class Order extends Base
         $order = OrderModel::with(['items'])->find($id);
         if (!$order) {
             return $this->error('订单不存在');
-        }
-        if ($order->status != OrderModel::STATUS_PENDING && $order->status != OrderModel::STATUS_WAIT_CONFIRM) {
-            return $this->error('当前订单状态不允许派单');
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
@@ -685,33 +688,14 @@ class Order extends Base
             }
         }
 
-        // 计算本次派单后各明细剩余量
-        $remainingMap = [];
-        foreach ($orderItemsMap as $oiId => $oi) {
-            $alreadyDispatched = $dispatchedMap[$oiId] ?? 0;
-            $nowDispatching    = $totalQtyMap[$oiId] ?? 0;
-            $remaining = (int)$oi->quantity - $alreadyDispatched - $nowDispatching;
-            if ($remaining > 0) {
-                $remainingMap[$oiId] = $remaining;
-            }
-        }
-        $hasRemainder = !empty($remainingMap);
-
         try {
             $service = new DispatchService();
             $adminId = $this->getAdminId();
             $createdIds = [];
 
-            Db::transaction(function () use (
-                $service, $id, $dispatches, $adminId, &$createdIds,
-                $order, $orderItemsMap, $hasRemainder, $remainingMap
-            ) {
-                $usedSuffixes = [];
-
+            Db::transaction(function () use ($service, $id, $dispatches, $adminId, &$createdIds) {
                 foreach ($dispatches as $d) {
                     $supplierId = (int)($d['supplier_id'] ?? 0);
-
-                    // 过滤有效派单项
                     $validItems = [];
                     foreach ($d['items'] ?? [] as $it) {
                         $qty = (int)($it['quantity'] ?? 0);
@@ -727,97 +711,23 @@ class Order extends Base
                         continue;
                     }
 
-                    if ($hasRemainder) {
-                        // 拆单：为本次派单的货品创建新子订单
-                        $suffix = 1;
-                        do {
-                            $newOrderNo = $order->order_no . '-' . $suffix;
-                            $suffix++;
-                        } while (in_array($newOrderNo, $usedSuffixes) || OrderModel::where('order_no', $newOrderNo)->count() > 0);
-                        $usedSuffixes[] = $newOrderNo;
-
-                        $newOrder = new OrderModel();
-                        $newOrder->save([
-                            'order_no'     => $newOrderNo,
-                            'customer_id'  => $order->customer_id,
-                            'status'       => OrderModel::STATUS_PENDING,
-                            'total_amount' => '0.00',
-                            'currency'     => $order->currency,
-                            'delivery_date'=> $order->delivery_date,
-                            'remark'       => $order->remark,
-                            'creator_id'   => $order->creator_id,
-                        ]);
-
-                        // 为子订单创建新的 order_item
-                        $totalAmt = '0.00';
-                        $newItemsForDispatch = [];
-                        foreach ($validItems as $it) {
-                            $origItem = $orderItemsMap[$it['order_item_id']] ?? null;
-                            if (!$origItem) continue;
-
-                            $itemAmt = $this->decimalMul($origItem->unit_price, $it['quantity']);
-                            $newItem = new \app\model\OrderItem();
-                            $newItem->save([
-                                'order_id'   => $newOrder->id,
-                                'goods_id'   => $origItem->goods_id,
-                                'goods_name' => $origItem->goods_name,
-                                'sku_id'     => $origItem->sku_id,
-                                'sku_name'   => $origItem->sku_name,
-                                'quantity'   => $it['quantity'],
-                                'unit_price' => $origItem->unit_price,
-                                'amount'     => $itemAmt,
-                                'remark'     => $origItem->remark,
-                            ]);
-                            $totalAmt = $this->decimalAdd($totalAmt, $itemAmt);
-                            $newItemsForDispatch[] = [
-                                'order_item_id' => $newItem->id,
-                                'quantity'      => $it['quantity'],
-                            ];
-                        }
-
-                        $newOrder->total_amount = $totalAmt;
-                        $newOrder->save();
-
-                        // 对子订单创建派单
-                        $dispatch = $service->createDispatch($newOrder->id, $supplierId, $newItemsForDispatch, $adminId);
-                        $createdIds[] = $dispatch->id;
-                    } else {
-                        // 全部派出，直接对原订单创建派单
-                        $dispatch = $service->createDispatch($id, $supplierId, $validItems, $adminId);
-                        $createdIds[] = $dispatch->id;
-                    }
+                    // 直接对原订单创建派单，不拆单
+                    $dispatch = $service->createDispatch($id, $supplierId, $validItems, $adminId);
+                    $createdIds[] = $dispatch->id;
                 }
 
                 if (empty($createdIds)) {
                     throw new \RuntimeException('没有有效的派单数据');
                 }
-
-                // 更新原订单：删除已全派明细，减少部分派明细数量
-                if ($hasRemainder) {
-                    $newTotalAmt = '0.00';
-                    foreach ($orderItemsMap as $oiId => $oi) {
-                        if (isset($remainingMap[$oiId])) {
-                            $newQty = $remainingMap[$oiId];
-                            $newAmt = $this->decimalMul($oi->unit_price, $newQty);
-                            $oi->quantity = $newQty;
-                            $oi->amount   = $newAmt;
-                            $oi->save();
-                            $newTotalAmt = $this->decimalAdd($newTotalAmt, $newAmt);
-                        } else {
-                            // 已全部派出，删除该明细
-                            $oi->delete();
-                        }
-                    }
-                    $order->total_amount = $newTotalAmt;
-                    $order->status = OrderModel::STATUS_PENDING;
-                    $order->save();
-                }
             });
 
-            $msg = $hasRemainder
-                ? '派单成功，已拆分为子订单，原订单保留未派明细'
-                : '派单成功，共创建' . count($createdIds) . '条派单';
-            return $this->success(['dispatch_ids' => $createdIds], $msg);
+            // 派单后同步所有货品状态和订单送货状态
+            OrderModel::syncAllItemStatuses($id);
+
+            return $this->success(
+                ['dispatch_ids' => $createdIds],
+                '派单成功，共创建' . count($createdIds) . '条派单'
+            );
         } catch (\Exception $e) {
             return $this->error('派单失败：' . $e->getMessage());
         }
@@ -1038,17 +948,18 @@ class Order extends Base
 
         // ==================== 汇总行 ====================
         $sumRow = $row;
-        $sheet->mergeCells('A' . $sumRow . ':C' . $sumRow);
+        $sheet->mergeCells('A' . $sumRow . ':I' . $sumRow);
         $sheet->setCellValue('A' . $sumRow, '总件数：' . $totalPieces . '    总金额：¥' . number_format($totalAmount, 2) . '    总体积：' . round($totalVolume, 4) . ' m³');
-        $sheet->getRowDimension($sumRow)->setRowHeight(24);
+        $sheet->getRowDimension($sumRow)->setRowHeight(36);
         $sheet->getStyle('A' . $sumRow . ':I' . $sumRow)->getFont()->setName($fontName)->setSize(12)->setBold(true);
-        $sheet->getStyle('A' . $sumRow)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $sheet->getStyle('A' . $sumRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 录单信息 ====================
         $noteRow = $sumRow + 1;
-        $sheet->setCellValue('A' . $noteRow, '录单人：' . $creatorName);
-        $sheet->setCellValue('D' . $noteRow, '录单时间：' . ($order->create_time ?? ''));
+        $sheet->mergeCells('A' . $noteRow . ':I' . $noteRow);
+        $sheet->setCellValue('A' . $noteRow, '录单人：' . $creatorName . '    录单时间：' . ($order->create_time ?? ''));
         $sheet->getStyle('A' . $noteRow . ':I' . $noteRow)->getFont()->setName($fontName)->setSize(11);
+        $sheet->getStyle('A' . $noteRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 输出下载 ====================
         $filename = '订单_' . $order->order_no . '_' . date('YmdHis');
@@ -1207,5 +1118,163 @@ No.26702 SHOP 4th Street 3rd Floor Area 3/H Gate 51 Yiwu International Trade Cit
         $filename = '订单_' . $order->order_no . '_' . date('YmdHis') . '.pdf';
         $pdf->Output($filename, 'D');
         exit;
+    }
+
+    /**
+     * API: 更新订单明细项
+     */
+    public function updateItem($id)
+    {
+        if (!$this->isPost()) {
+            return $this->error('请求方式错误');
+        }
+
+        if (!$this->canManageOrders()) {
+            return $this->error('暂无操作权限');
+        }
+
+        $item = \app\model\OrderItem::find($id);
+        if (!$item) {
+            return $this->error('明细项不存在');
+        }
+
+        $order = OrderModel::find($item->order_id);
+        if (!$order) {
+            return $this->error('订单不存在');
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (empty($input)) {
+            return $this->error('参数错误');
+        }
+
+        try {
+            // 允许修改的字段
+            $allowFields = [
+                'customer_goods_no', 'goods_name', 'remark', 'packing_material',
+                'pieces', 'per_piece_qty', 'unit_price', 'volume', 'label'
+            ];
+
+            foreach ($allowFields as $field) {
+                if (array_key_exists($field, $input)) {
+                    $item->$field = $input[$field];
+                }
+            }
+
+            // 自动计算 quantity 和 amount
+            $pieces = (int)($item->pieces ?: 0);
+            $perPieceQty = (int)($item->per_piece_qty ?: 0);
+            $item->quantity = $pieces * $perPieceQty;
+            $item->amount = $item->quantity * (float)$item->unit_price;
+
+            $item->save();
+
+            return $this->success($item->toArray(), '更新成功');
+        } catch (\Exception $e) {
+            return $this->error('更新失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * API: 逻辑删除订单明细项
+     */
+    public function deleteItem($id)
+    {
+        if (!$this->isPost()) {
+            return $this->error('请求方式错误');
+        }
+
+        if (!$this->canManageOrders()) {
+            return $this->error('暂无操作权限');
+        }
+
+        $item = \app\model\OrderItem::find($id);
+        if (!$item) {
+            return $this->error('明细项不存在');
+        }
+
+        try {
+            $item->is_deleted = 1;
+            $item->save();
+            return $this->success(null, '删除成功');
+        } catch (\Exception $e) {
+            return $this->error('删除失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 更新订单的已送货数量/已收款金额，并自动同步送货/收款状态
+     */
+    public function updateDeliveryPayment($id)
+    {
+        if (!$this->canManageOrders()) {
+            return $this->error('暂无操作权限');
+        }
+
+        $order = OrderModel::with(['items'])->find($id);
+        if (!$order) {
+            return $this->error('订单不存在');
+        }
+
+        $field = input('post.field');
+        $value = input('post.value');
+
+        if (!in_array($field, ['delivered_qty', 'paid_amount'])) {
+            return $this->error('无效的字段');
+        }
+
+        $value = floatval($value);
+        if ($value < 0) {
+            return $this->error('数值不能小于0');
+        }
+
+        // 计算总件数
+        $totalQty = 0;
+        foreach ($order->items as $item) {
+            $totalQty += (int)$item->quantity;
+        }
+
+        try {
+            if ($field === 'delivered_qty') {
+                $intVal = (int)$value;
+                if ($intVal > $totalQty) {
+                    return $this->error('已送货数量不能超过总件数(' . $totalQty . ')');
+                }
+                $order->delivered_qty = $intVal;
+                // 自动同步送货状态
+                if ($intVal == 0) {
+                    $order->delivery_status = OrderModel::DELIVERY_NONE;
+                } elseif ($intVal >= $totalQty) {
+                    $order->delivery_status = OrderModel::DELIVERY_ALL;
+                } else {
+                    $order->delivery_status = OrderModel::DELIVERY_PARTIAL;
+                }
+            } else {
+                // paid_amount
+                $totalAmount = floatval($order->total_amount);
+                if ($value > $totalAmount) {
+                    return $this->error('已收款金额不能超过总金额(¥' . number_format($totalAmount, 2) . ')');
+                }
+                $order->paid_amount = $value;
+                // 自动同步收款状态
+                if ($value == 0) {
+                    $order->payment_status = OrderModel::PAYMENT_NONE;
+                } elseif ($value >= $totalAmount) {
+                    $order->payment_status = OrderModel::PAYMENT_ALL;
+                } else {
+                    $order->payment_status = OrderModel::PAYMENT_PARTIAL;
+                }
+            }
+            $order->save();
+
+            return $this->success([
+                'delivered_qty' => (int)$order->delivered_qty,
+                'paid_amount' => number_format(floatval($order->paid_amount), 2, '.', ''),
+                'delivery_status' => (int)$order->delivery_status,
+                'payment_status' => (int)$order->payment_status,
+            ], '更新成功');
+        } catch (\Exception $e) {
+            return $this->error('更新失败：' . $e->getMessage());
+        }
     }
 }

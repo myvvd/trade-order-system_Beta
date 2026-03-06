@@ -36,9 +36,9 @@
     </a-card>
 
     <a-card class="list-card" :bordered="false">
-        <a-tabs v-model:active-key="activeStatus" @change="handleTabChange">
-            <!-- 遍历 PHP 的 tabs 数组生成标签页 -->
-            {foreach name="tabs" item="label" key="k"}
+        <a-tabs v-model:active-key="activeDeliveryStatus" @change="handleTabChange">
+            <!-- 送货状态标签页 -->
+            {foreach name="deliveryTabs" item="label" key="k"}
             <a-tab-pane key="{$k}" title="{$label}"></a-tab-pane>
             {/foreach}
         </a-tabs>
@@ -80,24 +80,61 @@
                         ¥{{ formatMoney(record.total_amount) }}
                     </template>
                 </a-table-column>
-                <a-table-column title="已送货" :width="90" align="center">
-                    <template #cell>-</template>
+                <a-table-column title="已送货" :width="110" align="center">
+                    <template #cell="{ record }">
+                        <a-input-number
+                            v-if="editingCell.id === record.id && editingCell.field === 'delivered_qty'"
+                            v-model="editingCell.value"
+                            :min="0"
+                            :max="getOrderTotalQty(record)"
+                            size="small"
+                            style="width:90px;"
+                            @blur="saveInlineEdit(record)"
+                            @press-enter="saveInlineEdit(record)"
+                            :ref="el => setEditRef(el)"
+                        ></a-input-number>
+                        <span v-if="!(editingCell.id === record.id && editingCell.field === 'delivered_qty')"
+                            :style="{cursor: canManageOrders ? 'pointer' : 'default', color: record.delivered_qty > 0 ? '#165dff' : '#86909c'}"
+                            @click="startInlineEdit(record, 'delivered_qty')"
+                        >{{ record.delivered_qty }}</span>
+                    </template>
                 </a-table-column>
-                <a-table-column title="未收款项" :width="100" align="right">
-                    <template #cell>-</template>
+                <a-table-column title="未收款项" :width="110" align="right">
+                    <template #cell="{ record }">
+                        <span :style="{color: getUnpaidAmount(record) > 0 ? '#f53f3f' : '#00b42a', fontWeight: getUnpaidAmount(record) > 0 ? '600' : 'normal'}">¥{{ formatMoney(getUnpaidAmount(record)) }}</span>
+                    </template>
                 </a-table-column>
-                <a-table-column title="已收款" :width="100" align="right">
-                    <template #cell>-</template>
+                <a-table-column title="已收款" :width="120" align="right">
+                    <template #cell="{ record }">
+                        <a-input-number
+                            v-if="editingCell.id === record.id && editingCell.field === 'paid_amount'"
+                            v-model="editingCell.value"
+                            :min="0"
+                            :max="Number(record.total_amount)"
+                            :precision="2"
+                            size="small"
+                            style="width:110px;"
+                            @blur="saveInlineEdit(record)"
+                            @press-enter="saveInlineEdit(record)"
+                            :ref="el => setEditRef(el)"
+                        ></a-input-number>
+                        <span v-if="!(editingCell.id === record.id && editingCell.field === 'paid_amount')"
+                            :style="{cursor: canManageOrders ? 'pointer' : 'default', color: Number(record.paid_amount) > 0 ? '#00b42a' : '#86909c'}"
+                            @click="startInlineEdit(record, 'paid_amount')"
+                        >¥{{ formatMoney(record.paid_amount) }}</span>
+                    </template>
                 </a-table-column>
                 <a-table-column title="收款状态" :width="100" align="center">
-                    <template #cell>-</template>
+                    <template #cell="{ record }">
+                        <a-tag :color="getPaymentStatusColor(record.payment_status)">{{ getPaymentStatusText(record.payment_status) }}</a-tag>
+                    </template>
                 </a-table-column>
                 <a-table-column title="计划收款日期" :width="130" align="center">
                     <template #cell>-</template>
                 </a-table-column>
                 <a-table-column title="送货状态" :width="100" align="center">
                     <template #cell="{ record }">
-                        <a-tag :color="getStatusColor(record.status)">{{ record.status_text }}</a-tag>
+                        <a-tag :color="getDeliveryStatusColor(record.delivery_status)">{{ getDeliveryStatusText(record.delivery_status) }}</a-tag>
                     </template>
                 </a-table-column>
                 <a-table-column title="送货日期" :width="110" align="center">
@@ -262,6 +299,12 @@ window.createPageApp({
                 $arr['status_text'] = $item->status_text;
                 $arr['customer_name'] = $item->customer ? $item->customer->company_name : '-';
                 $arr['creator_name'] = $item->creator ? ($item->creator->real_name ?: $item->creator->username) : '-';
+                $arr['delivery_status'] = (int)($item->delivery_status ?? 0);
+                $arr['payment_status'] = (int)($item->payment_status ?? 0);
+                $arr['delivered_qty'] = (int)($item->delivered_qty ?? 0);
+                $arr['paid_amount'] = number_format(floatval($item->paid_amount ?? 0), 2, '.', '');
+                $arr['delivery_status_text'] = \app\model\Order::getDeliveryStatusText($item->delivery_status ?? 0);
+                $arr['payment_status_text'] = \app\model\Order::getPaymentStatusText($item->payment_status ?? 0);
                 $data[] = $arr;
             }
             echo json_encode($data, JSON_UNESCAPED_UNICODE); 
@@ -274,7 +317,6 @@ window.createPageApp({
         
         const searchForm = reactive({
             keyword: '{$keyword}',
-            status: '{$status}',
         });
         
         const dateRange = ref([
@@ -282,7 +324,7 @@ window.createPageApp({
             '{$date_to}'
         ]);
 
-        const activeStatus = ref('{$status}');
+        const activeDeliveryStatus = ref('{$delivery_status}');
         const tableData = ref(rawOrders);
         const loading = ref(false);
 
@@ -332,6 +374,26 @@ window.createPageApp({
             return map[status] || '';
         };
 
+        // 送货状态
+        const getDeliveryStatusText = (status) => {
+            const map = { 0: '未送货', 1: '部分送货', 2: '全部送货' };
+            return map[status] || '未送货';
+        };
+        const getDeliveryStatusColor = (status) => {
+            const map = { 0: 'arcoblue', 1: 'orange', 2: 'green' };
+            return map[status] || 'arcoblue';
+        };
+
+        // 收款状态
+        const getPaymentStatusText = (status) => {
+            const map = { 0: '未收款', 1: '部分收款', 2: '全部收款' };
+            return map[status] || '未收款';
+        };
+        const getPaymentStatusColor = (status) => {
+            const map = { 0: 'red', 1: 'orange', 2: 'green' };
+            return map[status] || 'red';
+        };
+
         const getDispatchSupplierNames = (record) => {
             if (!record || Number(record.status) === 10) {
                 return [];
@@ -348,14 +410,75 @@ window.createPageApp({
             return names.length ? names.join(' / ') : '-';
         };
 
-        const showDispatch = (record) => canManageOrders && Number(record?.status) === 10;
+        const showDispatch = (record) => canManageOrders;
         const showDelete = (record) => canManageOrders;
         const showCancel = (record) => canManageOrders && Number(record?.status) === 20;
+
+        // ========== 行内编辑（已送货 / 已收款） ==========
+        const editingCell = reactive({ id: null, field: null, value: null });
+        let editInputRef = null;
+
+        const setEditRef = (el) => {
+            if (el && el.$el) {
+                Vue.nextTick(() => {
+                    const input = el.$el.querySelector('input');
+                    if (input) input.focus();
+                });
+            }
+        };
+
+        const getUnpaidAmount = (record) => {
+            return Math.max(0, Number(record.total_amount || 0) - Number(record.paid_amount || 0));
+        };
+
+        const startInlineEdit = (record, field) => {
+            if (!canManageOrders) return;
+            editingCell.id = record.id;
+            editingCell.field = field;
+            editingCell.value = field === 'paid_amount' ? Number(record.paid_amount || 0) : Number(record.delivered_qty || 0);
+        };
+
+        const saveInlineEdit = async (record) => {
+            if (!editingCell.id || !editingCell.field) return;
+            const field = editingCell.field;
+            const value = editingCell.value;
+
+            // 如果值没变化，直接取消编辑
+            const oldVal = field === 'paid_amount' ? Number(record.paid_amount || 0) : Number(record.delivered_qty || 0);
+            if (value === oldVal) {
+                editingCell.id = null;
+                editingCell.field = null;
+                return;
+            }
+
+            try {
+                const res = await fetch('/admin/order/updateDeliveryPayment/' + record.id, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ field, value })
+                });
+                const json = await res.json();
+                if (json.code === 200) {
+                    record.delivered_qty = json.data.delivered_qty;
+                    record.paid_amount = json.data.paid_amount;
+                    record.delivery_status = json.data.delivery_status;
+                    record.payment_status = json.data.payment_status;
+                    ArcoMessage.success('更新成功');
+                } else {
+                    ArcoMessage.error(json.msg || '更新失败');
+                }
+            } catch (e) {
+                ArcoMessage.error('请求失败：' + e.message);
+            } finally {
+                editingCell.id = null;
+                editingCell.field = null;
+            }
+        };
 
         const handleSearch = () => {
             const params = new URLSearchParams();
             if(searchForm.keyword) params.append('keyword', searchForm.keyword);
-            if(activeStatus.value) params.append('status', activeStatus.value);
+            if(activeDeliveryStatus.value !== '') params.append('delivery_status', activeDeliveryStatus.value);
             if(dateRange.value && dateRange.value[0]) {
                 params.append('date_from', dateRange.value[0]);
             }
@@ -367,9 +490,8 @@ window.createPageApp({
 
         const handleReset = () => {
             searchForm.keyword = '';
-            searchForm.status = '';
             dateRange.value = ['', ''];
-            activeStatus.value = '';
+            activeDeliveryStatus.value = '';
             location.href = '/admin/order/list';
         };
 
@@ -454,7 +576,7 @@ window.createPageApp({
         const exportData = () => {
             const params = new URLSearchParams();
             if (searchForm.keyword) params.append('keyword', searchForm.keyword);
-            if (activeStatus.value !== '') params.append('status', activeStatus.value);
+            if (activeDeliveryStatus.value !== '') params.append('delivery_status', activeDeliveryStatus.value);
             if (dateRange.value && dateRange.value.length === 2) {
                 params.append('date_from', dateRange.value[0]);
                 params.append('date_to', dateRange.value[1]);
@@ -655,7 +777,7 @@ window.createPageApp({
         return {
             searchForm,
             dateRange,
-            activeStatus,
+            activeDeliveryStatus,
             tableData,
             loading,
             pagination,
@@ -665,8 +787,17 @@ window.createPageApp({
             getItemTotalPrice,
             formatMoney,
             getStatusColor,
+            getDeliveryStatusText,
+            getDeliveryStatusColor,
+            getPaymentStatusText,
+            getPaymentStatusColor,
             getSupplierDisplay,
             canManageOrders,
+            editingCell,
+            setEditRef,
+            getUnpaidAmount,
+            startInlineEdit,
+            saveInlineEdit,
             showDispatch,
             showDelete,
             showCancel,

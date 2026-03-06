@@ -10,7 +10,7 @@ class Order extends \think\Model
     protected $pk = 'id';
     protected $autoWriteTimestamp = true;
 
-    // 状态常量
+    // 订单状态常量（保留兼容）
     public const STATUS_PENDING = 10; // 待派单
     public const STATUS_WAIT_CONFIRM = 20; // 待确认
     public const STATUS_REJECTED = 21; // 已拒绝
@@ -21,16 +21,26 @@ class Order extends \think\Model
     public const STATUS_COMPLETED = 70; // 已完成
     public const STATUS_CANCELED = 99; // 已取消
 
+    // 送货状态
+    public const DELIVERY_NONE    = 0; // 未送货
+    public const DELIVERY_PARTIAL = 1; // 部分送货
+    public const DELIVERY_ALL     = 2; // 全部送货
+
+    // 收款状态
+    public const PAYMENT_NONE    = 0; // 未收款
+    public const PAYMENT_PARTIAL = 1; // 部分收款
+    public const PAYMENT_ALL     = 2; // 全部收款
+
     // 关联: 采购方
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
-    // 关联: 明细
+    // 关联: 明细（排除逻辑删除的）
     public function items()
     {
-        return $this->hasMany(OrderItem::class, 'order_id');
+        return $this->hasMany(OrderItem::class, 'order_id')->where('is_deleted', 0);
     }
 
     // 关联: 派单
@@ -84,5 +94,106 @@ class Order extends \think\Model
     public static function generateOrderNo(): string
     {
         return 'O' . date('YmdHis') . substr(uniqid(), -6);
+    }
+
+    /**
+     * 获取送货状态文本
+     */
+    public static function getDeliveryStatusText($status = null): string
+    {
+        $map = [
+            self::DELIVERY_NONE    => '未送货',
+            self::DELIVERY_PARTIAL => '部分送货',
+            self::DELIVERY_ALL     => '全部送货',
+        ];
+        return $map[$status] ?? '未知';
+    }
+
+    /**
+     * 获取收款状态文本
+     */
+    public static function getPaymentStatusText($status = null): string
+    {
+        $map = [
+            self::PAYMENT_NONE    => '未收款',
+            self::PAYMENT_PARTIAL => '部分收款',
+            self::PAYMENT_ALL     => '全部收款',
+        ];
+        return $map[$status] ?? '未知';
+    }
+
+    /**
+     * 获取送货状态颜色
+     */
+    public static function getDeliveryStatusColor($status = null): string
+    {
+        $map = [
+            self::DELIVERY_NONE    => 'arcoblue',
+            self::DELIVERY_PARTIAL => 'orange',
+            self::DELIVERY_ALL     => 'green',
+        ];
+        return $map[$status] ?? '';
+    }
+
+    /**
+     * 获取收款状态颜色
+     */
+    public static function getPaymentStatusColor($status = null): string
+    {
+        $map = [
+            self::PAYMENT_NONE    => 'red',
+            self::PAYMENT_PARTIAL => 'orange',
+            self::PAYMENT_ALL     => 'green',
+        ];
+        return $map[$status] ?? '';
+    }
+
+    /**
+     * 根据所有货品的 item_status 同步订单的 delivery_status
+     * 送货 = item_status >= 60 (已发货)
+     */
+    public static function syncDeliveryStatus(int $orderId): void
+    {
+        $order = self::find($orderId);
+        if (!$order) return;
+
+        $items = OrderItem::where('order_id', $orderId)
+            ->where('is_deleted', 0)
+            ->select();
+
+        if ($items->isEmpty()) return;
+
+        $totalItems = $items->count();
+        $shippedItems = 0;
+        foreach ($items as $item) {
+            if ((int)$item->item_status >= OrderItem::STATUS_SHIPPED) {
+                $shippedItems++;
+            }
+        }
+
+        if ($shippedItems == 0) {
+            $order->delivery_status = self::DELIVERY_NONE;
+        } elseif ($shippedItems < $totalItems) {
+            $order->delivery_status = self::DELIVERY_PARTIAL;
+        } else {
+            $order->delivery_status = self::DELIVERY_ALL;
+        }
+        $order->save();
+    }
+
+    /**
+     * 同步订单下所有货品的状态，并更新订单送货状态
+     */
+    public static function syncAllItemStatuses(int $orderId): void
+    {
+        $items = OrderItem::where('order_id', $orderId)
+            ->where('is_deleted', 0)
+            ->select();
+
+        foreach ($items as $item) {
+            OrderItem::syncItemStatus($item->id);
+        }
+
+        self::syncDeliveryStatus($orderId);
     }
 }

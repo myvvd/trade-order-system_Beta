@@ -79,6 +79,9 @@ class DispatchService
             $order->status = Order::STATUS_WAIT_CONFIRM;
             $order->save();
 
+            // 同步货品状态和订单送货状态
+            Order::syncAllItemStatuses($orderId);
+
             $this->orderService->logStatus($orderId, $order->status, '创建派单', $adminId, $dispatch->id);
 
             // 发送站内信通知
@@ -107,6 +110,9 @@ class DispatchService
             $order = $dispatch->order;
             $order->status = Order::STATUS_IN_PROGRESS;
             $order->save();
+
+            // 同步货品状态和订单送货状态
+            Order::syncAllItemStatuses($order->id);
 
             $this->orderService->logStatus($order->id, $order->status, '派单确认，制作中', $adminId, $dispatch->id);
 
@@ -137,6 +143,9 @@ class DispatchService
             $order->status = Order::STATUS_REJECTED;
             $order->save();
 
+            // 同步货品状态和订单送货状态
+            Order::syncAllItemStatuses($order->id);
+
             $this->orderService->logStatus($order->id, $order->status, '派单被拒绝', $adminId, $dispatch->id);
 
             // 发送站内信通知
@@ -165,6 +174,9 @@ class DispatchService
             $order = $dispatch->order;
             $order->status = Order::STATUS_SHIPPED;
             $order->save();
+
+            // 同步货品状态和订单送货状态
+            Order::syncAllItemStatuses($order->id);
 
             $this->orderService->logStatus($order->id, $order->status, '派单已发货', $adminId, $dispatch->id);
 
@@ -247,6 +259,9 @@ class DispatchService
                     $order->save();
                     $this->orderService->logStatus($order->id, $order->status, '所有派单已入库，订单完成', $adminId, $dispatch->id);
                 }
+
+                // 同步货品状态和订单送货状态
+                Order::syncAllItemStatuses($order->id);
             }
 
             return $dispatch->refresh();
