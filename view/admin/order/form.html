@@ -1064,6 +1064,10 @@ window.createPageApp({
             }).then(r => r.json()).then(ret => {
                 if (ret.code == 1 || ret.success) {
                     ArcoMessage.success('保存成功');
+                    // 通知父框架刷新铃铛
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({ type: 'refreshBell' }, '*');
+                    }
                     location.href = '/admin/order/list';
                 } else {
                     ArcoMessage.error(ret.msg || '保存失败');

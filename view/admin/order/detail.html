@@ -871,6 +871,10 @@ window.createPageApp({
                 const json = await res.json();
                 if (json.code === 200) {
                     ArcoMessage.success('修改成功');
+                    // 通知父框架刷新铃铛
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({ type: 'refreshBell' }, '*');
+                    }
                     // 更新本地数据
                     const idx = order.items.findIndex(i => i.id === itemId);
                     if (idx !== -1 && json.data) {
@@ -913,10 +917,10 @@ window.createPageApp({
         const selectedSupplierId = ref(null);
         const dispatchQty = ref(0);
 
-        // 监听供应商选择变化，自动填入最大可派数量
+        // 监听供应商选择变化，重置为最大可派数量
         Vue.watch(selectedSupplierId, () => {
-            if (selectedSupplierId.value && dispatchCurrentItem.value) {
-                dispatchQty.value = dispatchCurrentItem.value.remaining;
+            if (dispatchCurrentItem.value) {
+                dispatchQty.value = dispatchCurrentItem.value.remaining || 0;
             }
         });
 
@@ -950,6 +954,8 @@ window.createPageApp({
                             dispatched: 0
                         };
                     }
+                    // 默认填入最大可派单数量
+                    dispatchQty.value = dispatchCurrentItem.value.remaining || 0;
                     dispatchSuppliers.value = json.data.suppliers || [];
                 } else {
                     ArcoMessage.error(json.msg || '获取派单信息失败');
@@ -991,6 +997,10 @@ window.createPageApp({
                 const json = await res.json();
                 if (json.code === 200) {
                     ArcoMessage.success(json.msg || '派单成功');
+                    // 通知父框架刷新铃铛
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({ type: 'refreshBell' }, '*');
+                    }
                     dispatchVisible.value = false;
                     setTimeout(() => location.reload(), 800);
                 } else {

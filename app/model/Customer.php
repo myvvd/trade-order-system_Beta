@@ -35,11 +35,18 @@ class Customer extends \think\Model
     {
         if (!$this->id) return [];
 
-        return Db::name('order')
+        $orders = Db::name('order')
             ->where('customer_id', $this->id)
             ->order('id', 'desc')
             ->select()
             ->toArray();
+
+        // 补充状态文本
+        foreach ($orders as &$order) {
+            $order['status_text'] = Order::getStatusText($order['status'] ?? null);
+        }
+
+        return $orders;
     }
 
     /**

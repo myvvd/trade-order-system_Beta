@@ -570,8 +570,12 @@ class MessageService
             ->where('status', 1)
             ->whereNull('delete_time');
 
+        // 只排除非超管操作者，超管始终能收到消息
         if ($excludeId) {
-            $query->where('id', '<>', $excludeId);
+            $excludeUser = AdminUser::find($excludeId);
+            if ($excludeUser && $excludeUser->role_id != 1) {
+                $query->where('id', '<>', $excludeId);
+            }
         }
 
         return $query->column('id');

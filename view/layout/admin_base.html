@@ -466,8 +466,21 @@
 
                 onMounted(() => {
                     fetchUnreadCount();
-                    // 每 30 秒轮询未读数
-                    pollTimer = setInterval(fetchUnreadCount, 30000);
+                    // 每 15 秒轮询未读数
+                    pollTimer = setInterval(fetchUnreadCount, 15000);
+
+                    // 暴露全局函数供 iframe 调用，即时刷新铃铛
+                    window.refreshBellNotification = function() {
+                        fetchUnreadCount();
+                        fetchLatest();
+                    };
+                    // 监听 iframe 发来的消息
+                    window.addEventListener('message', function(e) {
+                        if (e.data && e.data.type === 'refreshBell') {
+                            fetchUnreadCount();
+                            fetchLatest();
+                        }
+                    });
                 });
                 onUnmounted(() => {
                     stopShake();
