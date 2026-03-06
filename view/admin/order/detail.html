@@ -540,7 +540,7 @@
                             </div>
                             <div v-else class="action-btns">
                                 <button class="action-btn action-btn-edit" @click="startEdit(item)">修改</button>
-                                <button v-if="isSuper" class="action-btn action-btn-dispatch" @click="openDispatch(item)">派单</button>
+                                <button v-if="isSuper && item.item_status == 10" class="action-btn action-btn-dispatch" @click="openDispatch(item)">派单</button>
                                 <a-popconfirm content="确定要删除此明细项吗？" @ok="deleteItemRow(item)">
                                     <button class="action-btn action-btn-delete">删除</button>
                                 </a-popconfirm>
