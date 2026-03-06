@@ -39,6 +39,11 @@ class Order extends Base
 
         $query = OrderModel::where('id', '>', 0);
 
+        // 非超级管理员只能看到自己创建的订单
+        if (!$this->isSuperAdmin()) {
+            $query->where('creator_id', $this->getAdminId());
+        }
+
         if ($keyword) {
             $query->where(function ($q) use ($keyword) {
                 $q->whereLike('order_no|remark', '%' . $keyword . '%')
@@ -1152,7 +1157,7 @@ No.26702 SHOP 4th Street 3rd Floor Area 3/H Gate 51 Yiwu International Trade Cit
             // 允许修改的字段
             $allowFields = [
                 'customer_goods_no', 'goods_name', 'remark', 'packing_material',
-                'pieces', 'per_piece_qty', 'unit_price', 'volume', 'label'
+                'pieces', 'per_piece_qty', 'unit_price', 'volume', 'label', 'photo_url'
             ];
 
             foreach ($allowFields as $field) {

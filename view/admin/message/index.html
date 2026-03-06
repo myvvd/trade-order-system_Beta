@@ -7,7 +7,7 @@
         <a-space>
             <a-select v-model="filterCategory" placeholder="全部分类" allow-clear style="width: 140px;" @change="onFilterChange">
                 <a-option value="">全部分类</a-option>
-                <a-option v-for="(cfg, key) in categoryConfig" :key="key" :value="key">{{ cfg.label }}</a-option>
+                <a-option v-for="(cfg, key) in filteredCategoryConfig" :key="key" :value="key">{{ cfg.label }}</a-option>
             </a-select>
             <a-select v-model="filterRead" placeholder="全部状态" allow-clear style="width: 120px;" @change="onFilterChange">
                 <a-option value="">全部</a-option>
@@ -70,9 +70,10 @@
 <script>
 window.createPageApp({
     setup() {
-        const { ref } = Vue;
+        const { ref, computed } = Vue;
         const ArcoMessage = Arco.Message;
 
+        const isSuper = Boolean({$is_super ? 'true' : 'false'});
         const filterCategory = ref('{$category|raw}');
         const filterRead = ref('{$is_read|raw}');
 
@@ -91,6 +92,15 @@ window.createPageApp({
             security:       { label: '安全提醒', color: '#f53f3f', bg: '#ffece8', icon: '🔒' }
         };
 
+        // 非超管只显示订单创建和修改分类
+        const filteredCategoryConfig = computed(() => {
+            if (isSuper) return categoryConfig;
+            return {
+                order_create: categoryConfig.order_create,
+                order_edit: categoryConfig.order_edit,
+            };
+        });
+
         function getCategoryColor(cat) { return (categoryConfig[cat] || categoryConfig.system).color; }
         function getCategoryBg(cat)    { return (categoryConfig[cat] || categoryConfig.system).bg; }
         function getCategoryIcon(cat)  { return (categoryConfig[cat] || categoryConfig.system).icon; }
@@ -103,7 +113,14 @@ window.createPageApp({
 
         function formatTime(ts) {
             if (!ts) return '';
-            const d = new Date(ts * 1000);
+            let d;
+            if (typeof ts === 'number') {
+                d = new Date(ts * 1000);
+            } else {
+                // 日期字符串格式（如 "2026-03-06 12:30:00"）
+                d = new Date(ts.replace(/-/g, '/'));
+            }
+            if (isNaN(d.getTime())) return ts;
             const pad = n => String(n).padStart(2, '0');
             return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
         }
@@ -145,6 +162,8 @@ window.createPageApp({
             filterCategory,
             filterRead,
             categoryConfig,
+            filteredCategoryConfig,
+            isSuper,
             messages,
             total,
             currentPage,

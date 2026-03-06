@@ -101,11 +101,38 @@ class MessageService
         $pageSize = (int)($params['page_size'] ?? 15);
         $category = $params['category'] ?? '';
         $isRead   = $params['is_read'] ?? '';
+        $isSuper  = $params['is_super'] ?? true;
 
         $query = Message::where('receiver_type', $receiverType)
             ->where('receiver_id', $receiverId);
 
-        if ($category !== '') {
+        // 非超级管理员只显示订单创建和订单修改类型 且 关联订单是自己创建的
+        if (!$isSuper) {
+            $allowedCategories = [
+                Message::CATEGORY_ORDER_CREATE,
+                Message::CATEGORY_ORDER_EDIT,
+            ];
+            if ($category !== '' && in_array($category, $allowedCategories)) {
+                $query->where('category', $category);
+            } elseif ($category !== '' && !in_array($category, $allowedCategories)) {
+                return [
+                    'list'       => [],
+                    'total'      => 0,
+                    'page'       => $page,
+                    'page_size'  => $pageSize,
+                    'page_total' => 0,
+                ];
+            } else {
+                $query->whereIn('category', $allowedCategories);
+            }
+            // 只显示自己创建的订单相关消息
+            $query->where(function ($q) use ($receiverId) {
+                $q->whereNull('order_id')
+                  ->whereOr('order_id', 'in', function ($sub) use ($receiverId) {
+                      $sub->name('order')->field('id')->where('creator_id', $receiverId);
+                  });
+            });
+        } elseif ($category !== '') {
             $query->where('category', $category);
         }
 
@@ -163,22 +190,50 @@ class MessageService
     /**
      * 获取未读消息数
      */
-    public function getUnreadCount(string $receiverType, int $receiverId): int
+    public function getUnreadCount(string $receiverType, int $receiverId, bool $isSuper = true): int
     {
-        return (int)Message::where('receiver_type', $receiverType)
+        $query = Message::where('receiver_type', $receiverType)
             ->where('receiver_id', $receiverId)
-            ->where('is_read', 0)
-            ->count();
+            ->where('is_read', 0);
+
+        if (!$isSuper) {
+            $query->whereIn('category', [
+                Message::CATEGORY_ORDER_CREATE,
+                Message::CATEGORY_ORDER_EDIT,
+            ]);
+            $query->where(function ($q) use ($receiverId) {
+                $q->whereNull('order_id')
+                  ->whereOr('order_id', 'in', function ($sub) use ($receiverId) {
+                      $sub->name('order')->field('id')->where('creator_id', $receiverId);
+                  });
+            });
+        }
+
+        return (int)$query->count();
     }
 
     /**
      * 获取最新消息（header 铃铛 popover 用）
      */
-    public function getLatest(string $receiverType, int $receiverId, int $limit = 5): array
+    public function getLatest(string $receiverType, int $receiverId, int $limit = 5, bool $isSuper = true): array
     {
-        $list = Message::where('receiver_type', $receiverType)
-            ->where('receiver_id', $receiverId)
-            ->order('is_read asc, id desc')
+        $query = Message::where('receiver_type', $receiverType)
+            ->where('receiver_id', $receiverId);
+
+        if (!$isSuper) {
+            $query->whereIn('category', [
+                Message::CATEGORY_ORDER_CREATE,
+                Message::CATEGORY_ORDER_EDIT,
+            ]);
+            $query->where(function ($q) use ($receiverId) {
+                $q->whereNull('order_id')
+                  ->whereOr('order_id', 'in', function ($sub) use ($receiverId) {
+                      $sub->name('order')->field('id')->where('creator_id', $receiverId);
+                  });
+            });
+        }
+
+        $list = $query->order('is_read asc, id desc')
             ->limit($limit)
             ->select()
             ->toArray();

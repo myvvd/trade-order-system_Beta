@@ -30,6 +30,7 @@ class Permission
     protected $allowedForNonSuper = [
         'admin/order',
         'admin/message',
+        'admin/goods/uploadTempImage',
     ];
 
     /**

@@ -31,6 +31,7 @@ class Message extends Base
             'page_size' => $pageSize,
             'category'  => $category,
             'is_read'   => $isRead,
+            'is_super'  => $this->isSuperAdmin(),
         ]);
 
         View::assign([
@@ -44,6 +45,7 @@ class Message extends Base
             'page_total'   => $data['page_total'],
             'category'     => $category,
             'is_read'      => $isRead,
+            'is_super'     => $this->isSuperAdmin(),
         ]);
         return View::fetch('admin/message/index');
     }
@@ -74,7 +76,7 @@ class Message extends Base
     public function unreadCount()
     {
         $adminId = $this->getAdminId();
-        $count = $this->messageService->getUnreadCount('admin', $adminId);
+        $count = $this->messageService->getUnreadCount('admin', $adminId, $this->isSuperAdmin());
         return $this->success(['count' => $count]);
     }
 
@@ -84,7 +86,7 @@ class Message extends Base
     public function latest()
     {
         $adminId = $this->getAdminId();
-        $list = $this->messageService->getLatest('admin', $adminId, 5);
+        $list = $this->messageService->getLatest('admin', $adminId, 5, $this->isSuperAdmin());
         return $this->success(['list' => $list]);
     }
 

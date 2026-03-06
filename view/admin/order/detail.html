@@ -414,10 +414,10 @@
                     <tr>
                         <th style="width:44px;text-align:center;">序号</th>
                         <th style="width:110px;text-align:center;">采购方货号</th>
-                        <th style="width:65px;text-align:center;">照片</th>
+                        <th style="width:110px;text-align:center;">照片</th>
                         <th style="width:160px;text-align:center;">货品名称</th>
                         <th style="width:150px;text-align:center;">描述</th>
-                        <th style="width:60px;text-align:center;">包材</th>
+                        <th style="width:80px;text-align:center;">包材</th>
                         <th style="width:60px;text-align:center;">件数</th>
                         <th style="width:70px;text-align:center;">每件数量</th>
                         <th style="width:60px;text-align:center;">总数量</th>
@@ -427,7 +427,7 @@
                         <th style="width:90px;text-align:center;">总体积(m³)</th>
                         <th style="width:100px;text-align:center;">标签</th>
                         <th style="width:80px;text-align:center;">状态</th>
-                        <th style="width:70px;text-align:center;">操作</th>
+                        <th v-if="canManageOrders" style="width:70px;text-align:center;">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -440,10 +440,23 @@
                         </td>
                         <!-- 照片 -->
                         <td style="text-align:center;padding:6px 8px;">
-                            <img v-if="item.photo_url" :src="item.photo_url"
-                                style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e5e6eb;cursor:pointer;"
-                                @click="previewImage(item.photo_url)" />
-                            <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
+                            <template v-if="editingItemId === item.id">
+                                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                    <img v-if="editForm.photo_url" :src="editForm.photo_url"
+                                        style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e5e6eb;cursor:pointer;"
+                                        @click="previewImage(editForm.photo_url)" />
+                                    <div style="display:flex;gap:4px;">
+                                        <button type="button" class="action-btn" style="font-size:11px;padding:2px 6px;color:#165dff;border-color:#bedaff;background:#e8f3ff;" @click="openPhotoUpload">换图</button>
+                                        <button v-if="editForm.photo_url" type="button" class="action-btn" style="font-size:11px;padding:2px 6px;color:#f53f3f;border-color:#fdcdc5;background:#ffece8;" @click="editForm.photo_url=''">删除</button>
+                                    </div>
+                                </div>
+                            </template>
+                            <template v-else>
+                                <img v-if="item.photo_url" :src="item.photo_url"
+                                    style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e5e6eb;cursor:pointer;"
+                                    @click="previewImage(item.photo_url)" />
+                                <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
+                            </template>
                         </td>
                         <!-- 货品名称 -->
                         <td style="text-align:center;padding:6px 8px;">
@@ -520,7 +533,7 @@
                             <a-tag :color="getItemStatusColor(item.item_status)" size="small">{{ getItemStatusText(item.item_status) }}</a-tag>
                         </td>
                         <!-- 操作 -->
-                        <td style="text-align:center;">
+                        <td v-if="canManageOrders" style="text-align:center;">
                             <div v-if="editingItemId === item.id" class="action-btns">
                                 <button class="action-btn action-btn-save" @click="saveEdit">保存</button>
                                 <button class="action-btn action-btn-cancel" @click="cancelEdit">取消</button>
@@ -620,6 +633,22 @@
         <div style="text-align:center;">
             <img :src="previewUrl" style="max-width:100%;max-height:60vh;border-radius:4px;" />
         </div>
+    </a-modal>
+
+    <!-- 照片上传弹窗 -->
+    <a-modal v-model:visible="photoUploadVisible" title="上传照片" :width="420" :footer="false" @cancel="photoUploadVisible=false">
+        <div
+            @dragover.prevent="photoUploadDrag=true"
+            @dragleave="photoUploadDrag=false"
+            @drop.prevent="handlePhotoDrop($event)"
+            @click="triggerPhotoFile"
+            :style="{border: photoUploadDrag ? '2px dashed #165dff' : '2px dashed #c9cdd4', borderRadius:'8px', padding:'40px 20px', textAlign:'center', cursor:'pointer', background: photoUploadDrag ? '#f2f7ff' : '#fafbfc', transition:'all 0.2s'}"
+        >
+            <div style="font-size:40px;color:#165dff;margin-bottom:12px;">⇧</div>
+            <div style="font-size:14px;color:#1d2129;font-weight:500;">点击选择图片或将图片拖拽到此处</div>
+            <div style="font-size:12px;color:#86909c;margin-top:8px;">支持 JPG、PNG、GIF、WebP，最大 5MB</div>
+        </div>
+        <div v-if="photoUploading" style="text-align:center;padding:16px 0;color:#165dff;font-size:13px;">上传中...</div>
     </a-modal>
 
     <!-- 派单弹窗 -->
@@ -790,7 +819,8 @@ window.createPageApp({
             per_piece_qty: 0,
             unit_price: 0,
             volume: 0,
-            label: ''
+            label: '',
+            photo_url: ''
         });
 
         const startEdit = (item) => {
@@ -804,6 +834,7 @@ window.createPageApp({
             editForm.unit_price = Number(item.unit_price) || 0;
             editForm.volume = Number(item.volume) || 0;
             editForm.label = item.label || '';
+            editForm.photo_url = item.photo_url || '';
         };
 
         const cancelEdit = () => {
@@ -833,7 +864,8 @@ window.createPageApp({
                         per_piece_qty: editForm.per_piece_qty,
                         unit_price: editForm.unit_price,
                         volume: editForm.volume,
-                        label: editForm.label
+                        label: editForm.label,
+                        photo_url: editForm.photo_url
                     })
                 });
                 const json = await res.json();
@@ -971,6 +1003,61 @@ window.createPageApp({
             }
         };
 
+        // ========== 照片上传逻辑 ==========
+        const photoUploadVisible = ref(false);
+        const photoUploadDrag = ref(false);
+        const photoUploading = ref(false);
+
+        const openPhotoUpload = () => {
+            photoUploadVisible.value = true;
+            photoUploadDrag.value = false;
+        };
+
+        const triggerPhotoFile = () => {
+            const inp = document.createElement('input');
+            inp.type = 'file';
+            inp.accept = 'image/*';
+            inp.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) doUploadPhoto(file);
+            };
+            inp.click();
+        };
+
+        const handlePhotoDrop = (e) => {
+            photoUploadDrag.value = false;
+            const file = e.dataTransfer.files[0];
+            if (file) doUploadPhoto(file);
+        };
+
+        const doUploadPhoto = async (file) => {
+            if (!file || !file.type.startsWith('image/')) {
+                ArcoMessage.warning('请选择图片文件');
+                return;
+            }
+            photoUploading.value = true;
+            const fd = new FormData();
+            fd.append('image', file);
+            try {
+                const res = await fetch('/admin/goods/uploadTempImage', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                });
+                const json = await res.json();
+                if ((json.code == 200 || json.success) && json.data && json.data.url) {
+                    editForm.photo_url = json.data.url;
+                    photoUploadVisible.value = false;
+                    ArcoMessage.success('上传成功');
+                } else {
+                    ArcoMessage.error(json.msg || '上传失败');
+                }
+            } catch (e) {
+                ArcoMessage.error('上传失败：' + e.message);
+            }
+            photoUploading.value = false;
+        };
+
         return {
             order, isSuper, canManageOrders,
             previewVisible, previewUrl, previewImage,
@@ -985,6 +1072,9 @@ window.createPageApp({
             // 行内编辑
             editingItemId, editForm,
             startEdit, cancelEdit, saveEdit, getEditTotalVolume,
+            // 照片上传
+            photoUploadVisible, photoUploadDrag, photoUploading,
+            openPhotoUpload, triggerPhotoFile, handlePhotoDrop,
             // 删除
             deleteItemRow,
             // 派单

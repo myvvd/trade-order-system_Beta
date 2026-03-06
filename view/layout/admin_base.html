@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{$title|default='外贸订单管理系统'}</title>
+    <title>{$title|default='订单管理系统'}</title>
 
     <!-- Arco Design CSS -->
     <link rel="stylesheet" href="/static/libs/arco/arco-vue.min.css">
@@ -31,7 +31,7 @@
         html, body { width: 100%; height: 100%; overflow: hidden; }
         .no-transition *, .no-transition *::before, .no-transition *::after { transition: none !important; }
         .admin-layout { display: flex; width: 100%; height: 100%; }
-        .admin-sidebar { width: 220px; background: #001529; color: rgba(255,255,255,0.65); display: flex; flex-direction: column; transition: width 0.2s; flex-shrink: 0; }
+        .admin-sidebar { width: 180px; background: #001529; color: rgba(255,255,255,0.65); display: flex; flex-direction: column; transition: width 0.2s; flex-shrink: 0; }
         .sidebar-collapsed .admin-sidebar { width: 64px; }
         .admin-sidebar.collapsed { width: 64px; }
         .sidebar-logo { height: 64px; display: flex; align-items: center; padding: 0 20px; font-size: 16px; font-weight: bold; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); white-space: nowrap; overflow: hidden; }
@@ -253,8 +253,8 @@
                 <div id="headerNotificationApp" style="margin-right: 20px; cursor: pointer;"></div>
 
                 <div class="header-user" onclick="toggleDropdown(event)">
-                    <div class="user-avatar">{$username|default='A'|substr=0,1}</div>
-                    <div class="user-name">{$username|default='管理员'}</div>
+                    <div class="user-avatar">{$user_realname|default=$user_name|substr=0,1}</div>
+                    <div class="user-name">{$user_realname|default=$user_name}</div>
                     <div class="dropdown-menu" id="userDropdown">
                         <div class="dropdown-item" onclick="location.href='/admin/profile'">个人设置</div>
                         <div class="dropdown-item danger" onclick="logout()">退出登录</div>
@@ -408,9 +408,15 @@
 
                 function getTimeAgo(ts) {
                     if (!ts) return '';
-                    // create_time 是 unix 时间戳
+                    let sec;
+                    if (typeof ts === 'number') {
+                        sec = ts;
+                    } else {
+                        sec = new Date(ts.replace(/-/g, '/')).getTime() / 1000;
+                    }
+                    if (isNaN(sec)) return ts;
                     const now = Date.now() / 1000;
-                    const diff = now - ts;
+                    const diff = now - sec;
                     if (diff < 60) return '刚刚';
                     if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
                     if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
