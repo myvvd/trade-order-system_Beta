@@ -11,3 +11,4 @@ Thumbs.db
 /.project
 /config/database.php
 /runtime
+/public/uploads/cache
