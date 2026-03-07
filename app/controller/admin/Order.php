@@ -903,14 +903,42 @@ class Order extends Base
             // B = 照片（嵌入图片）
             $photoInserted = false;
             $photoUrl = $item['photo_url'] ?? '';
-            if ($photoUrl) {
-                $photoPath = app()->getRootPath() . 'public' . $photoUrl;
+            if ($photoUrl && $hasZip) { // Xls格式不支持嵌入图片，仅xlsx时尝试
+                // 确保路径以 / 开头
+                $photoUrlNorm = '/' . ltrim($photoUrl, '/');
+                $publicDir = app()->getRootPath() . 'public';
 
-                // 如果本地文件不存在，尝试从URL下载到临时目录
-                if (!file_exists($photoPath) || !is_readable($photoPath)) {
+                // 尝试多个可能的本地路径
+                $candidatePaths = [
+                    $publicDir . $photoUrlNorm,                                    // /uploads/goods/202603/xxx.jpg
+                    $publicDir . str_replace('/uploads/cache/', '/uploads/goods/', $photoUrlNorm), // cache -> goods 目录
+                ];
+                // 如果是 cache 路径，也尝试按月份子目录查找
+                if (strpos($photoUrlNorm, '/uploads/cache/') !== false) {
+                    $baseName = basename($photoUrlNorm);
+                    // 尝试最近几个月的 goods 目录
+                    for ($m = 0; $m <= 3; $m++) {
+                        $monthDir = date('Ym', strtotime("-{$m} months"));
+                        $candidatePaths[] = $publicDir . '/uploads/goods/' . $monthDir . '/' . $baseName;
+                    }
+                }
+
+                $photoPath = '';
+                foreach ($candidatePaths as $cp) {
+                    if (file_exists($cp) && is_readable($cp)) {
+                        $photoPath = $cp;
+                        break;
+                    }
+                }
+
+                // 本地文件都找不到，尝试通过HTTP下载
+                if (!$photoPath) {
                     try {
-                        $fullUrl = request()->domain() . $photoUrl;
-                        $ctx = stream_context_create(['http' => ['timeout' => 10]]);
+                        $fullUrl = request()->domain() . $photoUrlNorm;
+                        $ctx = stream_context_create([
+                            'http' => ['timeout' => 10],
+                            'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
+                        ]);
                         $imgContent = @file_get_contents($fullUrl, false, $ctx);
                         if ($imgContent !== false && strlen($imgContent) > 100) {
                             $ext = pathinfo($photoUrl, PATHINFO_EXTENSION) ?: 'jpg';
@@ -923,14 +951,14 @@ class Order extends Base
                             $photoPath = $tempPath;
                             $tempFiles[] = $tempPath;
                         } else {
-                            Log::warning('Excel导出: 图片下载失败或内容为空 - URL: ' . ($fullUrl ?? $photoUrl));
+                            Log::warning('Excel导出: 图片下载失败 - URL: ' . $fullUrl);
                         }
                     } catch (\Throwable $e) {
                         Log::error('Excel导出: 图片下载异常 - ' . $e->getMessage());
                     }
                 }
 
-                if (file_exists($photoPath) && is_readable($photoPath)) {
+                if ($photoPath) {
                     try {
                         $drawing = new Drawing();
                         $drawing->setName('Photo_' . ($idx + 1));
@@ -947,11 +975,13 @@ class Order extends Base
                         Log::error('Excel导出: Drawing插入失败 - ' . $e->getMessage() . ' | path: ' . $photoPath);
                     }
                 } else {
-                    Log::warning('Excel导出: 图片文件不存在 - ' . $photoPath . ' (photo_url=' . $photoUrl . ')');
+                    Log::warning('Excel导出: 图片文件不存在 (photo_url=' . $photoUrl . ')');
                 }
             }
             if (!$photoInserted) {
-                $sheet->setCellValue('B' . $row, $item['goods_name'] ?? '');
+                // 图片插入失败时显示图片URL，方便排查
+                $fallbackText = $photoUrl ? ('[图片] ' . $photoUrl) : ($item['goods_name'] ?? '');
+                $sheet->setCellValue('B' . $row, $fallbackText);
             }
 
             // C = 货品名称

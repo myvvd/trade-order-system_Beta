@@ -354,7 +354,7 @@ input[type=number].table-input { -moz-appearance: textfield; }
                 </thead>
                 <tbody>
                     <tr v-for="(item, index) in form.items" :key="index">
-                        <td style="text-align:center;color:#86909c;font-size:12px;">{{ form.items.length - index }}</td>
+                        <td style="text-align:center;color:#86909c;font-size:12px;">{{ index + 1 }}</td>
                         <td>
                             <input type="text" class="table-input" v-model="item.customer_goods_no" placeholder="采购方货号" />
                         </td>
@@ -778,7 +778,7 @@ window.createPageApp({
         };
 
         const addItem = () => {
-            form.items.unshift(defaultItem());
+            form.items.push(defaultItem());
         };
 
         const removeItem = (index) => {
