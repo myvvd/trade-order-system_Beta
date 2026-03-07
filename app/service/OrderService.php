@@ -23,9 +23,14 @@ class OrderService
     public function createOrder(array $data, ?int $adminId = null): Order
     {
         return Db::transaction(function () use ($data, $adminId) {
+            // 构建订单号：基础号 + 唛头文本
+            $baseOrderNo = !empty($data['order_no']) ? trim($data['order_no']) : Order::generateOrderNo();
+            $markText = trim($data['mark_text'] ?? '');
+            $finalOrderNo = $markText !== '' ? $baseOrderNo . '-' . $markText : $baseOrderNo;
+
             $order = new Order();
             $order->save([
-                'order_no'        => !empty($data['order_no']) ? trim($data['order_no']) : Order::generateOrderNo(),
+                'order_no'        => $finalOrderNo,
                 'customer_id'     => $data['customer_id'] ?? null,
                 'status'          => Order::STATUS_PENDING,
                 'creator_id'      => $adminId,
@@ -35,6 +40,7 @@ class OrderService
                 'trading_company' => $data['trading_company'] ?? null,
                 'salesman'        => $data['salesman'] ?? null,
                 'contact_phone'   => $data['contact_phone'] ?? null,
+                'mark_id'         => $data['mark_id'] ?? null,
                 'remark'          => $data['remark'] ?? ''
             ]);
 

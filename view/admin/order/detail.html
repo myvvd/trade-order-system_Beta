@@ -455,6 +455,13 @@
                         <a-tag :color="getStatusColor(order.status)">{{ getStatusText(order.status) }}</a-tag>
                     </span>
                 </div> -->
+                <div class="detail-item" v-if="order.mark_info">
+                    <span class="detail-label">唛头</span>
+                    <div class="detail-value" style="display:flex; align-items:flex-start; gap:10px;">
+                        <span v-if="order.mark_info.mark_text" style="white-space:pre-wrap;">{{ order.mark_info.mark_text }}</span>
+                        <img v-if="order.mark_info.mark_image" :src="order.mark_info.mark_image" style="width:60px;height:60px;object-fit:contain;border:1px solid #e5e6eb;border-radius:4px;cursor:pointer;" @click="previewImage(order.mark_info.mark_image)" />
+                    </div>
+                </div>
                 <div class="detail-item detail-remark" v-if="order.remark">
                     <span class="detail-label">备注</span>
                     <div class="detail-value">{{ order.remark }}</div>
@@ -474,7 +481,7 @@
                     <tr>
                         <th style="width:44px;text-align:center;">序号</th>
                         <th style="width:110px;text-align:center;">采购方货号</th>
-                        <th style="width:120px;text-align:center;">照片</th>
+                        <th style="width:120px;text-align:center;">款式图片</th>
                         <th style="width:120px;text-align:center;">描述图片</th>
                         <th style="width:160px;text-align:center;">货品名称</th>
                         <th style="width:150px;text-align:center;">描述</th>
@@ -593,9 +600,9 @@
                         </td>
                         <!-- 体积 -->
                         <td style="text-align:center;">
-                            <input v-if="editingItemId === item.id" type="number" class="edit-input" v-model.number="editForm.volume" min="0" step="0.0001" style="width:65px;" />
+                            <input v-if="editingItemId === item.id" type="number" class="edit-input" v-model.number="editForm.volume" min="0" step="0.01" style="width:65px;" />
                             <template v-else>
-                                <span v-if="item.volume" class="auto-volume">{{ item.volume }}</span>
+                                <span v-if="item.volume" class="auto-volume">{{ Number(item.volume).toFixed(2) }}</span>
                                 <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
                             </template>
                         </td>

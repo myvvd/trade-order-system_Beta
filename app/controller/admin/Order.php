@@ -102,12 +102,13 @@ class Order extends Base
         $today = date('ymd'); // YYMMDD，如 260303
         $prefix = $today . '-';
         // 查询今天已存在的同前缀订单号，取最大序号
+        // 订单号格式可能是 YYMMDD-XXX 或 YYMMDD-XXX-唛头文本
         $existing = OrderModel::where('order_no', 'like', $prefix . '%')
             ->column('order_no');
         $maxSeq = 0;
         foreach ($existing as $no) {
-            $parts = explode('-', $no);
-            if (count($parts) === 2 && strlen($parts[1]) === 3 && is_numeric($parts[1])) {
+            $parts = explode('-', $no, 3); // 最多分 3 段: YYMMDD, XXX, 唛头文本(可选)
+            if (count($parts) >= 2 && strlen($parts[1]) === 3 && is_numeric($parts[1])) {
                 $seq = intval($parts[1]);
                 if ($seq > $maxSeq) $maxSeq = $seq;
             }
@@ -179,8 +180,18 @@ class Order extends Base
             ->field('id,name')->order('id', 'asc')->select()->toArray();
         $salesmenList = SalesmanModel::where('delete_time', null)->where('status', 1)
             ->field('id,name,phone,trading_company_id')->order('id', 'asc')->select()->toArray();
+
+        // 关联唛头信息
+        $orderArr = $order->toArray();
+        if (!empty($orderArr['mark_id'])) {
+            $markRecord = \app\model\CustomerMark::find($orderArr['mark_id']);
+            $orderArr['mark_info'] = $markRecord ? $markRecord->toArray() : null;
+        } else {
+            $orderArr['mark_info'] = null;
+        }
+
         return View::fetch('admin/order/form', [
-            'order' => $order->toArray(),
+            'order' => $orderArr,
             'customers' => $customers,
             'trading_companies' => $tradingCompanies,
             'tc_list' => $tcList,
@@ -280,7 +291,17 @@ class Order extends Base
                 $order->trading_company = $params['trading_company'] ?? null;
                 $order->salesman        = $params['salesman'] ?? null;
                 $order->contact_phone   = $params['contact_phone'] ?? null;
+                $order->mark_id         = $params['mark_id'] ?? null;
                 $order->remark          = $params['remark'] ?? $order->remark;
+
+                // 重新构建订单号：基础号 + 唛头文本
+                $markText = trim($params['mark_text'] ?? '');
+                // 从当前 order_no 中提取基础号（YYMMDD-XXX 部分）
+                $currentNo = $order->order_no;
+                $noParts = explode('-', $currentNo, 3);
+                $baseNo = (count($noParts) >= 2) ? $noParts[0] . '-' . $noParts[1] : $currentNo;
+                $order->order_no = $markText !== '' ? $baseNo . '-' . $markText : $baseNo;
+
                 $order->save();
 
                 // 发送订单修改站内信通知
@@ -310,6 +331,14 @@ class Order extends Base
 
         if (!$order) {
             return redirect((string)url('admin/order/index'))->with('error', '订单不存在');
+        }
+
+        // 关联唛头信息
+        if (!empty($order->mark_id)) {
+            $markRecord = \app\model\CustomerMark::find($order->mark_id);
+            $order->mark_info = $markRecord ? $markRecord->toArray() : null;
+        } else {
+            $order->mark_info = null;
         }
 
         return View::fetch('admin/order/detail', [
@@ -774,6 +803,9 @@ class Order extends Base
      */
     public function exportSingleOrder($id)
     {
+        // 图片导出很耗内存，临时提高限制
+        @ini_set('memory_limit', '512M');
+
         $order = OrderModel::with(['items', 'customer', 'creator'])->find($id);
         if (!$order) {
             return $this->error('订单不存在');
@@ -842,7 +874,17 @@ class Order extends Base
 
         // 写入表头数据
         $sheet->setCellValue('A4', '采购方(Buyer)：' . $customerName);
-        $sheet->setCellValue('E4', '客户唛头(Mark)：' );
+        // 通过 mark_id 关联读取唛头内容
+        $markText = '';
+        $markImagePath = '';
+        if (!empty($order->mark_id)) {
+            $markRecord = \app\model\CustomerMark::find($order->mark_id);
+            if ($markRecord) {
+                $markText = $markRecord->mark_text ?: '';
+                $markImagePath = $markRecord->mark_image ?: '';
+            }
+        }
+        $sheet->setCellValue('E4', '客户唛头(Mark)：' . $markText);
         $sheet->setCellValue('A5', '送货地址(Delivery Add)：');
         $sheet->setCellValueExplicit('E5', '订单号(Order No.)：' . ($order->order_no ?: ''), DataType::TYPE_STRING);
         $sheet->setCellValue('A6', '联系人电话(TEL)：' . ($order->contact_phone ?: ''));
@@ -1019,11 +1061,19 @@ class Order extends Base
                     if (function_exists('imagecreatefromstring')) {
                         try {
                             $imageData = file_get_contents($photoPath);
-                            $gdImage = @imagecreatefromstring($imageData);
-                            if ($gdImage) {
+                            $srcImage = @imagecreatefromstring($imageData);
+                            unset($imageData); // 立即释放原始数据
+                            if ($srcImage) {
+                                // 缩放到目标尺寸，大幅减少内存占用
+                                $thumbW = $imgW * 2; // 2x 保证清晰度
+                                $thumbH = $imgH * 2;
+                                $thumb = imagecreatetruecolor($thumbW, $thumbH);
+                                imagecopyresampled($thumb, $srcImage, 0, 0, 0, 0, $thumbW, $thumbH, imagesx($srcImage), imagesy($srcImage));
+                                imagedestroy($srcImage); // 释放原大图
+
                                 $memDrawing = new MemoryDrawing();
                                 $memDrawing->setName('Img_' . $column . '_' . $idx . '_' . $imgIdx);
-                                $memDrawing->setImageResource($gdImage);
+                                $memDrawing->setImageResource($thumb);
                                 $memDrawing->setRenderingFunction(MemoryDrawing::RENDERING_JPEG);
                                 $memDrawing->setMimeType(MemoryDrawing::MIMETYPE_DEFAULT);
                                 $memDrawing->setCoordinates($column . $row);
@@ -1043,6 +1093,60 @@ class Order extends Base
             }
             return $inserted;
         };
+
+        // ==================== 唛头图片（如果有） ====================
+        if ($markImagePath) {
+            $resolvedMarkPath = $resolveImagePath($markImagePath);
+            if ($resolvedMarkPath) {
+                $markImgW = 60;
+                $markImgH = 60;
+                // 增大第4行行高以容纳图片
+                $sheet->getRowDimension(4)->setRowHeight(70);
+                $sheet->getStyle('E4')->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+
+                if ($canUseDrawing) {
+                    try {
+                        $markDrawing = new Drawing();
+                        $markDrawing->setName('MarkImage');
+                        $markDrawing->setPath($resolvedMarkPath);
+                        $markDrawing->setCoordinates('K4');
+                        $markDrawing->setWidth($markImgW);
+                        $markDrawing->setHeight($markImgH);
+                        $markDrawing->setOffsetX(5);
+                        $markDrawing->setOffsetY(5);
+                        $markDrawing->setWorksheet($sheet);
+                    } catch (\Throwable $e) {
+                        Log::error('Excel唛头图片Drawing失败: ' . $e->getMessage());
+                    }
+                } elseif (function_exists('imagecreatefromstring')) {
+                    try {
+                        $imgData = file_get_contents($resolvedMarkPath);
+                        $srcImg = @imagecreatefromstring($imgData);
+                        unset($imgData);
+                        if ($srcImg) {
+                            $thumbW = $markImgW * 2;
+                            $thumbH = $markImgH * 2;
+                            $thumb = imagecreatetruecolor($thumbW, $thumbH);
+                            imagecopyresampled($thumb, $srcImg, 0, 0, 0, 0, $thumbW, $thumbH, imagesx($srcImg), imagesy($srcImg));
+                            imagedestroy($srcImg);
+                            $memDraw = new MemoryDrawing();
+                            $memDraw->setName('MarkImage');
+                            $memDraw->setImageResource($thumb);
+                            $memDraw->setRenderingFunction(MemoryDrawing::RENDERING_JPEG);
+                            $memDraw->setMimeType(MemoryDrawing::MIMETYPE_DEFAULT);
+                            $memDraw->setCoordinates('K4');
+                            $memDraw->setWidth($markImgW);
+                            $memDraw->setHeight($markImgH);
+                            $memDraw->setOffsetX(5);
+                            $memDraw->setOffsetY(5);
+                            $memDraw->setWorksheet($sheet);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Excel唛头图片MemoryDrawing失败: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
 
         // ==================== 第9行起：货品明细数据 ====================
         $itemStartRow = 9;
@@ -1267,7 +1371,14 @@ No.26702 SHOP 4th Street 3rd Floor Area 3/H Gate 51 Yiwu International Trade Cit
 <table cellpadding="5" cellspacing="0" border="1" bordercolor="#999" width="100%" style="font-size:10px;">
 <tr>
     <td width="50%">采购方(Buyer)：' . htmlspecialchars($customerName) . '</td>
-    <td width="50%">客户唛头(Mark)：</td>
+    <td width="50%">客户唛头(Mark)：' . (function() use ($order) {
+        $mt = ''; $mi = '';
+        if (!empty($order->mark_id)) {
+            $mk = \app\model\CustomerMark::find($order->mark_id);
+            if ($mk) { $mt = $mk->mark_text ?: ''; $mi = $mk->mark_image ?: ''; }
+        }
+        return htmlspecialchars($mt) . ($mi ? ' <img src="' . htmlspecialchars($mi) . '" width="40" height="40" />' : '');
+    })() . '</td>
 </tr>
 <tr>
     <td>送货地址(Delivery Add)：</td>

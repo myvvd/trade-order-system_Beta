@@ -31,6 +31,10 @@ class Permission
         'admin/order',
         'admin/message',
         'admin/goods/uploadTempImage',
+        'admin/customer/getMarks',
+        'admin/customer/saveMark',
+        'admin/customer/getLatestMark',
+        'admin/customer/deleteMark',
     ];
 
     /**

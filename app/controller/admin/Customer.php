@@ -88,6 +88,23 @@ class Customer extends Base
                 $c->order_count = $countMap[$c->id] ?? 0;
                 $c->pending_order_count = $pendingMap[$c->id] ?? 0;
             }
+
+            // 获取每个客户最新唛头
+            $latestMarks = \think\facade\Db::name('customer_mark')
+                ->whereIn('customer_id', $ids)
+                ->order('id', 'desc')
+                ->select()
+                ->toArray();
+            $markMap = [];
+            foreach ($latestMarks as $mk) {
+                // 仅保留每个 customer_id 的第一条（最新）
+                if (!isset($markMap[$mk['customer_id']])) {
+                    $markMap[$mk['customer_id']] = $mk;
+                }
+            }
+            foreach ($customers as $c) {
+                $c->latest_mark = $markMap[$c->id] ?? null;
+            }
         }
 
         return View::fetch('admin/customer/list', [
@@ -136,7 +153,10 @@ class Customer extends Base
 
         // 简单国家列表，可按需扩展
         $countries = [
-            'China', 'United States', 'United Kingdom', 'Germany', 'France', 'Japan', 'South Korea', 'Other'
+            '中国', '美国', '英国', '德国', '法国', '日本', '韩国',
+            '泰国', '越南', '印度', '印度尼西亚', '马来西亚', '新加坡',
+            '澳大利亚', '加拿大', '巴西', '俄罗斯', '意大利', '西班牙',
+            '荷兰', '土耳其', '沙特阿拉伯', '阿联酋', '墨西哥', '其他'
         ];
 
         $customerData = $customer ? $customer->toArray() : [];
@@ -169,18 +189,22 @@ class Customer extends Base
             return $this->error($e->getError());
         }
 
-        // 唯一性检查
-        $existing = CustomerModel::getByCompanyName($params['company_name'] ?? '');
-        if ($existing) {
-            return $this->error('公司名称已存在');
+        // 唯一性检查（公司名称非空时才检查）
+        $companyName = trim($params['company_name'] ?? '');
+        if ($companyName !== '') {
+            $existing = CustomerModel::getByCompanyName($companyName);
+            if ($existing) {
+                return $this->error('公司名称已存在');
+            }
         }
 
         try {
             $data = [
-                'company_name' => $params['company_name'] ?? '',
+                'company_name' => $companyName,
                 'country'      => $params['country'] ?? '',
                 'contact_name' => $params['contact_name'] ?? '',
                 'phone'        => $params['phone'] ?? '',
+                'wechat'       => $params['wechat'] ?? '',
                 'email'        => $params['email'] ?? '',
                 'address'      => $params['address'] ?? '',
                 'level'        => $params['level'] ?? 1,
@@ -223,21 +247,25 @@ class Customer extends Base
             return $this->error('采购方不存在');
         }
 
-        // 检查公司名称唯一
-        $other = CustomerModel::where('company_name', $params['company_name'] ?? $customer->company_name)
-            ->where('id', '<>', $id)
-            ->where('delete_time', null)
-            ->find();
-        if ($other) {
-            return $this->error('公司名称已存在');
+        // 检查公司名称唯一（非空时才检查）
+        $companyName = trim($params['company_name'] ?? $customer->company_name ?? '');
+        if ($companyName !== '') {
+            $other = CustomerModel::where('company_name', $companyName)
+                ->where('id', '<>', $id)
+                ->where('delete_time', null)
+                ->find();
+            if ($other) {
+                return $this->error('公司名称已存在');
+            }
         }
 
         try {
             $data = [
-                'company_name' => $params['company_name'] ?? $customer->company_name,
+                'company_name' => $companyName,
                 'country'      => $params['country'] ?? $customer->country,
                 'contact_name' => $params['contact_name'] ?? $customer->contact_name,
                 'phone'        => $params['phone'] ?? $customer->phone,
+                'wechat'       => $params['wechat'] ?? $customer->wechat ?? '',
                 'email'        => $params['email'] ?? $customer->email,
                 'address'      => $params['address'] ?? $customer->address,
                 'level'        => $params['level'] ?? $customer->level,
@@ -378,6 +406,109 @@ class Customer extends Base
             return $this->success($orders, '获取成功');
         } catch (\Exception $e) {
             return $this->error('获取失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 获取客户唛头列表
+     */
+    public function getMarks()
+    {
+        $customerId = input('customer_id/d', 0);
+        if (!$customerId) {
+            return $this->error('参数错误');
+        }
+        $marks = \app\model\CustomerMark::where('customer_id', $customerId)
+            ->order('id', 'desc')
+            ->select()
+            ->toArray();
+        return $this->success($marks);
+    }
+
+    /**
+     * 保存客户唛头
+     */
+    public function saveMark()
+    {
+        if (!$this->isPost()) {
+            return $this->error('请求方式错误');
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (empty($input)) {
+            $input = $this->post();
+        }
+        $customerId = $input['customer_id'] ?? 0;
+        if (!$customerId) {
+            return $this->error('客户ID不能为空');
+        }
+        $markText = $input['mark_text'] ?? '';
+        $markImage = $input['mark_image'] ?? '';
+
+        if (empty($markText) && empty($markImage)) {
+            return $this->error('唛头文本和图片至少填写一项');
+        }
+
+        try {
+            $mark = new \app\model\CustomerMark();
+            $mark->save([
+                'customer_id' => $customerId,
+                'mark_text'   => $markText,
+                'mark_image'  => $markImage,
+            ]);
+            return $this->success(['id' => $mark->id], '保存成功');
+        } catch (\Exception $e) {
+            return $this->error('保存失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 获取客户最新唛头
+     */
+    public function getLatestMark()
+    {
+        $customerId = input('customer_id/d', 0);
+        if (!$customerId) {
+            return $this->error('参数错误');
+        }
+        $mark = \app\model\CustomerMark::where('customer_id', $customerId)
+            ->order('id', 'desc')
+            ->find();
+        return $this->success($mark ? $mark->toArray() : null);
+    }
+
+    /**
+     * 删除客户唛头
+     */
+    public function deleteMark()
+    {
+        if (!$this->isPost()) {
+            return $this->error('请求方式错误');
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (empty($input)) {
+            $input = $this->post();
+        }
+        $markId = $input['id'] ?? 0;
+        if (!$markId) {
+            return $this->error('参数错误');
+        }
+
+        $mark = \app\model\CustomerMark::find($markId);
+        if (!$mark) {
+            return $this->error('唛头不存在');
+        }
+
+        try {
+            // 检查是否有订单引用了该唛头
+            $orderCount = \app\model\Order::where('mark_id', $markId)->count();
+            if ($orderCount > 0) {
+                return $this->error('该唛头已被 ' . $orderCount . ' 个订单引用，无法删除');
+            }
+
+            $mark->delete();
+            return $this->success(null, '删除成功');
+        } catch (\Exception $e) {
+            return $this->error('删除失败：' . $e->getMessage());
         }
     }
 }

@@ -48,9 +48,10 @@
     <table class="data-table" style="width: 100%; border-collapse: collapse;">
         <thead>
             <tr style="background: #f7f8fa;">
-                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600;">公司名称</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 120px;">客户名称</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 160px;">唛头</th>
                 <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 100px;">国家</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 100px;">联系人</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600;">公司名称</th>
                 <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 120px;">电话</th>
                 <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 160px;">邮箱</th>
                 <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e6eb; font-weight: 600; width: 70px;">等级</th>
@@ -65,10 +66,24 @@
             {volist name="customers" id="item"}
             <tr style="border-bottom: 1px solid #e5e6eb;">
                 <td style="padding: 12px;">
-                    <a href="/admin/customer/detail?id={$item.id}" style="color: #165dff; text-decoration: none;">{$item.company_name}</a>
+                    <a href="/admin/customer/detail?id={$item.id}" style="color: #165dff; text-decoration: none;">{$item.contact_name|default='-'}</a>
+                </td>
+                <td style="padding: 12px;">
+                    {if condition="!empty($item['latest_mark'])"}
+                    <div style="display:flex; align-items:center; gap:6px; max-width:160px;">
+                        {if condition="!empty($item['latest_mark']['mark_image'])"}
+                        <img src="{$item.latest_mark.mark_image}" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e6eb;border-radius:3px;flex-shrink:0;" />
+                        {/if}
+                        {if condition="!empty($item['latest_mark']['mark_text'])"}
+                        <span style="font-size:12px;color:#4e5969;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{$item.latest_mark.mark_text}">{$item.latest_mark.mark_text}</span>
+                        {/if}
+                    </div>
+                    {else/}
+                    <span style="color:#c9cdd4;">-</span>
+                    {/if}
                 </td>
                 <td style="padding: 12px;">{$item.country|default='-'}</td>
-                <td style="padding: 12px;">{$item.contact_name|default='-'}</td>
+                <td style="padding: 12px;">{$item.company_name|default='-'}</td>
                 <td style="padding: 12px;">{$item.phone|default='-'}</td>
                 <td style="padding: 12px;">{$item.email|default='-'}</td>
                 <td style="padding: 12px; text-align: center;">
@@ -103,7 +118,7 @@
             {/notempty}
             {empty name="customers"}
             <tr>
-                <td colspan="10" style="padding: 40px; text-align: center; color: #86909c;">暂无数据</td>
+                <td colspan="11" style="padding: 40px; text-align: center; color: #86909c;">暂无数据</td>
             </tr>
             {/empty}
         </tbody>

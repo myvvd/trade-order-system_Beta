@@ -285,24 +285,23 @@ input[type=number].table-input { -moz-appearance: textfield; }
         <a-form :model="form" layout="vertical">
         <div class="basic-form-bg">
         <a-row :gutter="[24, 0]">
-                <!-- 第一行：订单号 + 录单人 + 录单时间（横向内联） -->
+                <!-- 第一行：订单号 + 唛头（同一行） -->
                 <a-col :span="24">
-                    <div style="display:flex; align-items:center; justify-content:space-between; padding: 2px 0 12px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:24px; padding: 2px 0 12px; flex-wrap: nowrap;">
+                        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                             <span style="font-size:13px; color:#4e5969; font-weight:500; white-space:nowrap;">订单号：</span>
                             <a-input v-if="isEdit" :model-value="form.order_no" readonly style="color:#86909c; width:180px;"></a-input>
                             <a-input v-else v-model="form.order_no" placeholder="请输入订单号" allow-clear style="width:180px;"></a-input>
                         </div>
-                        <!-- <div style="display:flex; align-items:center; gap:32px;">
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <span style="font-size:13px; color:#86909c; white-space:nowrap;">录单人：</span>
-                                <span style="font-size:13px; color:#1d2129; font-weight:500;">{{ adminName || '-' }}</span>
+                        <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                            <span style="font-size:13px; color:#4e5969; font-weight:500; white-space:nowrap;">唛头：</span>
+                            <a-input v-model="form.mark_text" placeholder="唛头文本（选填）" allow-clear style="width:200px;"></a-input>
+                            <div v-if="form.mark_image" style="position:relative; flex-shrink:0;">
+                                <img :src="form.mark_image" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e6eb;border-radius:4px;cursor:pointer;" @click="previewImage(form.mark_image)" />
+                                <span style="position:absolute;top:-5px;right:-5px;width:14px;height:14px;border-radius:50%;background:#f53f3f;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;line-height:1;" @click="form.mark_image=''">×</span>
                             </div>
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <span style="font-size:13px; color:#86909c; white-space:nowrap;">录单时间：</span>
-                                <span style="font-size:13px; color:#1d2129; font-weight:500;">{{ currentTime }}</span>
-                            </div>
-                        </div> -->
+                            <div v-else class="multi-img-add" style="width:32px;height:32px;font-size:14px;flex-shrink:0;" @click="uploadMarkImage" @dragover.prevent @drop.prevent="handleMarkDrop">+</div>
+                        </div>
                     </div>
                 </a-col>
 
@@ -317,7 +316,7 @@ input[type=number].table-input { -moz-appearance: textfield; }
                         <div style="display: flex; gap: 8px; width: 100%;">
                             <div style="flex: 1; min-width: 0; overflow: hidden;">
                                 <a-select v-model="form.customer_id" placeholder="选择采购方" style="width: 100%;" allow-search>
-                                    <a-option v-for="c in customers" :key="c.id" :value="c.id">{{ c.company_name }}</a-option>
+                                    <a-option v-for="c in customers" :key="c.id" :value="c.id">{{ c.contact_name ? (c.country ? c.contact_name + '-' + c.country : c.contact_name) : (c.company_name || '-') }}</a-option>
                                 </a-select>
                             </div>
                             <a-button type="primary" status="success" size="small" style="flex-shrink: 0; width: 58px;" @click="openNewCustomer">+ 新建</a-button>
@@ -483,7 +482,7 @@ input[type=number].table-input { -moz-appearance: textfield; }
                             <span class="auto-price">¥{{ (((Number(item.pieces)||0)*(Number(item.per_piece_qty)||0))*(Number(item.price)||0)).toFixed(2) }}</span>
                         </td>
                         <td>
-                            <input type="number" class="table-input" v-model.number="item.volume" min="0" step="0.0001" placeholder="m³" />
+                            <input type="number" class="table-input" v-model.number="item.volume" min="0" step="0.01" placeholder="m³" />
                         </td>
                         <td class="td-auto" style="text-align:right;vertical-align:middle;padding-right:10px;">
                             <span class="auto-volume">{{ getTotalVolume(item) !== '-' ? getTotalVolume(item) + ' m³' : '-' }}</span>
@@ -641,6 +640,45 @@ window.createPageApp({
             previewUrl.value = url;
             previewVisible.value = true;
         };
+
+        // ===== 唛头相关 =====
+        // 上传唛头图片
+        const uploadMarkImage = () => {
+            const inp = document.createElement('input');
+            inp.type = 'file';
+            inp.accept = 'image/*';
+            inp.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) doUploadMarkImage(file);
+            };
+            inp.click();
+        };
+        const handleMarkDrop = (e) => {
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) doUploadMarkImage(file);
+        };
+        const doUploadMarkImage = (file) => {
+            const fd = new FormData();
+            fd.append('image', file);
+            fetch('/admin/goods/uploadTempImage', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: fd
+            }).then(r => r.json()).then(json => {
+                if ((json.code == 1 || json.code == 200 || json.success) && json.data && json.data.url) {
+                    form.mark_image = json.data.url;
+                } else {
+                    ArcoMessage.error(json.msg || '上传失败');
+                }
+            }).catch(() => ArcoMessage.error('上传失败'));
+        };
+
+        // 唛头相关变量（watch 在 form 定义之后注册）
+        const { watch } = Vue;
+        const _lastMarkCustomerId = ref(orderData?.customer_id || null);
+        const _originalMark = ref(orderData?.mark_info ? { mark_text: orderData.mark_info.mark_text || '', mark_image: orderData.mark_info.mark_image || '' } : null);
+        // 标记唛头是否为用户手动修改（而非自动反写）
+        const _markUserTouched = ref(false);
 
         // 多图辅助方法
         const getPhotoUrls = (item) => {
@@ -801,14 +839,26 @@ window.createPageApp({
             _dropdownWidth: 260
         });
 
+        // 编辑时从 order_no 中剥离唛头后缀，只保留基础号 YYMMDD-XXX
+        const _rawOrderNo = orderData?.order_no || '';
+        const _baseOrderNo = (() => {
+            if (!_rawOrderNo) return '';
+            const parts = _rawOrderNo.split('-');
+            // 前两段是 YYMMDD-XXX，第三段以后是唛头文本
+            return parts.length >= 2 ? parts[0] + '-' + parts[1] : _rawOrderNo;
+        })();
+
         const form = reactive({
-            order_no: orderData?.order_no || '',
+            order_no: isEdit.value ? _baseOrderNo : _rawOrderNo,
             customer_id: orderData?.customer_id || null,
             delivery_date: orderData?.delivery_date || '',
             order_date: orderData?.order_date || '',
             trading_company: orderData?.trading_company || '',
             salesman: orderData?.salesman || '',
             contact_phone: orderData?.contact_phone || '',
+            mark_id: orderData?.mark_id || null,
+            mark_text: orderData?.mark_info?.mark_text || '',
+            mark_image: orderData?.mark_info?.mark_image || '',
             items: orderData?.items?.length ? orderData.items.map(it => {
                 // 解析 photo_urls 和 desc_images（可能是JSON字符串或数组）
                 let photoUrls = it.photo_urls;
@@ -841,6 +891,48 @@ window.createPageApp({
                 _dropdownWidth: 260
                 };
             }) : [defaultItem()],
+        });
+
+        // 选择采购方时自动加载最新唛头（必须在 form 定义之后）
+        watch(() => form.customer_id, (newId, oldId) => {
+            if (!newId) return;
+            if (isEdit.value && newId === _lastMarkCustomerId.value) return;
+            _lastMarkCustomerId.value = newId;
+
+            // 只有用户手动修改过唛头才不覆盖
+            if (_markUserTouched.value) return;
+
+            // 自动反写该客户的最新唛头
+            fetch('/admin/customer/getLatestMark?customer_id=' + newId)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.data) {
+                        form.mark_id = res.data.id || null;
+                        form.mark_text = res.data.mark_text || '';
+                        form.mark_image = res.data.mark_image || '';
+                        _originalMark.value = { mark_text: res.data.mark_text || '', mark_image: res.data.mark_image || '' };
+                    } else {
+                        form.mark_id = null;
+                        form.mark_text = '';
+                        form.mark_image = '';
+                        _originalMark.value = null;
+                    }
+                }).catch(() => {});
+        });
+
+        // 监听唛头文本手动修改（区分自动反写 vs 用户手输）
+        watch(() => form.mark_text, (newVal) => {
+            // 如果新值与 _originalMark 一致，说明是自动反写，不标记为用户修改
+            if (_originalMark.value && newVal === _originalMark.value.mark_text) return;
+            // 空值不算手动修改
+            if (!newVal && !form.mark_image) return;
+            _markUserTouched.value = true;
+        });
+        // 监听唛头图片手动修改
+        watch(() => form.mark_image, (newVal) => {
+            if (_originalMark.value && newVal === _originalMark.value.mark_image) return;
+            if (!newVal && !form.mark_text) return;
+            _markUserTouched.value = true;
         });
 
         const totalAmount = computed(() => {
@@ -1129,6 +1221,8 @@ window.createPageApp({
                 trading_company: form.trading_company,
                 salesman: form.salesman,
                 contact_phone: form.contact_phone,
+                mark_id: form.mark_id || null,
+                mark_text: form.mark_text || '',
                 items: validItems.map(it => ({
                     goods_id: it.goods_id || null,
                     goods_name: it.goods_name,
@@ -1151,26 +1245,55 @@ window.createPageApp({
                 total_amount: totalAmount.value
             };
 
-            const url = isEdit.value ? '/admin/order/update?id=<?php echo $order["id"] ?? 0; ?>' : '/admin/order/save';
-            
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).then(r => r.json()).then(ret => {
-                if (ret.code == 1 || ret.success) {
-                    ArcoMessage.success('保存成功');
-                    // 通知父框架刷新铃铛
-                    if (window.parent && window.parent !== window) {
-                        window.parent.postMessage({ type: 'refreshBell' }, '*');
+            // 如果唛头内容被修改了（与原 mark_id 记录不一致），先保存为新唛头记录
+            const saveOrderFn = (finalPayload) => {
+                const url = isEdit.value ? '/admin/order/update?id=<?php echo $order["id"] ?? 0; ?>' : '/admin/order/save';
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(finalPayload)
+                }).then(r => r.json()).then(ret => {
+                    if (ret.code == 1 || ret.success) {
+                        ArcoMessage.success('保存成功');
+                        // 通知父框架刷新铃铛
+                        if (window.parent && window.parent !== window) {
+                            window.parent.postMessage({ type: 'refreshBell' }, '*');
+                        }
+                        location.href = '/admin/order/list';
+                    } else {
+                        ArcoMessage.error(ret.msg || '保存失败');
                     }
-                    location.href = '/admin/order/list';
-                } else {
-                    ArcoMessage.error(ret.msg || '保存失败');
-                }
-            }).catch(() => {
-                ArcoMessage.error('网络错误');
-            });
+                }).catch(() => {
+                    ArcoMessage.error('网络错误');
+                });
+            };
+
+            // 判断唛头是否有变化：有内容且与原始唛头不同时，先保存新唛头
+            const hasMarkContent = !!(form.mark_text || form.mark_image);
+            const markChanged = hasMarkContent && (
+                form.mark_text !== (_originalMark.value?.mark_text || '') ||
+                form.mark_image !== (_originalMark.value?.mark_image || '')
+            );
+
+            if (markChanged && form.customer_id) {
+                fetch('/admin/customer/saveMark', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customer_id: form.customer_id,
+                        mark_text: form.mark_text || '',
+                        mark_image: form.mark_image || ''
+                    })
+                }).then(r => r.json()).then(res => {
+                    if ((res.code == 1 || res.success) && res.data && res.data.id) {
+                        payload.mark_id = res.data.id;
+                    }
+                    saveOrderFn(payload);
+                }).catch(() => saveOrderFn(payload));
+            } else {
+                if (!hasMarkContent) payload.mark_id = null;
+                saveOrderFn(payload);
+            }
         };
 
         // 点击其他地方关闭建议列表
@@ -1213,6 +1336,8 @@ window.createPageApp({
             previewVisible,
             previewUrl,
             previewImage,
+            uploadMarkImage,
+            handleMarkDrop,
             togglePhotoDropdown,
             openUploadModal,
             triggerUploadModalFile,

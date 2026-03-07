@@ -1,36 +1,160 @@
 {extend name="layout/admin_base"/}
 
 {block name="content"}
+<style>
+/* 唛头下拉框行 */
+.mark-row { display:flex; gap:10px; align-items:center; }
+.mark-dropdown { position:relative; flex:1; min-width:0; }
+.mark-dropdown-trigger {
+    display:flex; align-items:center; height:40px; padding:0 36px 0 12px;
+    border:1px solid #e5e6eb; border-radius:4px; background:#fff;
+    cursor:pointer; font-size:13px; color:#1d2129; user-select:none;
+    transition:border-color 0.2s; position:relative; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+}
+.mark-dropdown-trigger:hover { border-color:#165dff; }
+.mark-dropdown-trigger::after {
+    content:'▼'; position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    font-size:10px; color:#86909c; transition:transform 0.2s; pointer-events:none;
+}
+.mark-dropdown-trigger.open::after { transform:translateY(-50%) rotate(180deg); }
+.mark-dropdown-trigger .trigger-content { display:flex; align-items:center; gap:8px; overflow:hidden; flex:1; }
+.mark-dropdown-trigger .trigger-content img { width:28px; height:28px; object-fit:contain; border-radius:3px; border:1px solid #e5e6eb; flex-shrink:0; }
+.mark-dropdown-trigger .trigger-content span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* 下拉面板 */
+.mark-dropdown-panel {
+    display:none; position:absolute; top:44px; left:0; right:0;
+    max-height:300px; overflow-y:auto; background:#fff;
+    border:1px solid #e5e6eb; border-radius:6px;
+    box-shadow:0 4px 16px rgba(0,0,0,0.12); z-index:100;
+}
+.mark-dropdown-panel.open { display:block; }
+.mark-dd-empty { padding:24px; text-align:center; color:#c9cdd4; font-size:13px; }
+.mark-dd-item {
+    display:flex; gap:10px; padding:10px 12px; align-items:center;
+    cursor:pointer; border-bottom:1px solid #f2f3f5; transition:background 0.15s;
+}
+.mark-dd-item:last-child { border-bottom:none; }
+.mark-dd-item:hover { background:#f2f7ff; }
+.mark-dd-item.active { background:#e8f3ff; }
+.mark-dd-item .dd-text { flex:1; font-size:13px; color:#1d2129; line-height:1.5; white-space:pre-wrap; word-break:break-all; max-height:48px; overflow:hidden; min-width:0; }
+.mark-dd-item .dd-img { width:40px; height:40px; object-fit:contain; border-radius:4px; border:1px solid #e5e6eb; flex-shrink:0; cursor:pointer; }
+.mark-dd-item .dd-del {
+    flex-shrink:0; width:22px; height:22px; border-radius:50%;
+    background:#ffece8; color:#f53f3f; font-size:13px; border:none;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; line-height:1;
+}
+.mark-dd-item .dd-del:hover { background:#f53f3f; color:#fff; }
+.mark-dd-item .dd-index { flex-shrink:0; width:22px; height:22px; border-radius:50%; background:#f2f3f5; color:#86909c; font-size:11px; display:flex; align-items:center; justify-content:center; }
+
+/* 新增按钮 */
+.mark-add-btn {
+    height:40px; padding:0 16px; border:1px solid #165dff; border-radius:4px;
+    background:#165dff; color:#fff; font-size:13px; cursor:pointer;
+    white-space:nowrap; display:flex; align-items:center; gap:4px; transition:background 0.2s;
+}
+.mark-add-btn:hover { background:#4080ff; }
+
+/* 弹窗 */
+.mark-modal-overlay {
+    display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.45); z-index:9998; align-items:center; justify-content:center;
+}
+.mark-modal-overlay.show { display:flex; }
+.mark-modal {
+    background:#fff; border-radius:10px; width:500px; max-width:92vw;
+    box-shadow:0 8px 30px rgba(0,0,0,0.18); overflow:hidden; animation:modalIn 0.2s ease;
+}
+@keyframes modalIn { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+.mark-modal-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px; border-bottom:1px solid #e5e6eb; background:#fafbfc;
+}
+.mark-modal-header h3 { margin:0; font-size:16px; color:#1d2129; font-weight:600; }
+.mark-modal-close { font-size:22px; color:#86909c; cursor:pointer; line-height:1; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:4px; }
+.mark-modal-close:hover { background:#f2f3f5; color:#1d2129; }
+.mark-modal-body { padding:20px; }
+.mark-modal-body label { display:block; font-size:13px; font-weight:600; color:#4e5969; margin-bottom:6px; }
+.mark-modal-footer {
+    display:flex; justify-content:flex-end; gap:10px;
+    padding:14px 20px; border-top:1px solid #e5e6eb; background:#fafbfc;
+}
+
+/* 弹窗内上传 */
+.modal-upload-zone { display:flex; align-items:center; gap:12px; margin-top:8px; }
+.modal-upload-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:80px; height:80px; border:2px dashed #c9cdd4; border-radius:8px;
+    cursor:pointer; color:#86909c; font-size:26px; transition:all 0.15s; background:#fafbfc;
+}
+.modal-upload-btn:hover { border-color:#165dff; color:#165dff; background:#f2f7ff; }
+.modal-preview { position:relative; display:inline-block; }
+.modal-preview img { width:80px; height:80px; object-fit:contain; border-radius:8px; border:1px solid #e5e6eb; }
+.modal-preview .del-btn {
+    position:absolute; top:-6px; right:-6px; width:18px; height:18px;
+    border-radius:50%; background:#f53f3f; color:#fff; font-size:12px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; line-height:1; border:none;
+}
+
+/* 图片预览大图 */
+.img-preview-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; }
+.img-preview-modal.show { display:flex; }
+.img-preview-modal img { max-width:80vw; max-height:80vh; border-radius:8px; }
+</style>
 <h1 class="page-title">{$title}</h1>
 
 <div class="card" style="max-width: 800px; margin: 0 auto;">
     <form id="customerForm" onsubmit="return saveCustomer(event)">
         <div style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600;">公司名称 <span style="color: #f53f3f;">*</span></label>
-            <input type="text" name="company_name" value="{$customer.company_name|default=''}" placeholder="请输入公司名称" required
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">客户名称 <span style="color: #f53f3f;">*</span></label>
+            <input type="text" name="contact_name" value="{$customer.contact_name|default=''}" placeholder="请输入客户名称" required
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
+        </div>
+
+        <!-- 唛头：下拉框 + 新增按钮 -->
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">唛头</label>
+            <div class="mark-row">
+                <div class="mark-dropdown" id="markDropdown">
+                    <div class="mark-dropdown-trigger" id="markTrigger" onclick="toggleDropdown()">
+                        <div class="trigger-content" id="triggerContent">
+                            <span style="color:#86909c;">请选择唛头</span>
+                        </div>
+                    </div>
+                    <div class="mark-dropdown-panel" id="markPanel"></div>
+                </div>
+                <button type="button" class="mark-add-btn" onclick="openAddModal()">
+                    <span style="font-size:16px;">+</span> 新增
+                </button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">公司名称</label>
+            <input type="text" name="company_name" value="{$customer.company_name|default=''}" placeholder="请输入公司名称"
                 style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
         </div>
 
         <div style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600;">国家 <span style="color: #f53f3f;">*</span></label>
-            <select name="country" required
-                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box; background: #fff;">
-                <option value="">请选择国家</option>
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">国家</label>
+            <input type="text" name="country" list="countryList" value="{$customer.country|default=''}" placeholder="选择或输入国家"
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box; background: #fff;" autocomplete="off">
+            <datalist id="countryList">
                 {volist name="countries" id="c"}
-                <option value="{$c}" {if condition="($customer['country'] ?? '') eq $c"}selected{/if}>{$c}</option>
+                <option value="{$c}"></option>
                 {/volist}
-            </select>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600;">联系人 <span style="color: #f53f3f;">*</span></label>
-            <input type="text" name="contact_name" value="{$customer.contact_name|default=''}" placeholder="请输入联系人姓名" required
-                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
+            </datalist>
         </div>
 
         <div style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 8px; font-weight: 600;">电话</label>
             <input type="text" name="phone" value="{$customer.phone|default=''}" placeholder="请输入联系电话"
+                style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">微信号</label>
+            <input type="text" name="wechat" value="{$customer.wechat|default=''}" placeholder="请输入微信号"
                 style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e5e6eb; border-radius: 4px; box-sizing: border-box;">
         </div>
 
@@ -81,34 +205,344 @@
         {/if}
     </form>
 </div>
+
+<!-- 新增唛头弹窗 -->
+<div class="mark-modal-overlay" id="addMarkModal">
+    <div class="mark-modal">
+        <div class="mark-modal-header">
+            <h3>新增唛头</h3>
+            <span class="mark-modal-close" onclick="closeAddModal()">×</span>
+        </div>
+        <div class="mark-modal-body">
+            <div style="margin-bottom:16px;">
+                <label>唛头文本 <span style="color:#86909c;font-weight:400;">（选填）</span></label>
+                <textarea id="newMarkText" placeholder="请输入唛头文本内容" rows="3"
+                    style="width:100%;padding:10px;border:1px solid #e5e6eb;border-radius:4px;resize:vertical;box-sizing:border-box;font-size:13px;"></textarea>
+            </div>
+            <div>
+                <label>唛头图片 <span style="color:#86909c;font-weight:400;">（选填）</span></label>
+                <div class="modal-upload-zone">
+                    <div id="modalUploadArea">
+                        <div class="modal-upload-btn" id="modalUploadBtn"
+                            onclick="triggerMarkUpload()"
+                            ondragover="event.preventDefault();this.style.borderColor='#165dff';this.style.background='#f2f7ff'"
+                            ondragleave="this.style.borderColor='#c9cdd4';this.style.background='#fafbfc'"
+                            ondrop="handleMarkDrop(event)">+</div>
+                    </div>
+                    <div class="modal-preview" id="modalPreview" style="display:none;">
+                        <img id="modalPreviewImg" src="" />
+                        <span class="del-btn" onclick="removeMarkImage()">×</span>
+                    </div>
+                    <span style="font-size:12px;color:#86909c;line-height:1.4;">支持点击上传<br>或拖拽图片到此处</span>
+                </div>
+            </div>
+        </div>
+        <div class="mark-modal-footer">
+            <button type="button" class="btn btn-default" onclick="closeAddModal()" style="height:36px;padding:0 20px;">取消</button>
+            <button type="button" class="btn btn-primary" onclick="confirmAddMark()" style="height:36px;padding:0 20px;">确定添加</button>
+        </div>
+    </div>
+</div>
+
+<!-- 图片预览大图 -->
+<div class="img-preview-modal" id="imgModal" onclick="this.classList.remove('show')">
+    <img id="imgModalSrc" src="" />
+</div>
 {/block}
 
 {block name="script"}
 <script>
-function saveCustomer(event) {
-    event.preventDefault();
+const customerId = <?php echo intval($customer['id'] ?? 0); ?>;
+const isEdit = !!customerId;
 
-    const form = document.getElementById('customerForm');
-    const formData = new FormData(form);
+let marks = [];           // 已有唛头（编辑模式从服务器加载）
+let pendingMarks = [];    // 新建模式暂存
+let selectedIndex = -1;   // 当前选中项索引
+let dropdownOpen = false;
+let newMarkImageUrl = '';
 
-    // 根据是否有ID决定是新增还是编辑
-    const customerId = formData.get('id');
-    const url = customerId ? '/admin/customer/update?id=' + customerId : '/admin/customer/save';
-
-    fetch(url, {
-        method: 'POST',
-        body: formData
-    }).then(res => res.json()).then(result => {
-        if (result.success || result.code === 200 || result.code === 1) {
-            alert(result.msg || '保存成功');
-            location.href = '/admin/customer/list';
-        } else {
-            alert(result.msg || '保存失败');
+// ==================== 初始化 ====================
+function init() {
+    if (isEdit) {
+        loadMarks();
+    } else {
+        renderDropdown();
+    }
+    // 点击外部关闭下拉
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('markDropdown').contains(e.target)) {
+            closeDropdown();
         }
-    }).catch(err => {
-        console.error('请求出错:', err);
-        alert('网络请求失败');
     });
 }
+
+// ==================== 数据源 ====================
+function getAllMarks() {
+    return isEdit ? marks : pendingMarks;
+}
+
+// ==================== 加载唛头（编辑模式） ====================
+function loadMarks() {
+    fetch('/admin/customer/getMarks?customer_id=' + customerId)
+        .then(r => r.json())
+        .then(res => {
+            if (res.data) {
+                marks = res.data;
+            }
+            // 编辑模式下自动选中第一条（最新）唛头
+            if (marks.length > 0 && selectedIndex < 0) {
+                selectedIndex = 0;
+            }
+            renderDropdown();
+        });
+}
+
+// ==================== 下拉框渲染 ====================
+function renderDropdown() {
+    const all = getAllMarks();
+    renderTriggerText();
+    renderPanel(all);
+}
+
+function renderTriggerText() {
+    const tc = document.getElementById('triggerContent');
+    const all = getAllMarks();
+    if (selectedIndex >= 0 && selectedIndex < all.length) {
+        const m = all[selectedIndex];
+        let html = '';
+        if (m.mark_image) {
+            html += '<img src="' + esc(m.mark_image) + '" />';
+        }
+        const txt = m.mark_text ? m.mark_text.replace(/\n/g, ' ') : '图片唛头';
+        html += '<span>' + esc(txt) + '</span>';
+        tc.innerHTML = html;
+    } else {
+        const count = all.length;
+        tc.innerHTML = '<span style="color:#86909c;">' + (count > 0 ? '请选择唛头（共 ' + count + ' 条）' : '暂无唛头') + '</span>';
+    }
+}
+
+function renderPanel(all) {
+    const panel = document.getElementById('markPanel');
+    if (!all.length) {
+        panel.innerHTML = '<div class="mark-dd-empty">暂无唛头，点击右侧"新增"添加</div>';
+        return;
+    }
+    panel.innerHTML = all.map((m, i) => {
+        const activeClass = i === selectedIndex ? ' active' : '';
+        const indexHtml = '<span class="dd-index">' + (i + 1) + '</span>';
+        const textHtml = m.mark_text
+            ? '<div class="dd-text">' + esc(m.mark_text).replace(/\n/g, '<br>') + '</div>'
+            : '<div class="dd-text" style="color:#c9cdd4;">无文本</div>';
+        const imgHtml = m.mark_image
+            ? '<img class="dd-img" src="' + esc(m.mark_image) + '" onclick="event.stopPropagation();previewImg(\'' + esc(m.mark_image) + '\')" />'
+            : '';
+        const delHtml = '<button type="button" class="dd-del" title="删除" onclick="event.stopPropagation();deleteMark(' + i + ')">×</button>';
+        return '<div class="mark-dd-item' + activeClass + '" onclick="selectMark(' + i + ')">' + indexHtml + textHtml + imgHtml + delHtml + '</div>';
+    }).join('');
+}
+
+// ==================== 下拉交互 ====================
+function toggleDropdown() {
+    dropdownOpen ? closeDropdown() : openDropdown();
+}
+
+function openDropdown() {
+    dropdownOpen = true;
+    document.getElementById('markTrigger').classList.add('open');
+    document.getElementById('markPanel').classList.add('open');
+}
+
+function closeDropdown() {
+    dropdownOpen = false;
+    document.getElementById('markTrigger').classList.remove('open');
+    document.getElementById('markPanel').classList.remove('open');
+}
+
+function selectMark(index) {
+    selectedIndex = index;
+    renderDropdown();
+    closeDropdown();
+}
+
+// ==================== 新增唛头弹窗 ====================
+function openAddModal() {
+    clearModalInput();
+    document.getElementById('addMarkModal').classList.add('show');
+}
+
+function closeAddModal() {
+    document.getElementById('addMarkModal').classList.remove('show');
+}
+
+function confirmAddMark() {
+    const text = document.getElementById('newMarkText').value.trim();
+    const image = newMarkImageUrl;
+    if (!text && !image) {
+        alert('请输入唛头文本或上传图片');
+        return;
+    }
+
+    if (isEdit) {
+        // 编辑模式：直接保存到服务器
+        fetch('/admin/customer/saveMark', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customer_id: customerId, mark_text: text, mark_image: image })
+        }).then(r => r.json()).then(res => {
+            if (res.code == 1 || res.code == 200 || res.success) {
+                closeAddModal();
+                loadMarks();
+            } else {
+                alert(res.msg || '保存失败');
+            }
+        }).catch(() => alert('保存失败'));
+    } else {
+        // 新建模式：暂存到本地
+        pendingMarks.push({ mark_text: text, mark_image: image });
+        selectedIndex = pendingMarks.length - 1;
+        closeAddModal();
+        renderDropdown();
+    }
+}
+
+// ==================== 删除唛头 ====================
+function deleteMark(index) {
+    if (!confirm('确定删除这条唛头？')) return;
+
+    if (isEdit) {
+        const mark = marks[index];
+        if (!mark || !mark.id) return;
+        fetch('/admin/customer/deleteMark', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: mark.id })
+        }).then(r => r.json()).then(res => {
+            if (res.code == 1 || res.success) {
+                if (selectedIndex === index) selectedIndex = -1;
+                else if (selectedIndex > index) selectedIndex--;
+                loadMarks();
+            } else {
+                alert(res.msg || '删除失败');
+            }
+        }).catch(() => alert('删除失败'));
+    } else {
+        pendingMarks.splice(index, 1);
+        if (selectedIndex === index) selectedIndex = -1;
+        else if (selectedIndex > index) selectedIndex--;
+        renderDropdown();
+    }
+}
+
+// ==================== 弹窗内图片上传 ====================
+function triggerMarkUpload() {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/*';
+    inp.onchange = (e) => { if (e.target.files[0]) uploadMarkImage(e.target.files[0]); };
+    inp.click();
+}
+
+function handleMarkDrop(e) {
+    e.preventDefault();
+    const btn = document.getElementById('modalUploadBtn');
+    btn.style.borderColor = '#c9cdd4';
+    btn.style.background = '#fafbfc';
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) uploadMarkImage(file);
+}
+
+function uploadMarkImage(file) {
+    const fd = new FormData();
+    fd.append('image', file);
+    fetch('/admin/goods/uploadTempImage', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+    }).then(r => r.json()).then(json => {
+        if ((json.code == 1 || json.code == 200 || json.success) && json.data && json.data.url) {
+            newMarkImageUrl = json.data.url;
+            document.getElementById('modalPreview').style.display = 'inline-block';
+            document.getElementById('modalPreviewImg').src = json.data.url;
+            document.getElementById('modalUploadBtn').style.display = 'none';
+        } else {
+            alert(json.msg || '上传失败');
+        }
+    }).catch(() => alert('上传失败'));
+}
+
+function removeMarkImage() {
+    newMarkImageUrl = '';
+    document.getElementById('modalPreview').style.display = 'none';
+    document.getElementById('modalUploadBtn').style.display = 'inline-flex';
+}
+
+function clearModalInput() {
+    document.getElementById('newMarkText').value = '';
+    removeMarkImage();
+}
+
+// ==================== 图片预览 ====================
+function previewImg(url) {
+    document.getElementById('imgModalSrc').src = url;
+    document.getElementById('imgModal').classList.add('show');
+}
+
+// ==================== 工具 ====================
+function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+}
+
+// ==================== 保存客户 ====================
+function saveCustomer(event) {
+    event.preventDefault();
+    const form = document.getElementById('customerForm');
+    const formData = new FormData(form);
+    const cid = formData.get('id');
+    const url = cid ? '/admin/customer/update?id=' + cid : '/admin/customer/save';
+
+    fetch(url, { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success || result.code === 200 || result.code === 1) {
+                // 新建模式：保存完客户后，批量保存暂存的唛头
+                if (!cid && pendingMarks.length > 0) {
+                    const newCid = result.data && result.data.id ? result.data.id : null;
+                    if (newCid) {
+                        savePendingMarks(newCid, function() {
+                            alert(result.msg || '保存成功');
+                            location.href = '/admin/customer/list';
+                        });
+                        return;
+                    }
+                }
+                alert(result.msg || '保存成功');
+                location.href = '/admin/customer/list';
+            } else {
+                alert(result.msg || '保存失败');
+            }
+        }).catch(err => { alert('网络请求失败'); });
+}
+
+// 批量保存暂存唛头
+function savePendingMarks(cid, callback) {
+    let idx = 0;
+    function next() {
+        if (idx >= pendingMarks.length) { callback(); return; }
+        const m = pendingMarks[idx];
+        idx++;
+        fetch('/admin/customer/saveMark', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customer_id: cid, mark_text: m.mark_text || '', mark_image: m.mark_image || '' })
+        }).then(() => next()).catch(() => next());
+    }
+    next();
+}
+
+// 页面加载
+init();
 </script>
 {/block}
