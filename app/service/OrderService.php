@@ -28,6 +28,11 @@ class OrderService
             $markText = trim($data['mark_text'] ?? '');
             $finalOrderNo = $markText !== '' ? $baseOrderNo . '-' . $markText : $baseOrderNo;
 
+            // 检查订单号唯一性
+            if (Order::where('order_no', $finalOrderNo)->find()) {
+                throw new \Exception('订单号重复，请修改唛头文本或订单号后重试');
+            }
+
             $order = new Order();
             $order->save([
                 'order_no'        => $finalOrderNo,

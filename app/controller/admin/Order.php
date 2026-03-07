@@ -300,7 +300,14 @@ class Order extends Base
                 $currentNo = $order->order_no;
                 $noParts = explode('-', $currentNo, 3);
                 $baseNo = (count($noParts) >= 2) ? $noParts[0] . '-' . $noParts[1] : $currentNo;
-                $order->order_no = $markText !== '' ? $baseNo . '-' . $markText : $baseNo;
+                $newOrderNo = $markText !== '' ? $baseNo . '-' . $markText : $baseNo;
+
+                // 检查订单号唯一性（排除自身）
+                if (OrderModel::where('order_no', $newOrderNo)->where('id', '<>', $order->id)->find()) {
+                    throw new \Exception('订单号重复，请修改唛头文本或订单号后重试');
+                }
+
+                $order->order_no = $newOrderNo;
 
                 $order->save();
 
