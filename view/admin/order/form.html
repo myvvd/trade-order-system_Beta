@@ -778,7 +778,7 @@ window.createPageApp({
         };
 
         const addItem = () => {
-            form.items.push(defaultItem());
+            form.items.unshift(defaultItem());
         };
 
         const removeItem = (index) => {
