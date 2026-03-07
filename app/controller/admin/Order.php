@@ -25,6 +25,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
+use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
 
 class Order extends Base
 {
@@ -903,10 +904,12 @@ class Order extends Base
             // B = 照片（嵌入图片）
             $photoInserted = false;
             $photoUrl = $item['photo_url'] ?? '';
-            if ($photoUrl && $hasZip) { // Xls格式不支持嵌入图片，仅xlsx时尝试
+            if ($photoUrl) {
                 // 确保路径以 / 开头
                 $photoUrlNorm = '/' . ltrim($photoUrl, '/');
                 $publicDir = app()->getRootPath() . 'public';
+
+                Log::info('Excel导出图片: photo_url=' . $photoUrl . ' | publicDir=' . $publicDir . ' | hasZip=' . ($hasZip ? 'Y' : 'N'));
 
                 // 尝试多个可能的本地路径
                 $candidatePaths = [
@@ -927,37 +930,79 @@ class Order extends Base
                 foreach ($candidatePaths as $cp) {
                     if (file_exists($cp) && is_readable($cp)) {
                         $photoPath = $cp;
+                        Log::info('Excel导出图片: 本地文件命中 - ' . $cp);
                         break;
                     }
                 }
 
-                // 本地文件都找不到，尝试通过HTTP下载
                 if (!$photoPath) {
-                    try {
-                        $fullUrl = request()->domain() . $photoUrlNorm;
-                        $ctx = stream_context_create([
-                            'http' => ['timeout' => 10],
-                            'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
-                        ]);
-                        $imgContent = @file_get_contents($fullUrl, false, $ctx);
-                        if ($imgContent !== false && strlen($imgContent) > 100) {
-                            $ext = pathinfo($photoUrl, PATHINFO_EXTENSION) ?: 'jpg';
-                            $tempDir = runtime_path() . 'temp';
-                            if (!is_dir($tempDir)) {
-                                mkdir($tempDir, 0755, true);
+                    Log::info('Excel导出图片: 本地文件均未找到, 候选路径: ' . implode(' | ', $candidatePaths));
+                }
+
+                // 本地文件都找不到，尝试通过HTTP下载
+                $imgContent = null;
+                if (!$photoPath) {
+                    $fullUrl = request()->domain() . $photoUrlNorm;
+                    // 优先用 cURL（兼容 allow_url_fopen=Off 的服务器）
+                    if (function_exists('curl_init')) {
+                        try {
+                            $ch = curl_init($fullUrl);
+                            curl_setopt_array($ch, [
+                                CURLOPT_RETURNTRANSFER => true,
+                                CURLOPT_TIMEOUT        => 15,
+                                CURLOPT_FOLLOWLOCATION => true,
+                                CURLOPT_SSL_VERIFYPEER => false,
+                                CURLOPT_SSL_VERIFYHOST => 0,
+                                CURLOPT_USERAGENT      => 'ExcelExport/1.0',
+                            ]);
+                            $imgContent = curl_exec($ch);
+                            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                            $curlErr  = curl_error($ch);
+                            curl_close($ch);
+                            if ($httpCode !== 200 || $imgContent === false || strlen($imgContent) < 100) {
+                                Log::warning('Excel导出图片: cURL下载失败 - URL=' . $fullUrl . ' httpCode=' . $httpCode . ' err=' . $curlErr);
+                                $imgContent = null;
+                            } else {
+                                Log::info('Excel导出图片: cURL下载成功 - ' . strlen($imgContent) . ' bytes');
                             }
-                            $tempPath = $tempDir . '/' . md5($photoUrl) . '.' . $ext;
-                            file_put_contents($tempPath, $imgContent);
-                            $photoPath = $tempPath;
-                            $tempFiles[] = $tempPath;
-                        } else {
-                            Log::warning('Excel导出: 图片下载失败 - URL: ' . $fullUrl);
+                        } catch (\Throwable $e) {
+                            Log::error('Excel导出图片: cURL异常 - ' . $e->getMessage());
+                            $imgContent = null;
                         }
-                    } catch (\Throwable $e) {
-                        Log::error('Excel导出: 图片下载异常 - ' . $e->getMessage());
+                    }
+                    // cURL 不可用或失败，降级 file_get_contents
+                    if (!$imgContent && ini_get('allow_url_fopen')) {
+                        try {
+                            $ctx = stream_context_create([
+                                'http' => ['timeout' => 10],
+                                'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
+                            ]);
+                            $imgContent = @file_get_contents($fullUrl, false, $ctx);
+                            if ($imgContent === false || strlen($imgContent) < 100) {
+                                Log::warning('Excel导出图片: file_get_contents下载失败 - URL=' . $fullUrl);
+                                $imgContent = null;
+                            }
+                        } catch (\Throwable $e) {
+                            Log::error('Excel导出图片: file_get_contents异常 - ' . $e->getMessage());
+                            $imgContent = null;
+                        }
+                    }
+
+                    // 下载成功，保存到临时文件
+                    if ($imgContent) {
+                        $ext = pathinfo($photoUrl, PATHINFO_EXTENSION) ?: 'jpg';
+                        $tempDir = runtime_path() . 'temp';
+                        if (!is_dir($tempDir)) {
+                            mkdir($tempDir, 0755, true);
+                        }
+                        $tempPath = $tempDir . '/' . md5($photoUrl) . '.' . $ext;
+                        file_put_contents($tempPath, $imgContent);
+                        $photoPath = $tempPath;
+                        $tempFiles[] = $tempPath;
                     }
                 }
 
+                // 方案1：用 Drawing 插入本地文件
                 if ($photoPath) {
                     try {
                         $drawing = new Drawing();
@@ -972,10 +1017,38 @@ class Order extends Base
                         $drawing->setWorksheet($sheet);
                         $photoInserted = true;
                     } catch (\Throwable $e) {
-                        Log::error('Excel导出: Drawing插入失败 - ' . $e->getMessage() . ' | path: ' . $photoPath);
+                        Log::error('Excel导出图片: Drawing插入失败 - ' . $e->getMessage() . ' | path: ' . $photoPath);
                     }
-                } else {
-                    Log::warning('Excel导出: 图片文件不存在 (photo_url=' . $photoUrl . ')');
+                }
+
+                // 方案2：Drawing 失败时用 MemoryDrawing（GD方式）
+                if (!$photoInserted && $photoPath && function_exists('imagecreatefromstring')) {
+                    try {
+                        $imageData = file_get_contents($photoPath);
+                        $gdImage = @imagecreatefromstring($imageData);
+                        if ($gdImage) {
+                            $memDrawing = new MemoryDrawing();
+                            $memDrawing->setName('Photo_' . ($idx + 1));
+                            $memDrawing->setDescription($item['goods_name'] ?? '');
+                            $memDrawing->setImageResource($gdImage);
+                            $memDrawing->setRenderingFunction(MemoryDrawing::RENDERING_JPEG);
+                            $memDrawing->setMimeType(MemoryDrawing::MIMETYPE_DEFAULT);
+                            $memDrawing->setCoordinates('B' . $row);
+                            $memDrawing->setWidth(100);
+                            $memDrawing->setHeight(130);
+                            $memDrawing->setOffsetX(5);
+                            $memDrawing->setOffsetY(5);
+                            $memDrawing->setWorksheet($sheet);
+                            $photoInserted = true;
+                            Log::info('Excel导出图片: MemoryDrawing插入成功');
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Excel导出图片: MemoryDrawing插入失败 - ' . $e->getMessage());
+                    }
+                }
+
+                if (!$photoInserted) {
+                    Log::warning('Excel导出图片: 最终失败 (photo_url=' . $photoUrl . ' hasZip=' . ($hasZip ? 'Y' : 'N') . ')');
                 }
             }
             if (!$photoInserted) {
