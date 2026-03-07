@@ -456,9 +456,9 @@
                     </span>
                 </div> -->
                 <div class="detail-item" v-if="order.mark_info">
-                    <span class="detail-label">唛头</span>
+                    <span class="detail-label"><b>唛头</b></span>
                     <div class="detail-value" style="display:flex; align-items:flex-start; gap:10px;">
-                        <span v-if="order.mark_info.mark_text" style="white-space:pre-wrap;">{{ order.mark_info.mark_text }}</span>
+                        <span v-if="order.mark_info.mark_text" style="white-space:pre-wrap; font-weight:bold;">{{ order.mark_info.mark_text }}</span>
                         <img v-if="order.mark_info.mark_image" :src="order.mark_info.mark_image" style="width:60px;height:60px;object-fit:contain;border:1px solid #e5e6eb;border-radius:4px;cursor:pointer;" @click="previewImage(order.mark_info.mark_image)" />
                     </div>
                 </div>

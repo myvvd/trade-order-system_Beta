@@ -289,13 +289,13 @@ input[type=number].table-input { -moz-appearance: textfield; }
                 <a-col :span="24">
                     <div style="display:flex; align-items:center; gap:24px; padding: 2px 0 12px; flex-wrap: nowrap;">
                         <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-                            <span style="font-size:13px; color:#4e5969; font-weight:500; white-space:nowrap;">订单号：</span>
-                            <a-input v-if="isEdit" :model-value="form.order_no" readonly style="color:#86909c; width:180px;"></a-input>
-                            <a-input v-else v-model="form.order_no" placeholder="请输入订单号" allow-clear style="width:180px;"></a-input>
+                            <span style="font-size:13px; color:#4e5969; font-weight:500; white-space:nowrap;"><b>订单号：</b></span>
+                            <a-input v-if="isEdit" :model-value="form.order_no" readonly style="color:#86909c; width:180px; font-weight:bold;"></a-input>
+                            <a-input v-else v-model="form.order_no" placeholder="请输入订单号" allow-clear style="width:180px; font-weight:bold;"></a-input>
                         </div>
                         <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
-                            <span style="font-size:13px; color:#4e5969; font-weight:500; white-space:nowrap;">唛头：</span>
-                            <a-input v-model="form.mark_text" placeholder="唛头文本（选填）" allow-clear style="width:200px;"></a-input>
+                            <span style="font-size:13px; color:#4e5969; font-weight:500; white-space:nowrap;"><b>唛头：</b></span>
+                            <a-input v-model="form.mark_text" placeholder="唛头文本（选填）" allow-clear style="width:200px; font-weight:bold;"></a-input>
                             <div v-if="form.mark_image" style="position:relative; flex-shrink:0;">
                                 <img :src="form.mark_image" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e6eb;border-radius:4px;cursor:pointer;" @click="previewImage(form.mark_image)" />
                                 <span style="position:absolute;top:-5px;right:-5px;width:14px;height:14px;border-radius:50%;background:#f53f3f;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;line-height:1;" @click="form.mark_image=''">×</span>
