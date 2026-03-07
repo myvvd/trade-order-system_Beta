@@ -999,7 +999,7 @@ class Order extends Base
             $sheet->setCellValue('G' . $row, $price ?: '');
             $sheet->setCellValue('H' . $row, $rowAmt > 0 ? round($rowAmt, 2) : '');
             $sheet->setCellValue('I' . $row, $volume ?: '');
-            $sheet->setCellValue('J' . $row, $rowVol > 0 ? round($rowVol, 4) : '');
+            $sheet->setCellValue('J' . $row, $rowVol > 0 ? round($rowVol, 2) : '');
 
             // 每行字体
             $sheet->getStyle('A' . $row . ':J' . $row)->getFont()->setName($fontName)->setSize(12);
@@ -1018,7 +1018,7 @@ class Order extends Base
         // ==================== 汇总行 ====================
         $sumRow = $row;
         $sheet->mergeCells('A' . $sumRow . ':J' . $sumRow);
-        $sheet->setCellValue('A' . $sumRow, '总件数：' . $totalPieces . '    总金额：¥' . number_format($totalAmount, 2) . '    总体积：' . round($totalVolume, 4) . ' m³');
+        $sheet->setCellValue('A' . $sumRow, '总件数：' . $totalPieces . '    总金额：¥' . number_format($totalAmount, 2) . '    总体积：' . round($totalVolume, 2) . ' m³');
         $sheet->getRowDimension($sumRow)->setRowHeight(36);
         $sheet->getStyle('A' . $sumRow . ':J' . $sumRow)->getFont()->setName($fontName)->setSize(12)->setBold(true);
         $sheet->getStyle('A' . $sumRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
@@ -1111,7 +1111,7 @@ class Order extends Base
             $itemsHtml .= '<td align="right" width="45">' . ($price ? number_format($price, 2) : '-') . '</td>';
             $itemsHtml .= '<td align="right" width="55">' . ($rowAmt > 0 ? number_format($rowAmt, 2) : '-') . '</td>';
             $itemsHtml .= '<td align="center" width="40">' . ($volume ?: '-') . '</td>';
-            $itemsHtml .= '<td align="right" width="50">' . ($rowVol > 0 ? round($rowVol, 4) : '-') . '</td>';
+            $itemsHtml .= '<td align="right" width="50">' . ($rowVol > 0 ? round($rowVol, 2) : '-') . '</td>';
             $itemsHtml .= '</tr>';
         }
 
@@ -1168,7 +1168,7 @@ No.26702 SHOP 4th Street 3rd Floor Area 3/H Gate 51 Yiwu International Trade Cit
 
 <table cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr><td style="font-size:11px;font-weight:bold;">
-总件数：' . $totalPieces . ' &nbsp;&nbsp; 总金额：¥' . number_format($totalAmount, 2) . ' &nbsp;&nbsp; 总体积：' . round($totalVolume, 4) . ' m³
+总件数：' . $totalPieces . ' &nbsp;&nbsp; 总金额：¥' . number_format($totalAmount, 2) . ' &nbsp;&nbsp; 总体积：' . round($totalVolume, 2) . ' m³
 </td></tr>
 <tr><td style="font-size:9px;color:#666;padding-top:6px;">
 录单人：' . htmlspecialchars($creatorName) . ' &nbsp;&nbsp; 录单时间：' . ($order->create_time ?? '') . '

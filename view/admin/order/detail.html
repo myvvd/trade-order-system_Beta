@@ -773,10 +773,10 @@ window.createPageApp({
         const canCancel = (status) => status < 70 && status != 99;
 
         const getTotalVolume = (item) => {
-            const qty = (Number(item.pieces) || 0) * (Number(item.per_piece_qty) || 0);
+            const pieces = Number(item.pieces) || 0;
             const vol = Number(item.volume) || 0;
-            if (!qty || !vol) return '-';
-            return (qty * vol).toFixed(4) + ' m³';
+            if (!pieces || !vol) return '-';
+            return (pieces * vol).toFixed(2) + ' m³';
         };
 
         const totalAmount = computed(() => {
@@ -842,10 +842,10 @@ window.createPageApp({
         };
 
         const getEditTotalVolume = () => {
-            const qty = (Number(editForm.pieces) || 0) * (Number(editForm.per_piece_qty) || 0);
+            const pieces = Number(editForm.pieces) || 0;
             const vol = Number(editForm.volume) || 0;
-            if (!qty || !vol) return '-';
-            return (qty * vol).toFixed(4) + ' m³';
+            if (!pieces || !vol) return '-';
+            return (pieces * vol).toFixed(2) + ' m³';
         };
 
         const saveEdit = async () => {

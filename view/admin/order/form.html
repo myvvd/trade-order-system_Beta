@@ -467,7 +467,7 @@ input[type=number].table-input { -moz-appearance: textfield; }
                     </div>
                     <div style="display: flex; align-items: baseline; gap: 6px;">
                         <span style="font-size: 14px; color: #4e5969; font-weight: 500;">总体积</span>
-                        <span style="font-size: 22px; font-weight: 700; color: #1d2129; line-height: 1;">{{ totalVolume.toFixed(4) }}</span>
+                        <span style="font-size: 22px; font-weight: 700; color: #1d2129; line-height: 1;">{{ totalVolume.toFixed(2) }}</span>
                         <span style="font-size: 13px; color: #86909c;">m³</span>
                     </div>
                     <div class="order-total-wrap">
@@ -774,7 +774,7 @@ window.createPageApp({
             const pieces = Number(item.pieces) || 0;
             const vol = Number(item.volume) || 0;
             if (!pieces || !vol) return '-';
-            return (pieces * vol).toFixed(4);
+            return (pieces * vol).toFixed(2);
         };
 
         const addItem = () => {
