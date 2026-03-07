@@ -981,7 +981,10 @@ class Order extends Base
         };
 
         // ==================== 辅助：在单元格中插入多张图片（上下排列） ====================
-        $insertMultiImages = function($imageUrls, $column, $row, $sheet, $idx) use ($resolveImagePath) {
+        // 检测 mime_content_type 是否可用（Drawing::setPath 内部依赖该函数）
+        $canUseDrawing = function_exists('mime_content_type');
+
+        $insertMultiImages = function($imageUrls, $column, $row, $sheet, $idx) use ($resolveImagePath, $canUseDrawing) {
             $imgW = 100;  // 每张图宽度
             $imgH = 130;  // 每张图高度
             $gap = 5;     // 图片间距
@@ -993,24 +996,26 @@ class Order extends Base
                 $offsetY = 5 + $imgIdx * ($imgH + $gap);
 
                 if ($photoPath) {
-                    // 优先 Drawing
-                    try {
-                        $drawing = new Drawing();
-                        $drawing->setName('Img_' . $column . '_' . $idx . '_' . $imgIdx);
-                        $drawing->setPath($photoPath);
-                        $drawing->setCoordinates($column . $row);
-                        $drawing->setWidth($imgW);
-                        $drawing->setHeight($imgH);
-                        $drawing->setOffsetX($offsetX);
-                        $drawing->setOffsetY($offsetY);
-                        $drawing->setWorksheet($sheet);
-                        $inserted++;
-                        continue;
-                    } catch (\Throwable $e) {
-                        Log::error('Excel导出图片: Drawing失败 - ' . $e->getMessage());
+                    // 优先 Drawing（需要 mime_content_type 函数支持）
+                    if ($canUseDrawing) {
+                        try {
+                            $drawing = new Drawing();
+                            $drawing->setName('Img_' . $column . '_' . $idx . '_' . $imgIdx);
+                            $drawing->setPath($photoPath);
+                            $drawing->setCoordinates($column . $row);
+                            $drawing->setWidth($imgW);
+                            $drawing->setHeight($imgH);
+                            $drawing->setOffsetX($offsetX);
+                            $drawing->setOffsetY($offsetY);
+                            $drawing->setWorksheet($sheet);
+                            $inserted++;
+                            continue;
+                        } catch (\Throwable $e) {
+                            Log::error('Excel导出图片: Drawing失败 - ' . $e->getMessage());
+                        }
                     }
 
-                    // 降级 MemoryDrawing
+                    // 降级 MemoryDrawing（GD方式，不依赖 fileinfo 扩展）
                     if (function_exists('imagecreatefromstring')) {
                         try {
                             $imageData = file_get_contents($photoPath);
