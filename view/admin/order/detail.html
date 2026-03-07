@@ -201,6 +201,66 @@
     background: #fff;
     cursor: pointer;
 }
+
+/* ===================== 多图横向滚动 ===================== */
+.multi-img-scroll {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 110px;
+    padding: 2px 0;
+    align-items: center;
+}
+.multi-img-scroll::-webkit-scrollbar { height: 3px; }
+.multi-img-scroll::-webkit-scrollbar-track { background: transparent; }
+.multi-img-scroll::-webkit-scrollbar-thumb { background: #c9cdd4; border-radius: 2px; }
+.multi-img-item {
+    position: relative;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+}
+.multi-img-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #e5e6eb;
+    cursor: pointer;
+}
+.multi-img-item .img-del {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #f53f3f;
+    color: #fff;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+    cursor: pointer;
+    display: none;
+    z-index: 2;
+}
+.multi-img-item:hover .img-del { display: block; }
+.multi-img-add {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border: 1.5px dashed #c9cdd4;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #86909c;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.multi-img-add:hover { border-color: #165dff; color: #165dff; background: #f2f7ff; }
 .action-btns {
     display: flex;
     flex-direction: column;
@@ -409,12 +469,13 @@
             <div class="section-title">货品明细</div>
         </div>
         <div class="items-table-wrap">
-            <table class="items-table" style="min-width:1580px;width:100%;">
+            <table class="items-table" style="min-width:1700px;width:100%;">
                 <thead>
                     <tr>
                         <th style="width:44px;text-align:center;">序号</th>
                         <th style="width:110px;text-align:center;">采购方货号</th>
-                        <th style="width:110px;text-align:center;">照片</th>
+                        <th style="width:120px;text-align:center;">照片</th>
+                        <th style="width:120px;text-align:center;">描述图片</th>
                         <th style="width:160px;text-align:center;">货品名称</th>
                         <th style="width:150px;text-align:center;">描述</th>
                         <th style="width:80px;text-align:center;">包材</th>
@@ -438,23 +499,43 @@
                             <input v-if="editingItemId === item.id" type="text" class="edit-input" v-model="editForm.customer_goods_no" placeholder="采购方货号" />
                             <span v-else style="font-size:13px;">{{ item.customer_goods_no || '-' }}</span>
                         </td>
-                        <!-- 照片 -->
+                        <!-- 照片（多图） -->
                         <td style="text-align:center;padding:6px 8px;">
                             <template v-if="editingItemId === item.id">
-                                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-                                    <img v-if="editForm.photo_url" :src="editForm.photo_url"
-                                        style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e5e6eb;cursor:pointer;"
-                                        @click="previewImage(editForm.photo_url)" />
-                                    <div style="display:flex;gap:4px;">
-                                        <button type="button" class="action-btn" style="font-size:11px;padding:2px 6px;color:#165dff;border-color:#bedaff;background:#e8f3ff;" @click="openPhotoUpload">换图</button>
-                                        <button v-if="editForm.photo_url" type="button" class="action-btn" style="font-size:11px;padding:2px 6px;color:#f53f3f;border-color:#fdcdc5;background:#ffece8;" @click="editForm.photo_url=''">删除</button>
+                                <div class="multi-img-scroll" style="max-width:120px;">
+                                    <div v-for="(url, pi) in editForm.photo_urls" :key="'ep-'+pi" class="multi-img-item">
+                                        <img :src="url" @click="previewImage(url)" />
+                                        <span class="img-del" @click="editForm.photo_urls.splice(pi,1)">×</span>
                                     </div>
+                                    <div class="multi-img-add" @click="openPhotoUpload('photo')">+</div>
                                 </div>
                             </template>
                             <template v-else>
-                                <img v-if="item.photo_url" :src="item.photo_url"
-                                    style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e5e6eb;cursor:pointer;"
-                                    @click="previewImage(item.photo_url)" />
+                                <div v-if="getPhotoUrls(item).length > 0" class="multi-img-scroll" style="max-width:120px;">
+                                    <div v-for="(url, pi) in getPhotoUrls(item)" :key="'p-'+pi" class="multi-img-item">
+                                        <img :src="url" @click="previewImage(url)" />
+                                    </div>
+                                </div>
+                                <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
+                            </template>
+                        </td>
+                        <!-- 描述图片（多图） -->
+                        <td style="text-align:center;padding:6px 8px;">
+                            <template v-if="editingItemId === item.id">
+                                <div class="multi-img-scroll" style="max-width:120px;">
+                                    <div v-for="(url, di) in editForm.desc_images" :key="'ed-'+di" class="multi-img-item">
+                                        <img :src="url" @click="previewImage(url)" />
+                                        <span class="img-del" @click="editForm.desc_images.splice(di,1)">×</span>
+                                    </div>
+                                    <div class="multi-img-add" @click="openPhotoUpload('desc')">+</div>
+                                </div>
+                            </template>
+                            <template v-else>
+                                <div v-if="getDescImages(item).length > 0" class="multi-img-scroll" style="max-width:120px;">
+                                    <div v-for="(url, di) in getDescImages(item)" :key="'d-'+di" class="multi-img-item">
+                                        <img :src="url" @click="previewImage(url)" />
+                                    </div>
+                                </div>
                                 <span v-else style="color:#c9cdd4;font-size:12px;">-</span>
                             </template>
                         </td>
@@ -548,7 +629,7 @@
                         </td>
                     </tr>
                     <tr v-if="!order.items || order.items.length === 0" class="table-empty-row">
-                        <td colspan="16">
+                        <td colspan="17">
                             <span class="table-empty-icon">📦</span>
                             暂无货品明细
                         </td>
@@ -734,6 +815,24 @@ window.createPageApp({
             previewVisible.value = true;
         };
 
+        // 多图辅助方法
+        const parseJsonArray = (val) => {
+            if (Array.isArray(val)) return val;
+            if (typeof val === 'string' && val) {
+                try { const arr = JSON.parse(val); return Array.isArray(arr) ? arr : []; } catch(e) { return []; }
+            }
+            return [];
+        };
+        const getPhotoUrls = (item) => {
+            const urls = parseJsonArray(item.photo_urls);
+            if (urls.length > 0) return urls;
+            if (item.photo_url) return [item.photo_url];
+            return [];
+        };
+        const getDescImages = (item) => {
+            return parseJsonArray(item.desc_images);
+        };
+
         const STATUS_TEXT = {
             10: '待派单', 20: '待确认', 21: '已拒绝',
             30: '制作中', 40: '待收货', 50: '已入库',
@@ -820,7 +919,9 @@ window.createPageApp({
             unit_price: 0,
             volume: 0,
             label: '',
-            photo_url: ''
+            photo_url: '',
+            photo_urls: [],
+            desc_images: []
         });
 
         const startEdit = (item) => {
@@ -835,6 +936,8 @@ window.createPageApp({
             editForm.volume = Number(item.volume) || 0;
             editForm.label = item.label || '';
             editForm.photo_url = item.photo_url || '';
+            editForm.photo_urls = getPhotoUrls(item).slice();
+            editForm.desc_images = getDescImages(item).slice();
         };
 
         const cancelEdit = () => {
@@ -865,7 +968,9 @@ window.createPageApp({
                         unit_price: editForm.unit_price,
                         volume: editForm.volume,
                         label: editForm.label,
-                        photo_url: editForm.photo_url
+                        photo_url: editForm.photo_urls.length > 0 ? editForm.photo_urls[0] : '',
+                        photo_urls: editForm.photo_urls,
+                        desc_images: editForm.desc_images
                     })
                 });
                 const json = await res.json();
@@ -1017,8 +1122,10 @@ window.createPageApp({
         const photoUploadVisible = ref(false);
         const photoUploadDrag = ref(false);
         const photoUploading = ref(false);
+        let _uploadTargetType = 'photo'; // 'photo' or 'desc'
 
-        const openPhotoUpload = () => {
+        const openPhotoUpload = (type) => {
+            _uploadTargetType = type || 'photo';
             photoUploadVisible.value = true;
             photoUploadDrag.value = false;
         };
@@ -1027,45 +1134,52 @@ window.createPageApp({
             const inp = document.createElement('input');
             inp.type = 'file';
             inp.accept = 'image/*';
+            inp.multiple = true;
             inp.onchange = (e) => {
-                const file = e.target.files[0];
-                if (file) doUploadPhoto(file);
+                const files = Array.from(e.target.files);
+                if (files.length > 0) doUploadPhotos(files);
             };
             inp.click();
         };
 
         const handlePhotoDrop = (e) => {
             photoUploadDrag.value = false;
-            const file = e.dataTransfer.files[0];
-            if (file) doUploadPhoto(file);
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (files.length > 0) doUploadPhotos(files);
         };
 
-        const doUploadPhoto = async (file) => {
-            if (!file || !file.type.startsWith('image/')) {
-                ArcoMessage.warning('请选择图片文件');
-                return;
-            }
+        const doUploadPhotos = async (files) => {
             photoUploading.value = true;
-            const fd = new FormData();
-            fd.append('image', file);
-            try {
-                const res = await fetch('/admin/goods/uploadTempImage', {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: fd
-                });
-                const json = await res.json();
-                if ((json.code == 200 || json.success) && json.data && json.data.url) {
-                    editForm.photo_url = json.data.url;
-                    photoUploadVisible.value = false;
-                    ArcoMessage.success('上传成功');
-                } else {
-                    ArcoMessage.error(json.msg || '上传失败');
-                }
-            } catch (e) {
-                ArcoMessage.error('上传失败：' + e.message);
+            let successCount = 0;
+            for (const file of files) {
+                if (!file || !file.type.startsWith('image/')) continue;
+                const fd = new FormData();
+                fd.append('image', file);
+                try {
+                    const res = await fetch('/admin/goods/uploadTempImage', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    });
+                    const json = await res.json();
+                    if ((json.code == 200 || json.success) && json.data && json.data.url) {
+                        if (_uploadTargetType === 'desc') {
+                            editForm.desc_images.push(json.data.url);
+                        } else {
+                            editForm.photo_urls.push(json.data.url);
+                            editForm.photo_url = editForm.photo_urls[0];
+                        }
+                        successCount++;
+                    }
+                } catch (e) { /* ignore */ }
             }
             photoUploading.value = false;
+            if (successCount > 0) {
+                photoUploadVisible.value = false;
+                ArcoMessage.success('成功上传 ' + successCount + ' 张图片');
+            } else {
+                ArcoMessage.error('上传失败');
+            }
         };
 
         return {
@@ -1085,6 +1199,8 @@ window.createPageApp({
             // 照片上传
             photoUploadVisible, photoUploadDrag, photoUploading,
             openPhotoUpload, triggerPhotoFile, handlePhotoDrop,
+            // 多图helpers
+            getPhotoUrls, getDescImages, parseJsonArray,
             // 删除
             deleteItemRow,
             // 派单

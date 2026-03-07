@@ -347,7 +347,7 @@ window.createPageApp({
 
         const getOrderTotalQty = (record) => {
             if (!record?.items?.length) return 0;
-            return record.items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+            return record.items.reduce((sum, it) => sum + (Number(it.pieces) || 0), 0);
         };
 
         const getItemTotalPrice = (it) => {

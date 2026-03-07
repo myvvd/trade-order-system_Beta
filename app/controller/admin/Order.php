@@ -249,6 +249,8 @@ class Order extends Base
                         'amount'            => $amount,
                         'box_size'          => $it['box_size'] ?? null,
                         'photo_url'         => $it['photo_url'] ?? null,
+                        'photo_urls'        => isset($it['photo_urls']) ? (is_array($it['photo_urls']) ? json_encode($it['photo_urls']) : $it['photo_urls']) : null,
+                        'desc_images'       => isset($it['desc_images']) ? (is_array($it['desc_images']) ? json_encode($it['desc_images']) : $it['desc_images']) : null,
                         'remark'            => $it['remark'] ?? '',
                         'packing_material'  => $it['packing_material'] ?? null,
                         'volume'            => isset($it['volume']) && $it['volume'] !== '' ? $it['volume'] : null,
@@ -787,32 +789,33 @@ class Order extends Base
 
         // ========== 列宽设置（近似磅值） ==========
         $sheet->getColumnDimension('A')->setWidth(18);  // 货号
-        $sheet->getColumnDimension('B')->setWidth(42);  // 照片
-        $sheet->getColumnDimension('C')->setWidth(28);  // 货品名称
-        $sheet->getColumnDimension('D')->setWidth(42);  // 产品描述
-        $sheet->getColumnDimension('E')->setWidth(10);  // 件数
-        $sheet->getColumnDimension('F')->setWidth(10);  // 装箱数
-        $sheet->getColumnDimension('G')->setWidth(10);  // 单价
-        $sheet->getColumnDimension('H')->setWidth(12);  // 总金额
-        $sheet->getColumnDimension('I')->setWidth(10);  // 体积
-        $sheet->getColumnDimension('J')->setWidth(12);  // 总体积
+        $sheet->getColumnDimension('B')->setWidth(42);  // 款式图片
+        $sheet->getColumnDimension('C')->setWidth(42);  // 描述图片
+        $sheet->getColumnDimension('D')->setWidth(28);  // 货品名称
+        $sheet->getColumnDimension('E')->setWidth(42);  // 产品描述
+        $sheet->getColumnDimension('F')->setWidth(10);  // 件数
+        $sheet->getColumnDimension('G')->setWidth(10);  // 装箱数
+        $sheet->getColumnDimension('H')->setWidth(10);  // 单价
+        $sheet->getColumnDimension('I')->setWidth(12);  // 总金额
+        $sheet->getColumnDimension('J')->setWidth(10);  // 体积
+        $sheet->getColumnDimension('K')->setWidth(12);  // 总体积
 
         // ==================== 第1行：公司中文名 ====================
-        $sheet->mergeCells('A1:J1');
+        $sheet->mergeCells('A1:K1');
         $sheet->setCellValue('A1', '青 岛 米 薇 儿 假 睫 毛 工 艺 品 有 限 公 司');
         $sheet->getRowDimension(1)->setRowHeight(40);
         $sheet->getStyle('A1')->getFont()->setName($fontName)->setSize(28)->setBold(true);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 第2行：公司英文名 ====================
-        $sheet->mergeCells('A2:J2');
+        $sheet->mergeCells('A2:K2');
         $sheet->setCellValue('A2', 'Qingdao Snow Shirley Eyelashes Factory');
         $sheet->getRowDimension(2)->setRowHeight(24);
         $sheet->getStyle('A2')->getFont()->setName($fontName)->setSize(18);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 第3行：地址+电话 ====================
-        $sheet->mergeCells('A3:J3');
+        $sheet->mergeCells('A3:K3');
         $addressText = "店面地址：义乌国际商贸城3区51号门3楼4街26702\nNo.26702 SHOP 4th Street 3rd Floor Area 3/H  Gate 51 Yiwu International Trade City\n电话/TEL：6657070980";
         $sheet->setCellValue('A3', $addressText);
         $sheet->getRowDimension(3)->setRowHeight(50);
@@ -826,51 +829,215 @@ class Order extends Base
         $customerName = $order->customer ? $order->customer->company_name : '';
         $creatorName  = $order->creator  ? ($order->creator->real_name ?: $order->creator->username) : '';
 
-        // 合并单元格：每行左半 A-C，右半 D-I（标签+值合在一起）
+        // 合并单元格：每行左半 A-D，右半 E-K
         for ($r = 4; $r <= 7; $r++) {
-            $sheet->mergeCells('A' . $r . ':C' . $r);
-            $sheet->mergeCells('D' . $r . ':J' . $r);
+            $sheet->mergeCells('A' . $r . ':D' . $r);
+            $sheet->mergeCells('E' . $r . ':K' . $r);
             $sheet->getRowDimension($r)->setRowHeight(28);
             $sheet->getStyle('A' . $r)->getFont()->setName($fontName)->setSize(12);
-            $sheet->getStyle('D' . $r)->getFont()->setName($fontName)->setSize(12);
+            $sheet->getStyle('E' . $r)->getFont()->setName($fontName)->setSize(12);
             $sheet->getStyle('A' . $r)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-            $sheet->getStyle('D' . $r)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle('E' . $r)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
         }
 
         // 写入表头数据
         $sheet->setCellValue('A4', '采购方(Buyer)：' . $customerName);
-        $sheet->setCellValue('D4', '客户唛头(Mark)：' );
-         $sheet->setCellValue('A5', '送货地址(Delivery Add)：');
-        $sheet->setCellValueExplicit('D5', '订单号(Order No.)：' . ($order->order_no ?: ''), DataType::TYPE_STRING);
-        // $sheet->setCellValue('D5', '业务员：' . ($order->salesman ?: ''));       
+        $sheet->setCellValue('E4', '客户唛头(Mark)：' );
+        $sheet->setCellValue('A5', '送货地址(Delivery Add)：');
+        $sheet->setCellValueExplicit('E5', '订单号(Order No.)：' . ($order->order_no ?: ''), DataType::TYPE_STRING);
         $sheet->setCellValue('A6', '联系人电话(TEL)：' . ($order->contact_phone ?: ''));
-        $sheet->setCellValue('D6', '交易方式(Payment)：' . ($order->payment_method ?: ''));
+        $sheet->setCellValue('E6', '交易方式(Payment)：' . ($order->payment_method ?: ''));
         $sheet->setCellValue('A7', '订货日期(Order date)：' . ($order->order_date ?: ''));
-        $sheet->setCellValue('D7', '交货日期(Delivery date)：' . ($order->delivery_date ?: ''));
-      
+        $sheet->setCellValue('E7', '交货日期(Delivery date)：' . ($order->delivery_date ?: ''));
 
         // 第4~7行边框
-        $sheet->getStyle('A4:J7')->getBorders()->getAllBorders()
+        $sheet->getStyle('A4:K7')->getBorders()->getAllBorders()
             ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('999999');
 
         // ==================== 第8行：货品明细标题行 ====================
         $headerCols = [
-            'A8' => '货号', 'B8' => '款式图片', 'C8' => '货品名称', 'D8' => '产品描述',
-            'E8' => '件数', 'F8' => '装箱数', 'G8' => '单价',
-            'H8' => '总金额', 'I8' => '体积', 'J8' => '总体积',
+            'A8' => '货号', 'B8' => '款式图片', 'C8' => '描述图片', 'D8' => '货品名称', 'E8' => '产品描述',
+            'F8' => '件数', 'G8' => '装箱数', 'H8' => '单价',
+            'I8' => '总金额', 'J8' => '体积', 'K8' => '总体积',
         ];
         foreach ($headerCols as $cell => $label) {
             $sheet->setCellValue($cell, $label);
         }
         $sheet->getRowDimension(8)->setRowHeight(28);
-        $sheet->getStyle('A8:J8')->getFont()->setName($fontName)->setSize(12)->setBold(true);
-        $sheet->getStyle('A8:J8')->getAlignment()
+        $sheet->getStyle('A8:K8')->getFont()->setName($fontName)->setSize(12)->setBold(true);
+        $sheet->getStyle('A8:K8')->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)
             ->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle('A8:J8')->getBorders()->getAllBorders()
+        $sheet->getStyle('A8:K8')->getBorders()->getAllBorders()
             ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('999999');
-        $sheet->getStyle('A8:J8')->getFill()
+        $sheet->getStyle('A8:K8')->getFill()
             ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F5F7FA');
+
+        // ==================== 辅助：解析图片URL列表 ====================
+        $parseImageUrls = function($item) {
+            $urls = [];
+            // 优先 photo_urls JSON
+            $photoUrlsRaw = $item['photo_urls'] ?? '';
+            if ($photoUrlsRaw) {
+                if (is_string($photoUrlsRaw)) {
+                    $decoded = json_decode($photoUrlsRaw, true);
+                    if (is_array($decoded)) $urls = $decoded;
+                } elseif (is_array($photoUrlsRaw)) {
+                    $urls = $photoUrlsRaw;
+                }
+            }
+            // 兼容：如果 photo_urls 为空但 photo_url 有值
+            if (empty($urls) && !empty($item['photo_url'])) {
+                $urls = [$item['photo_url']];
+            }
+            return array_filter($urls);
+        };
+
+        $parseDescImages = function($item) {
+            $urls = [];
+            $raw = $item['desc_images'] ?? '';
+            if ($raw) {
+                if (is_string($raw)) {
+                    $decoded = json_decode($raw, true);
+                    if (is_array($decoded)) $urls = $decoded;
+                } elseif (is_array($raw)) {
+                    $urls = $raw;
+                }
+            }
+            return array_filter($urls);
+        };
+
+        // ==================== 辅助：解析单个图片URL为本地路径 ====================
+        $resolveImagePath = function($photoUrl) use (&$tempFiles) {
+            if (!$photoUrl) return '';
+            $photoUrlNorm = '/' . ltrim($photoUrl, '/');
+            $publicDir = app()->getRootPath() . 'public';
+
+            // 尝试多个可能的本地路径
+            $candidatePaths = [
+                $publicDir . $photoUrlNorm,
+                $publicDir . str_replace('/uploads/cache/', '/uploads/goods/', $photoUrlNorm),
+            ];
+            if (strpos($photoUrlNorm, '/uploads/cache/') !== false) {
+                $baseName = basename($photoUrlNorm);
+                for ($m = 0; $m <= 3; $m++) {
+                    $monthDir = date('Ym', strtotime("-{$m} months"));
+                    $candidatePaths[] = $publicDir . '/uploads/goods/' . $monthDir . '/' . $baseName;
+                }
+            }
+
+            foreach ($candidatePaths as $cp) {
+                if (file_exists($cp) && is_readable($cp)) {
+                    return $cp;
+                }
+            }
+
+            // 本地找不到，HTTP下载
+            $fullUrl = request()->domain() . $photoUrlNorm;
+            $imgContent = null;
+            if (function_exists('curl_init')) {
+                try {
+                    $ch = curl_init($fullUrl);
+                    curl_setopt_array($ch, [
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_TIMEOUT        => 15,
+                        CURLOPT_FOLLOWLOCATION => true,
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => 0,
+                        CURLOPT_USERAGENT      => 'ExcelExport/1.0',
+                    ]);
+                    $imgContent = curl_exec($ch);
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    if ($httpCode !== 200 || $imgContent === false || strlen($imgContent) < 100) {
+                        $imgContent = null;
+                    }
+                } catch (\Throwable $e) {
+                    $imgContent = null;
+                }
+            }
+            if (!$imgContent && ini_get('allow_url_fopen')) {
+                try {
+                    $ctx = stream_context_create([
+                        'http' => ['timeout' => 10],
+                        'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
+                    ]);
+                    $imgContent = @file_get_contents($fullUrl, false, $ctx);
+                    if ($imgContent === false || strlen($imgContent) < 100) $imgContent = null;
+                } catch (\Throwable $e) { $imgContent = null; }
+            }
+
+            if ($imgContent) {
+                $ext = pathinfo($photoUrl, PATHINFO_EXTENSION) ?: 'jpg';
+                $tempDir = runtime_path() . 'temp';
+                if (!is_dir($tempDir)) mkdir($tempDir, 0755, true);
+                $tempPath = $tempDir . '/' . md5($photoUrl . microtime()) . '.' . $ext;
+                file_put_contents($tempPath, $imgContent);
+                $tempFiles[] = $tempPath;
+                return $tempPath;
+            }
+
+            return '';
+        };
+
+        // ==================== 辅助：在单元格中插入多张图片（上下排列） ====================
+        $insertMultiImages = function($imageUrls, $column, $row, $sheet, $idx) use ($resolveImagePath) {
+            $imgW = 100;  // 每张图宽度
+            $imgH = 130;  // 每张图高度
+            $gap = 5;     // 图片间距
+            $offsetX = 5;
+            $inserted = 0;
+
+            foreach ($imageUrls as $imgIdx => $url) {
+                $photoPath = $resolveImagePath($url);
+                $offsetY = 5 + $imgIdx * ($imgH + $gap);
+
+                if ($photoPath) {
+                    // 优先 Drawing
+                    try {
+                        $drawing = new Drawing();
+                        $drawing->setName('Img_' . $column . '_' . $idx . '_' . $imgIdx);
+                        $drawing->setPath($photoPath);
+                        $drawing->setCoordinates($column . $row);
+                        $drawing->setWidth($imgW);
+                        $drawing->setHeight($imgH);
+                        $drawing->setOffsetX($offsetX);
+                        $drawing->setOffsetY($offsetY);
+                        $drawing->setWorksheet($sheet);
+                        $inserted++;
+                        continue;
+                    } catch (\Throwable $e) {
+                        Log::error('Excel导出图片: Drawing失败 - ' . $e->getMessage());
+                    }
+
+                    // 降级 MemoryDrawing
+                    if (function_exists('imagecreatefromstring')) {
+                        try {
+                            $imageData = file_get_contents($photoPath);
+                            $gdImage = @imagecreatefromstring($imageData);
+                            if ($gdImage) {
+                                $memDrawing = new MemoryDrawing();
+                                $memDrawing->setName('Img_' . $column . '_' . $idx . '_' . $imgIdx);
+                                $memDrawing->setImageResource($gdImage);
+                                $memDrawing->setRenderingFunction(MemoryDrawing::RENDERING_JPEG);
+                                $memDrawing->setMimeType(MemoryDrawing::MIMETYPE_DEFAULT);
+                                $memDrawing->setCoordinates($column . $row);
+                                $memDrawing->setWidth($imgW);
+                                $memDrawing->setHeight($imgH);
+                                $memDrawing->setOffsetX($offsetX);
+                                $memDrawing->setOffsetY($offsetY);
+                                $memDrawing->setWorksheet($sheet);
+                                $inserted++;
+                                continue;
+                            }
+                        } catch (\Throwable $e) {
+                            Log::error('Excel导出图片: MemoryDrawing失败 - ' . $e->getMessage());
+                        }
+                    }
+                }
+            }
+            return $inserted;
+        };
 
         // ==================== 第9行起：货品明细数据 ====================
         $itemStartRow = 9;
@@ -878,7 +1045,7 @@ class Order extends Base
         $totalPieces = 0;
         $totalVolume = 0.0;
         $totalAmount = 0.0;
-        $tempFiles = []; // 临时下载的图片文件，导出后清理
+        $tempFiles = [];
 
         $items = $order->items ?? [];
 
@@ -895,188 +1062,54 @@ class Order extends Base
             $totalVolume += $rowVol;
             $totalAmount += $rowAmt;
 
-            // 行高 187 磅（容纳图片）
-            $sheet->getRowDimension($row)->setRowHeight(160);
+            // 解析多图URL
+            $photoUrls  = $parseImageUrls($item);
+            $descImages = $parseDescImages($item);
+            $maxImages  = max(count($photoUrls), count($descImages), 1);
+
+            // 动态行高：单张160磅，多张 = 张数 * 135 + 25
+            $rowHeight = $maxImages <= 1 ? 160 : ($maxImages * 135 + 25);
+            $sheet->getRowDimension($row)->setRowHeight($rowHeight);
 
             // A = 货号
             $sheet->setCellValueExplicit('A' . $row, $item['customer_goods_no'] ?? '', DataType::TYPE_STRING);
 
-            // B = 照片（嵌入图片）
-            $photoInserted = false;
-            $photoUrl = $item['photo_url'] ?? '';
-            if ($photoUrl) {
-                // 确保路径以 / 开头
-                $photoUrlNorm = '/' . ltrim($photoUrl, '/');
-                $publicDir = app()->getRootPath() . 'public';
-
-                Log::info('Excel导出图片: photo_url=' . $photoUrl . ' | publicDir=' . $publicDir . ' | hasZip=' . ($hasZip ? 'Y' : 'N'));
-
-                // 尝试多个可能的本地路径
-                $candidatePaths = [
-                    $publicDir . $photoUrlNorm,                                    // /uploads/goods/202603/xxx.jpg
-                    $publicDir . str_replace('/uploads/cache/', '/uploads/goods/', $photoUrlNorm), // cache -> goods 目录
-                ];
-                // 如果是 cache 路径，也尝试按月份子目录查找
-                if (strpos($photoUrlNorm, '/uploads/cache/') !== false) {
-                    $baseName = basename($photoUrlNorm);
-                    // 尝试最近几个月的 goods 目录
-                    for ($m = 0; $m <= 3; $m++) {
-                        $monthDir = date('Ym', strtotime("-{$m} months"));
-                        $candidatePaths[] = $publicDir . '/uploads/goods/' . $monthDir . '/' . $baseName;
-                    }
-                }
-
-                $photoPath = '';
-                foreach ($candidatePaths as $cp) {
-                    if (file_exists($cp) && is_readable($cp)) {
-                        $photoPath = $cp;
-                        Log::info('Excel导出图片: 本地文件命中 - ' . $cp);
-                        break;
-                    }
-                }
-
-                if (!$photoPath) {
-                    Log::info('Excel导出图片: 本地文件均未找到, 候选路径: ' . implode(' | ', $candidatePaths));
-                }
-
-                // 本地文件都找不到，尝试通过HTTP下载
-                $imgContent = null;
-                if (!$photoPath) {
-                    $fullUrl = request()->domain() . $photoUrlNorm;
-                    // 优先用 cURL（兼容 allow_url_fopen=Off 的服务器）
-                    if (function_exists('curl_init')) {
-                        try {
-                            $ch = curl_init($fullUrl);
-                            curl_setopt_array($ch, [
-                                CURLOPT_RETURNTRANSFER => true,
-                                CURLOPT_TIMEOUT        => 15,
-                                CURLOPT_FOLLOWLOCATION => true,
-                                CURLOPT_SSL_VERIFYPEER => false,
-                                CURLOPT_SSL_VERIFYHOST => 0,
-                                CURLOPT_USERAGENT      => 'ExcelExport/1.0',
-                            ]);
-                            $imgContent = curl_exec($ch);
-                            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                            $curlErr  = curl_error($ch);
-                            curl_close($ch);
-                            if ($httpCode !== 200 || $imgContent === false || strlen($imgContent) < 100) {
-                                Log::warning('Excel导出图片: cURL下载失败 - URL=' . $fullUrl . ' httpCode=' . $httpCode . ' err=' . $curlErr);
-                                $imgContent = null;
-                            } else {
-                                Log::info('Excel导出图片: cURL下载成功 - ' . strlen($imgContent) . ' bytes');
-                            }
-                        } catch (\Throwable $e) {
-                            Log::error('Excel导出图片: cURL异常 - ' . $e->getMessage());
-                            $imgContent = null;
-                        }
-                    }
-                    // cURL 不可用或失败，降级 file_get_contents
-                    if (!$imgContent && ini_get('allow_url_fopen')) {
-                        try {
-                            $ctx = stream_context_create([
-                                'http' => ['timeout' => 10],
-                                'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
-                            ]);
-                            $imgContent = @file_get_contents($fullUrl, false, $ctx);
-                            if ($imgContent === false || strlen($imgContent) < 100) {
-                                Log::warning('Excel导出图片: file_get_contents下载失败 - URL=' . $fullUrl);
-                                $imgContent = null;
-                            }
-                        } catch (\Throwable $e) {
-                            Log::error('Excel导出图片: file_get_contents异常 - ' . $e->getMessage());
-                            $imgContent = null;
-                        }
-                    }
-
-                    // 下载成功，保存到临时文件
-                    if ($imgContent) {
-                        $ext = pathinfo($photoUrl, PATHINFO_EXTENSION) ?: 'jpg';
-                        $tempDir = runtime_path() . 'temp';
-                        if (!is_dir($tempDir)) {
-                            mkdir($tempDir, 0755, true);
-                        }
-                        $tempPath = $tempDir . '/' . md5($photoUrl) . '.' . $ext;
-                        file_put_contents($tempPath, $imgContent);
-                        $photoPath = $tempPath;
-                        $tempFiles[] = $tempPath;
-                    }
-                }
-
-                // 方案1：用 Drawing 插入本地文件
-                if ($photoPath) {
-                    try {
-                        $drawing = new Drawing();
-                        $drawing->setName('Photo_' . ($idx + 1));
-                        $drawing->setDescription($item['goods_name'] ?? '');
-                        $drawing->setPath($photoPath);
-                        $drawing->setCoordinates('B' . $row);
-                        $drawing->setWidth(100);
-                        $drawing->setHeight(130);
-                        $drawing->setOffsetX(5);
-                        $drawing->setOffsetY(5);
-                        $drawing->setWorksheet($sheet);
-                        $photoInserted = true;
-                    } catch (\Throwable $e) {
-                        Log::error('Excel导出图片: Drawing插入失败 - ' . $e->getMessage() . ' | path: ' . $photoPath);
-                    }
-                }
-
-                // 方案2：Drawing 失败时用 MemoryDrawing（GD方式）
-                if (!$photoInserted && $photoPath && function_exists('imagecreatefromstring')) {
-                    try {
-                        $imageData = file_get_contents($photoPath);
-                        $gdImage = @imagecreatefromstring($imageData);
-                        if ($gdImage) {
-                            $memDrawing = new MemoryDrawing();
-                            $memDrawing->setName('Photo_' . ($idx + 1));
-                            $memDrawing->setDescription($item['goods_name'] ?? '');
-                            $memDrawing->setImageResource($gdImage);
-                            $memDrawing->setRenderingFunction(MemoryDrawing::RENDERING_JPEG);
-                            $memDrawing->setMimeType(MemoryDrawing::MIMETYPE_DEFAULT);
-                            $memDrawing->setCoordinates('B' . $row);
-                            $memDrawing->setWidth(100);
-                            $memDrawing->setHeight(130);
-                            $memDrawing->setOffsetX(5);
-                            $memDrawing->setOffsetY(5);
-                            $memDrawing->setWorksheet($sheet);
-                            $photoInserted = true;
-                            Log::info('Excel导出图片: MemoryDrawing插入成功');
-                        }
-                    } catch (\Throwable $e) {
-                        Log::error('Excel导出图片: MemoryDrawing插入失败 - ' . $e->getMessage());
-                    }
-                }
-
-                if (!$photoInserted) {
-                    Log::warning('Excel导出图片: 最终失败 (photo_url=' . $photoUrl . ' hasZip=' . ($hasZip ? 'Y' : 'N') . ')');
+            // B = 款式图片（多图上下排列）
+            if (!empty($photoUrls)) {
+                $inserted = $insertMultiImages($photoUrls, 'B', $row, $sheet, $idx);
+                if ($inserted === 0) {
+                    $sheet->setCellValue('B' . $row, '[图片] ' . implode(', ', $photoUrls));
                 }
             }
-            if (!$photoInserted) {
-                // 图片插入失败时显示图片URL，方便排查
-                $fallbackText = $photoUrl ? ('[图片] ' . $photoUrl) : ($item['goods_name'] ?? '');
-                $sheet->setCellValue('B' . $row, $fallbackText);
+
+            // C = 描述图片（多图上下排列）
+            if (!empty($descImages)) {
+                $inserted = $insertMultiImages($descImages, 'C', $row, $sheet, $idx);
+                if ($inserted === 0) {
+                    $sheet->setCellValue('C' . $row, '[图片] ' . implode(', ', $descImages));
+                }
             }
 
-            // C = 货品名称
-            $sheet->setCellValue('C' . $row, $item['goods_name'] ?? '');
-            $sheet->getStyle('C' . $row)->getAlignment()->setWrapText(true);
-
-            // D = 产品描述
-            $desc = trim(($item['goods_name'] ?? '') . ($item['remark'] ? "\n" . $item['remark'] : ''));
-            $sheet->setCellValue('D' . $row, $desc);
+            // D = 货品名称
+            $sheet->setCellValue('D' . $row, $item['goods_name'] ?? '');
             $sheet->getStyle('D' . $row)->getAlignment()->setWrapText(true);
 
-            // E~J = 件数、装箱数、单价、总金额、体积、总体积
-            $sheet->setCellValue('E' . $row, $pieces ?: '');
-            $sheet->setCellValue('F' . $row, $perQty ?: '');
-            $sheet->setCellValue('G' . $row, $price ?: '');
-            $sheet->setCellValue('H' . $row, $rowAmt > 0 ? round($rowAmt, 2) : '');
-            $sheet->setCellValue('I' . $row, $volume ?: '');
-            $sheet->setCellValue('J' . $row, $rowVol > 0 ? round($rowVol, 2) : '');
+            // E = 产品描述
+            $desc = trim(($item['goods_name'] ?? '') . ($item['remark'] ? "\n" . $item['remark'] : ''));
+            $sheet->setCellValue('E' . $row, $desc);
+            $sheet->getStyle('E' . $row)->getAlignment()->setWrapText(true);
+
+            // F~K = 件数、装箱数、单价、总金额、体积、总体积
+            $sheet->setCellValue('F' . $row, $pieces ?: '');
+            $sheet->setCellValue('G' . $row, $perQty ?: '');
+            $sheet->setCellValue('H' . $row, $price ?: '');
+            $sheet->setCellValue('I' . $row, $rowAmt > 0 ? round($rowAmt, 2) : '');
+            $sheet->setCellValue('J' . $row, $volume ?: '');
+            $sheet->setCellValue('K' . $row, $rowVol > 0 ? round($rowVol, 2) : '');
 
             // 每行字体
-            $sheet->getStyle('A' . $row . ':J' . $row)->getFont()->setName($fontName)->setSize(12);
-            $sheet->getStyle('A' . $row . ':J' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle('A' . $row . ':K' . $row)->getFont()->setName($fontName)->setSize(12);
+            $sheet->getStyle('A' . $row . ':K' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 
             $row++;
         }
@@ -1084,23 +1117,23 @@ class Order extends Base
         // 货品区边框
         $lastItemRow = $row - 1;
         if ($lastItemRow >= $itemStartRow) {
-            $sheet->getStyle('A' . $itemStartRow . ':J' . $lastItemRow)->getBorders()->getAllBorders()
+            $sheet->getStyle('A' . $itemStartRow . ':K' . $lastItemRow)->getBorders()->getAllBorders()
                 ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('999999');
         }
 
         // ==================== 汇总行 ====================
         $sumRow = $row;
-        $sheet->mergeCells('A' . $sumRow . ':J' . $sumRow);
+        $sheet->mergeCells('A' . $sumRow . ':K' . $sumRow);
         $sheet->setCellValue('A' . $sumRow, '总件数：' . $totalPieces . '    总金额：¥' . number_format($totalAmount, 2) . '    总体积：' . round($totalVolume, 2) . ' m³');
         $sheet->getRowDimension($sumRow)->setRowHeight(36);
-        $sheet->getStyle('A' . $sumRow . ':J' . $sumRow)->getFont()->setName($fontName)->setSize(12)->setBold(true);
+        $sheet->getStyle('A' . $sumRow . ':K' . $sumRow)->getFont()->setName($fontName)->setSize(12)->setBold(true);
         $sheet->getStyle('A' . $sumRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 录单信息 ====================
         $noteRow = $sumRow + 1;
-        $sheet->mergeCells('A' . $noteRow . ':J' . $noteRow);
+        $sheet->mergeCells('A' . $noteRow . ':K' . $noteRow);
         $sheet->setCellValue('A' . $noteRow, '录单人：' . $creatorName . '    录单时间：' . ($order->create_time ?? ''));
-        $sheet->getStyle('A' . $noteRow . ':J' . $noteRow)->getFont()->setName($fontName)->setSize(11);
+        $sheet->getStyle('A' . $noteRow . ':K' . $noteRow)->getFont()->setName($fontName)->setSize(11);
         $sheet->getStyle('A' . $noteRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 输出下载 ====================
@@ -1139,6 +1172,30 @@ class Order extends Base
         $customerName = $order->customer ? $order->customer->company_name : '-';
         $creatorName  = $order->creator  ? ($order->creator->real_name ?: $order->creator->username) : '-';
         $items = $order->items ?? [];
+        $publicDir = app()->getRootPath() . 'public';
+
+        // 辅助：解析 JSON 图片数组
+        $parseImgArr = function($raw) {
+            if (!$raw) return [];
+            if (is_string($raw)) {
+                $d = json_decode($raw, true);
+                return is_array($d) ? array_filter($d) : [];
+            }
+            return is_array($raw) ? array_filter($raw) : [];
+        };
+
+        // 辅助：生成多图 HTML（上下排列）
+        $buildImgHtml = function($urls) use ($publicDir) {
+            if (empty($urls)) return '<span style="color:#999;">-</span>';
+            $parts = [];
+            foreach ($urls as $url) {
+                $photoPath = $publicDir . '/' . ltrim($url, '/');
+                if (file_exists($photoPath)) {
+                    $parts[] = '<img src="' . $photoPath . '" width="60" height="75" />';
+                }
+            }
+            return $parts ? implode('<br>', $parts) : '<span style="color:#999;">-</span>';
+        };
 
         // 计算汇总
         $totalPieces = 0;
@@ -1159,15 +1216,16 @@ class Order extends Base
             $totalAmount += $rowAmt;
             $totalVolume += $rowVol;
 
-            // 照片
-            $photoHtml = '<span style="color:#999;">-</span>';
-            $photoUrl = $item['photo_url'] ?? '';
-            if ($photoUrl) {
-                $photoPath = app()->getRootPath() . 'public' . $photoUrl;
-                if (file_exists($photoPath)) {
-                    $photoHtml = '<img src="' . $photoPath . '" width="60" height="75" />';
-                }
+            // 款式图片（多图）
+            $photoUrls = $parseImgArr($item['photo_urls'] ?? '');
+            if (empty($photoUrls) && !empty($item['photo_url'])) {
+                $photoUrls = [$item['photo_url']];
             }
+            $photoHtml = $buildImgHtml($photoUrls);
+
+            // 描述图片（多图）
+            $descImages = $parseImgArr($item['desc_images'] ?? '');
+            $descImgHtml = $buildImgHtml($descImages);
 
             $goodsName = htmlspecialchars($item['goods_name'] ?? '');
             $remark = htmlspecialchars($item['remark'] ?? '');
@@ -1175,16 +1233,17 @@ class Order extends Base
 
             $bgColor = ($idx % 2 === 1) ? ' style="background-color:#f8f9fc;"' : '';
             $itemsHtml .= '<tr' . $bgColor . '>';
-            $itemsHtml .= '<td align="center" width="28">' . ($idx + 1) . '</td>';
-            $itemsHtml .= '<td width="65">' . htmlspecialchars($item['customer_goods_no'] ?? '-') . '</td>';
-            $itemsHtml .= '<td align="center" width="68">' . $photoHtml . '</td>';
-            $itemsHtml .= '<td width="115">' . $desc . '</td>';
-            $itemsHtml .= '<td align="center" width="35">' . ($pieces ?: '-') . '</td>';
-            $itemsHtml .= '<td align="center" width="40">' . ($perQty ?: '-') . '</td>';
-            $itemsHtml .= '<td align="right" width="45">' . ($price ? number_format($price, 2) : '-') . '</td>';
-            $itemsHtml .= '<td align="right" width="55">' . ($rowAmt > 0 ? number_format($rowAmt, 2) : '-') . '</td>';
-            $itemsHtml .= '<td align="center" width="40">' . ($volume ?: '-') . '</td>';
-            $itemsHtml .= '<td align="right" width="50">' . ($rowVol > 0 ? round($rowVol, 2) : '-') . '</td>';
+            $itemsHtml .= '<td align="center" width="25">' . ($idx + 1) . '</td>';
+            $itemsHtml .= '<td width="55">' . htmlspecialchars($item['customer_goods_no'] ?? '-') . '</td>';
+            $itemsHtml .= '<td align="center" width="62">' . $photoHtml . '</td>';
+            $itemsHtml .= '<td align="center" width="62">' . $descImgHtml . '</td>';
+            $itemsHtml .= '<td width="100">' . $desc . '</td>';
+            $itemsHtml .= '<td align="center" width="30">' . ($pieces ?: '-') . '</td>';
+            $itemsHtml .= '<td align="center" width="35">' . ($perQty ?: '-') . '</td>';
+            $itemsHtml .= '<td align="right" width="40">' . ($price ? number_format($price, 2) : '-') . '</td>';
+            $itemsHtml .= '<td align="right" width="48">' . ($rowAmt > 0 ? number_format($rowAmt, 2) : '-') . '</td>';
+            $itemsHtml .= '<td align="center" width="35">' . ($volume ?: '-') . '</td>';
+            $itemsHtml .= '<td align="right" width="45">' . ($rowVol > 0 ? round($rowVol, 2) : '-') . '</td>';
             $itemsHtml .= '</tr>';
         }
 
@@ -1223,16 +1282,17 @@ No.26702 SHOP 4th Street 3rd Floor Area 3/H Gate 51 Yiwu International Trade Cit
 <table cellpadding="4" cellspacing="0" border="1" bordercolor="#999" width="100%" style="font-size:9px;">
 <thead>
     <tr style="background-color:#f0f1f5;font-weight:bold;">
-        <td align="center" width="28">序号</td>
-        <td width="65">货号</td>
-        <td align="center" width="68">款式图片</td>
-        <td width="115">产品描述</td>
-        <td align="center" width="35">件数</td>
-        <td align="center" width="40">装箱数</td>
-        <td align="right" width="45">单价</td>
-        <td align="right" width="55">总金额</td>
-        <td align="center" width="40">体积</td>
-        <td align="right" width="50">总体积</td>
+        <td align="center" width="25">序号</td>
+        <td width="55">货号</td>
+        <td align="center" width="62">款式图片</td>
+        <td align="center" width="62">描述图片</td>
+        <td width="100">产品描述</td>
+        <td align="center" width="30">件数</td>
+        <td align="center" width="35">装箱数</td>
+        <td align="right" width="40">单价</td>
+        <td align="right" width="48">总金额</td>
+        <td align="center" width="35">体积</td>
+        <td align="right" width="45">总体积</td>
     </tr>
 </thead>
 ' . $itemsHtml . '
@@ -1299,8 +1359,17 @@ No.26702 SHOP 4th Street 3rd Floor Area 3/H Gate 51 Yiwu International Trade Cit
             // 允许修改的字段
             $allowFields = [
                 'customer_goods_no', 'goods_name', 'remark', 'packing_material',
-                'pieces', 'per_piece_qty', 'unit_price', 'volume', 'label', 'photo_url'
+                'pieces', 'per_piece_qty', 'unit_price', 'volume', 'label', 'photo_url',
+                'photo_urls', 'desc_images'
             ];
+
+            // photo_urls 和 desc_images 需要 JSON 编码
+            if (array_key_exists('photo_urls', $input) && is_array($input['photo_urls'])) {
+                $input['photo_urls'] = json_encode($input['photo_urls']);
+            }
+            if (array_key_exists('desc_images', $input) && is_array($input['desc_images'])) {
+                $input['desc_images'] = json_encode($input['desc_images']);
+            }
 
             foreach ($allowFields as $field) {
                 if (array_key_exists($field, $input)) {

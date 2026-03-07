@@ -206,6 +206,66 @@ input[type=number].table-input { -moz-appearance: textfield; }
 /* ===================== 行内描述（兼容） ===================== */
 .item-desc-row { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e5e6eb; }
 .item-desc-label { font-size: 12px; color: #86909c; margin-bottom: 4px; }
+
+/* ===================== 多图横向滚动 ===================== */
+.multi-img-scroll {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 110px;
+    padding: 2px 0;
+    align-items: center;
+}
+.multi-img-scroll::-webkit-scrollbar { height: 3px; }
+.multi-img-scroll::-webkit-scrollbar-track { background: transparent; }
+.multi-img-scroll::-webkit-scrollbar-thumb { background: #c9cdd4; border-radius: 2px; }
+.multi-img-item {
+    position: relative;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+}
+.multi-img-item img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid #e5e6eb;
+    cursor: pointer;
+}
+.multi-img-item .img-del {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #f53f3f;
+    color: #fff;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+    cursor: pointer;
+    display: none;
+    z-index: 2;
+}
+.multi-img-item:hover .img-del { display: block; }
+.multi-img-add {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border: 1.5px dashed #c9cdd4;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #86909c;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.multi-img-add:hover { border-color: #165dff; color: #165dff; background: #f2f7ff; }
 </style>
 
 <div id="orderFormApp" class="order-form-container">
@@ -332,12 +392,13 @@ input[type=number].table-input { -moz-appearance: textfield; }
             </div>
 
             <div class="items-table-wrap">
-            <table class="items-table" style="min-width:1400px;width:100%;">
+            <table class="items-table" style="min-width:1520px;width:100%;">
                 <thead>
                     <tr>
                         <th style="width:50px;text-align:center;">序号</th>
                         <th style="width:120px;">采购方货号</th>
-                        <th style="width:72px;text-align:center;">照片</th>
+                        <th style="width:120px;text-align:center;">照片</th>
+                        <th style="width:120px;text-align:center;">描述图片</th>
                         <th style="width:180px;">货品名称</th>
                         <th style="width:240px;">描述</th>
                         <th style="width:88px;">包材</th>
@@ -359,33 +420,21 @@ input[type=number].table-input { -moz-appearance: textfield; }
                             <input type="text" class="table-input" v-model="item.customer_goods_no" placeholder="采购方货号" />
                         </td>
                         <td style="padding:6px;">
-                            <div style="position:relative;" data-photo-dd>
-                                <div @click="togglePhotoDropdown(index, $event)" class="table-input" style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:0 6px;overflow:hidden;height:32px;">
-                                    <img v-if="item.photo_url" :src="item.photo_url" style="width:22px;height:22px;object-fit:cover;border-radius:2px;flex-shrink:0;" />
-                                    <span v-if="item.photo_url" style="flex:1;font-size:11px;color:#1d2129;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">已选</span>
-                                    <span v-else style="flex:1;font-size:11px;color:#c9cdd4;">选择</span>
-                                    <span style="color:#86909c;font-size:9px;flex-shrink:0;">▼</span>
+                            <div class="multi-img-scroll">
+                                <div v-for="(url, pi) in getPhotoUrls(item)" :key="'photo-'+pi" class="multi-img-item">
+                                    <img :src="url" @click="previewImage(url)" />
+                                    <span class="img-del" @click="removePhoto(index, pi)">×</span>
                                 </div>
-                                <div v-if="item._showPhotoDropdown"
-                                    :style="{position:'fixed',top:item._photoDropTop+'px',left:item._photoDropLeft+'px',width:'220px',background:'#fff',border:'1px solid #e5e6eb',borderRadius:'6px',boxShadow:'0 6px 20px rgba(0,0,0,0.12)',zIndex:'9999',maxHeight:'280px',overflowY:'auto',padding:'4px 0'}">
-                                    <div @mousedown.prevent="openUploadModal(index)" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #e5e6eb;color:#165dff;font-size:13px;font-weight:500;" onmouseover="this.style.background='#f2f7ff'" onmouseout="this.style.background='#fff'">
-                                        <span style="width:32px;height:32px;border:1.5px dashed #165dff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">+</span>
-                                        <span>上传新图片</span>
-                                    </div>
-                                    <div v-if="item.photo_url" @mousedown.prevent="item.photo_url='';item._showPhotoDropdown=false" style="padding:6px 12px;cursor:pointer;font-size:12px;color:#f53f3f;border-bottom:1px solid #f2f3f5;" onmouseover="this.style.background='#fff3f0'" onmouseout="this.style.background='#fff'">
-                                        ✕ 清除已选
-                                    </div>
-                                    <div v-for="(img, imgIdx) in allGoodsImages" :key="'pi-'+imgIdx"
-                                        @mousedown.prevent="item.photo_url=img.url;item._showPhotoDropdown=false"
-                                        style="padding:6px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;"
-                                        :style="{background: item.photo_url===img.url ? '#e8f3ff' : '#fff'}"
-                                        onmouseover="if(this.style.background!='rgb(232, 243, 255)')this.style.background='#f7f8fa'" onmouseout="if(this.style.background!='rgb(232, 243, 255)')this.style.background='#fff'">
-                                        <img :src="img.url" style="width:32px;height:32px;object-fit:cover;border-radius:3px;flex-shrink:0;border:1px solid #e5e6eb;" />
-                                        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ img.name || '货品图片' }}</span>
-                                        <span v-if="item.photo_url===img.url" style="color:#165dff;font-size:14px;font-weight:bold;">✓</span>
-                                    </div>
-                                    <div v-if="allGoodsImages.length===0" style="padding:12px;text-align:center;font-size:12px;color:#c9cdd4;">暂无货品图片</div>
+                                <div class="multi-img-add" @click="openUploadModal(index, 'photo')">+</div>
+                            </div>
+                        </td>
+                        <td style="padding:6px;">
+                            <div class="multi-img-scroll">
+                                <div v-for="(url, di) in getDescImages(item)" :key="'desc-'+di" class="multi-img-item">
+                                    <img :src="url" @click="previewImage(url)" />
+                                    <span class="img-del" @click="removeDescImage(index, di)">×</span>
                                 </div>
+                                <div class="multi-img-add" @click="openUploadModal(index, 'desc')">+</div>
                             </div>
                         </td>
                         <td>
@@ -449,7 +498,7 @@ input[type=number].table-input { -moz-appearance: textfield; }
                         </td>
                     </tr>
                     <tr v-if="form.items.length === 0" class="table-empty-row">
-                        <td colspan="15">
+                        <td colspan="16">
                             <span class="table-empty-icon">📦</span>
                             暂无货品明细，请点击「选择货品」或「添加空行」
                         </td>
@@ -523,9 +572,15 @@ input[type=number].table-input { -moz-appearance: textfield; }
         >
             <div style="font-size:40px;color:#165dff;margin-bottom:12px;">⇧</div>
             <div style="font-size:14px;color:#1d2129;font-weight:500;">点击选择图片或将图片拖拽到此处</div>
-            <div style="font-size:12px;color:#86909c;margin-top:8px;">支持 JPG、PNG、GIF、WebP，最大 5MB</div>
+            <div style="font-size:12px;color:#86909c;margin-top:8px;">支持 JPG、PNG、GIF、WebP，最大 5MB，可多选</div>
         </div>
         <div v-if="uploadingPhoto" style="text-align:center;padding:16px 0;color:#165dff;font-size:13px;">上传中...</div>
+    </a-modal>
+    <!-- 图片预览弹窗 -->
+    <a-modal v-model:visible="previewVisible" :footer="false" :width="480" title="图片预览" @cancel="previewVisible=false">
+        <div style="text-align:center;">
+            <img :src="previewUrl" style="max-width:100%;max-height:60vh;border-radius:4px;" />
+        </div>
     </a-modal>
 </div>
 {/block}
@@ -573,91 +628,118 @@ window.createPageApp({
 
         // 照片下拉 & 上传弹窗
         let _uploadTargetIndex = -1;
+        let _uploadTargetType = 'photo'; // 'photo' or 'desc'
         const uploadModalVisible = ref(false);
         const uploadDragActive = ref(false);
         const uploadingPhoto = ref(false);
 
-        const togglePhotoDropdown = (index, e) => {
-            const item = form.items[index];
-            // 关闭其他行的下拉
-            form.items.forEach((it, i) => { if (i !== index) it._showPhotoDropdown = false; });
-            if (item._showPhotoDropdown) {
-                item._showPhotoDropdown = false;
-                return;
-            }
-            const r = e.currentTarget.getBoundingClientRect();
-            item._photoDropLeft = r.left;
-            item._photoDropTop = r.bottom + 2;
-            item._showPhotoDropdown = true;
+        // 图片预览
+        const previewVisible = ref(false);
+        const previewUrl = ref('');
+        const previewImage = (url) => {
+            previewUrl.value = url;
+            previewVisible.value = true;
         };
 
-        const openUploadModal = (index) => {
+        // 多图辅助方法
+        const getPhotoUrls = (item) => {
+            if (item.photo_urls && Array.isArray(item.photo_urls) && item.photo_urls.length > 0) {
+                return item.photo_urls;
+            }
+            if (item.photo_url) return [item.photo_url];
+            return [];
+        };
+
+        const getDescImages = (item) => {
+            if (item.desc_images && Array.isArray(item.desc_images)) {
+                return item.desc_images;
+            }
+            return [];
+        };
+
+        const removePhoto = (itemIndex, photoIdx) => {
+            const item = form.items[itemIndex];
+            if (!item.photo_urls) item.photo_urls = getPhotoUrls(item).slice();
+            item.photo_urls.splice(photoIdx, 1);
+            item.photo_url = item.photo_urls.length > 0 ? item.photo_urls[0] : '';
+        };
+
+        const removeDescImage = (itemIndex, imgIdx) => {
+            const item = form.items[itemIndex];
+            if (!item.desc_images) item.desc_images = [];
+            item.desc_images.splice(imgIdx, 1);
+        };
+
+        const openUploadModal = (index, type) => {
             _uploadTargetIndex = index;
-            form.items[index]._showPhotoDropdown = false;
+            _uploadTargetType = type || 'photo';
             uploadModalVisible.value = true;
             uploadDragActive.value = false;
+        };
+
+        const togglePhotoDropdown = (index, e) => {
+            // 保持兼容（如有旧调用）
+            openUploadModal(index, 'photo');
         };
 
         const triggerUploadModalFile = () => {
             const inp = document.createElement('input');
             inp.type = 'file';
             inp.accept = 'image/*';
+            inp.multiple = true;
             inp.onchange = (e) => {
-                const file = e.target.files[0];
-                if (file) doUploadPhoto(file);
+                const files = Array.from(e.target.files);
+                if (files.length > 0) doUploadPhotos(files);
             };
             inp.click();
         };
 
         const handleUploadDrop = (e) => {
             uploadDragActive.value = false;
-            const file = e.dataTransfer.files[0];
-            if (file) doUploadPhoto(file);
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (files.length > 0) doUploadPhotos(files);
         };
 
-        const doUploadPhoto = async (file) => {
-            if (!file || !file.type.startsWith('image/')) {
-                ArcoMessage.warning('请选择图片文件');
-                return;
-            }
+        const doUploadPhotos = async (files) => {
             uploadingPhoto.value = true;
-            const fd = new FormData();
-            fd.append('image', file);
-            try {
-                const res = await fetch('/admin/goods/uploadTempImage', {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: fd
-                });
-                const contentType = res.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) {
-                    ArcoMessage.error('上传接口返回异常，请检查登录状态或刷新页面');
-                    uploadingPhoto.value = false;
-                    return;
-                }
-                const json = await res.json();
-                if ((json.code == 1 || json.code == 200 || json.success) && json.data && json.data.url) {
-                    if (_uploadTargetIndex >= 0 && form.items[_uploadTargetIndex]) {
-                        form.items[_uploadTargetIndex].photo_url = json.data.url;
+            let successCount = 0;
+            for (const file of files) {
+                if (!file || !file.type.startsWith('image/')) continue;
+                const fd = new FormData();
+                fd.append('image', file);
+                try {
+                    const res = await fetch('/admin/goods/uploadTempImage', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    });
+                    const contentType = res.headers.get('content-type') || '';
+                    if (!contentType.includes('application/json')) continue;
+                    const json = await res.json();
+                    if ((json.code == 1 || json.code == 200 || json.success) && json.data && json.data.url) {
+                        if (_uploadTargetIndex >= 0 && form.items[_uploadTargetIndex]) {
+                            const item = form.items[_uploadTargetIndex];
+                            if (_uploadTargetType === 'desc') {
+                                if (!item.desc_images) item.desc_images = [];
+                                item.desc_images.push(json.data.url);
+                            } else {
+                                if (!item.photo_urls) item.photo_urls = item.photo_url ? [item.photo_url] : [];
+                                item.photo_urls.push(json.data.url);
+                                item.photo_url = item.photo_urls[0];
+                            }
+                        }
+                        successCount++;
                     }
-                    uploadModalVisible.value = false;
-                    ArcoMessage.success('上传成功');
-                } else {
-                    ArcoMessage.error(json.msg || '图片上传失败');
-                }
-            } catch (e) {
-                ArcoMessage.error('上传失败：' + e.message);
+                } catch (e) { /* ignore single failure */ }
             }
             uploadingPhoto.value = false;
+            if (successCount > 0) {
+                uploadModalVisible.value = false;
+                ArcoMessage.success('成功上传 ' + successCount + ' 张图片');
+            } else {
+                ArcoMessage.error('图片上传失败');
+            }
         };
-
-        // 点击页面其他地方关闭照片下拉（延迟执行，避免与togglePhotoDropdown冲突）
-        document.addEventListener('mousedown', (e) => {
-            // 如果点击的是照片下拉相关区域，不处理
-            const td = e.target.closest('td');
-            if (td && td.querySelector('[data-photo-dd]')) return;
-            form.items.forEach(it => { it._showPhotoDropdown = false; });
-        });
 
         // 搜索防抖定时器
         const searchTimers = {};
@@ -703,6 +785,8 @@ window.createPageApp({
             price: 0,
             box_size: '',
             photo_url: '',
+            photo_urls: [],
+            desc_images: [],
             remark: '',
             packing_material: '定制',
             volume: '',
@@ -713,10 +797,7 @@ window.createPageApp({
             _showSuggestions: false,
             _dropdownLeft: 0,
             _dropdownTop: 0,
-            _dropdownWidth: 260,
-            _showPhotoDropdown: false,
-            _photoDropLeft: 0,
-            _photoDropTop: 0
+            _dropdownWidth: 260
         });
 
         const form = reactive({
@@ -727,7 +808,17 @@ window.createPageApp({
             trading_company: orderData?.trading_company || '',
             salesman: orderData?.salesman || '',
             contact_phone: orderData?.contact_phone || '',
-            items: orderData?.items?.length ? orderData.items.map(it => ({
+            items: orderData?.items?.length ? orderData.items.map(it => {
+                // 解析 photo_urls 和 desc_images（可能是JSON字符串或数组）
+                let photoUrls = it.photo_urls;
+                if (typeof photoUrls === 'string') { try { photoUrls = JSON.parse(photoUrls); } catch(e) { photoUrls = []; } }
+                if (!Array.isArray(photoUrls)) photoUrls = it.photo_url ? [it.photo_url] : [];
+
+                let descImages = it.desc_images;
+                if (typeof descImages === 'string') { try { descImages = JSON.parse(descImages); } catch(e) { descImages = []; } }
+                if (!Array.isArray(descImages)) descImages = [];
+
+                return {
                 ...it,
                 customer_goods_no: it.customer_goods_no ?? '',
                 pieces: it.pieces ?? 1,
@@ -735,6 +826,8 @@ window.createPageApp({
                 price: it.unit_price ?? it.price ?? 0,
                 box_size: it.box_size ?? '',
                 photo_url: it.photo_url ?? '',
+                photo_urls: photoUrls,
+                desc_images: descImages,
                 packing_material: it.packing_material ?? '定制',
                 volume: it.volume ?? '',
                 label: it.label ?? '',
@@ -744,11 +837,9 @@ window.createPageApp({
                 _showSuggestions: false,
                 _dropdownLeft: 0,
                 _dropdownTop: 0,
-                _dropdownWidth: 260,
-                _showPhotoDropdown: false,
-                _photoDropLeft: 0,
-                _photoDropTop: 0
-            })) : [defaultItem()],
+                _dropdownWidth: 260
+                };
+            }) : [defaultItem()],
         });
 
         const totalAmount = computed(() => {
@@ -881,6 +972,8 @@ window.createPageApp({
                 price: g.sale_price || 0,
                 box_size: '',
                 photo_url: '',
+                photo_urls: [],
+                desc_images: [],
                 _goodsImages: (() => { const imgs=[]; if(g.image_url && g.image_url !== '/static/images/no-image.svg') imgs.push(g.image_url); else if(g.image && g.image !== '/static/images/no-image.svg') imgs.push(g.image); return imgs; })(),
                 remark: '',
                 _goodsOptions: [],
@@ -1045,7 +1138,9 @@ window.createPageApp({
                     per_piece_qty: it.per_piece_qty,
                     price: it.price,
                     box_size: it.box_size || '',
-                    photo_url: it.photo_url || '',
+                    photo_url: (it.photo_urls && it.photo_urls.length > 0) ? it.photo_urls[0] : (it.photo_url || ''),
+                    photo_urls: it.photo_urls || [],
+                    desc_images: it.desc_images || [],
                     remark: it.remark,
                     packing_material: it.packing_material || null,
                     volume: it.volume !== '' ? it.volume : null,
@@ -1110,6 +1205,13 @@ window.createPageApp({
             adminName,
             currentTime,
             allGoodsImages,
+            getPhotoUrls,
+            getDescImages,
+            removePhoto,
+            removeDescImage,
+            previewVisible,
+            previewUrl,
+            previewImage,
             togglePhotoDropdown,
             openUploadModal,
             triggerUploadModalFile,
