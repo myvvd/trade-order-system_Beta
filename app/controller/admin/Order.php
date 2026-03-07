@@ -14,6 +14,7 @@ use app\service\DispatchService;
 use app\service\MessageService;
 use think\facade\View;
 use think\facade\Db;
+use think\facade\Log;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -786,30 +787,31 @@ class Order extends Base
         // ========== 列宽设置（近似磅值） ==========
         $sheet->getColumnDimension('A')->setWidth(18);  // 货号
         $sheet->getColumnDimension('B')->setWidth(42);  // 照片
-        $sheet->getColumnDimension('C')->setWidth(42);  // 产品描述
-        $sheet->getColumnDimension('D')->setWidth(10);  // 件数
-        $sheet->getColumnDimension('E')->setWidth(10);  // 装箱数
-        $sheet->getColumnDimension('F')->setWidth(10);  // 单价
-        $sheet->getColumnDimension('G')->setWidth(12);  // 总金额
-        $sheet->getColumnDimension('H')->setWidth(10);  // 体积
-        $sheet->getColumnDimension('I')->setWidth(12);  // 总体积
+        $sheet->getColumnDimension('C')->setWidth(28);  // 货品名称
+        $sheet->getColumnDimension('D')->setWidth(42);  // 产品描述
+        $sheet->getColumnDimension('E')->setWidth(10);  // 件数
+        $sheet->getColumnDimension('F')->setWidth(10);  // 装箱数
+        $sheet->getColumnDimension('G')->setWidth(10);  // 单价
+        $sheet->getColumnDimension('H')->setWidth(12);  // 总金额
+        $sheet->getColumnDimension('I')->setWidth(10);  // 体积
+        $sheet->getColumnDimension('J')->setWidth(12);  // 总体积
 
         // ==================== 第1行：公司中文名 ====================
-        $sheet->mergeCells('A1:I1');
+        $sheet->mergeCells('A1:J1');
         $sheet->setCellValue('A1', '青 岛 米 薇 儿 假 睫 毛 工 艺 品 有 限 公 司');
         $sheet->getRowDimension(1)->setRowHeight(40);
         $sheet->getStyle('A1')->getFont()->setName($fontName)->setSize(28)->setBold(true);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 第2行：公司英文名 ====================
-        $sheet->mergeCells('A2:I2');
+        $sheet->mergeCells('A2:J2');
         $sheet->setCellValue('A2', 'Qingdao Snow Shirley Eyelashes Factory');
         $sheet->getRowDimension(2)->setRowHeight(24);
         $sheet->getStyle('A2')->getFont()->setName($fontName)->setSize(18);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 第3行：地址+电话 ====================
-        $sheet->mergeCells('A3:I3');
+        $sheet->mergeCells('A3:J3');
         $addressText = "店面地址：义乌国际商贸城3区51号门3楼4街26702\nNo.26702 SHOP 4th Street 3rd Floor Area 3/H  Gate 51 Yiwu International Trade City\n电话/TEL：6657070980";
         $sheet->setCellValue('A3', $addressText);
         $sheet->getRowDimension(3)->setRowHeight(50);
@@ -826,7 +828,7 @@ class Order extends Base
         // 合并单元格：每行左半 A-C，右半 D-I（标签+值合在一起）
         for ($r = 4; $r <= 7; $r++) {
             $sheet->mergeCells('A' . $r . ':C' . $r);
-            $sheet->mergeCells('D' . $r . ':I' . $r);
+            $sheet->mergeCells('D' . $r . ':J' . $r);
             $sheet->getRowDimension($r)->setRowHeight(28);
             $sheet->getStyle('A' . $r)->getFont()->setName($fontName)->setSize(12);
             $sheet->getStyle('D' . $r)->getFont()->setName($fontName)->setSize(12);
@@ -847,26 +849,26 @@ class Order extends Base
       
 
         // 第4~7行边框
-        $sheet->getStyle('A4:I7')->getBorders()->getAllBorders()
+        $sheet->getStyle('A4:J7')->getBorders()->getAllBorders()
             ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('999999');
 
         // ==================== 第8行：货品明细标题行 ====================
         $headerCols = [
-            'A8' => '货号', 'B8' => '款式图片', 'C8' => '产品描述',
-            'D8' => '件数', 'E8' => '装箱数', 'F8' => '单价',
-            'G8' => '总金额', 'H8' => '体积', 'I8' => '总体积',
+            'A8' => '货号', 'B8' => '款式图片', 'C8' => '货品名称', 'D8' => '产品描述',
+            'E8' => '件数', 'F8' => '装箱数', 'G8' => '单价',
+            'H8' => '总金额', 'I8' => '体积', 'J8' => '总体积',
         ];
         foreach ($headerCols as $cell => $label) {
             $sheet->setCellValue($cell, $label);
         }
         $sheet->getRowDimension(8)->setRowHeight(28);
-        $sheet->getStyle('A8:I8')->getFont()->setName($fontName)->setSize(12)->setBold(true);
-        $sheet->getStyle('A8:I8')->getAlignment()
+        $sheet->getStyle('A8:J8')->getFont()->setName($fontName)->setSize(12)->setBold(true);
+        $sheet->getStyle('A8:J8')->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)
             ->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle('A8:I8')->getBorders()->getAllBorders()
+        $sheet->getStyle('A8:J8')->getBorders()->getAllBorders()
             ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('999999');
-        $sheet->getStyle('A8:I8')->getFill()
+        $sheet->getStyle('A8:J8')->getFill()
             ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F5F7FA');
 
         // ==================== 第9行起：货品明细数据 ====================
@@ -875,6 +877,7 @@ class Order extends Base
         $totalPieces = 0;
         $totalVolume = 0.0;
         $totalAmount = 0.0;
+        $tempFiles = []; // 临时下载的图片文件，导出后清理
 
         $items = $order->items ?? [];
 
@@ -897,12 +900,37 @@ class Order extends Base
             // A = 货号
             $sheet->setCellValueExplicit('A' . $row, $item['customer_goods_no'] ?? '', DataType::TYPE_STRING);
 
-            // B = 照片（嵌入图片，Drawing 不依赖 ZipArchive）
+            // B = 照片（嵌入图片）
             $photoInserted = false;
             $photoUrl = $item['photo_url'] ?? '';
             if ($photoUrl) {
                 $photoPath = app()->getRootPath() . 'public' . $photoUrl;
-                if (file_exists($photoPath)) {
+
+                // 如果本地文件不存在，尝试从URL下载到临时目录
+                if (!file_exists($photoPath) || !is_readable($photoPath)) {
+                    try {
+                        $fullUrl = request()->domain() . $photoUrl;
+                        $ctx = stream_context_create(['http' => ['timeout' => 10]]);
+                        $imgContent = @file_get_contents($fullUrl, false, $ctx);
+                        if ($imgContent !== false && strlen($imgContent) > 100) {
+                            $ext = pathinfo($photoUrl, PATHINFO_EXTENSION) ?: 'jpg';
+                            $tempDir = runtime_path() . 'temp';
+                            if (!is_dir($tempDir)) {
+                                mkdir($tempDir, 0755, true);
+                            }
+                            $tempPath = $tempDir . '/' . md5($photoUrl) . '.' . $ext;
+                            file_put_contents($tempPath, $imgContent);
+                            $photoPath = $tempPath;
+                            $tempFiles[] = $tempPath;
+                        } else {
+                            Log::warning('Excel导出: 图片下载失败或内容为空 - URL: ' . ($fullUrl ?? $photoUrl));
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Excel导出: 图片下载异常 - ' . $e->getMessage());
+                    }
+                }
+
+                if (file_exists($photoPath) && is_readable($photoPath)) {
                     try {
                         $drawing = new Drawing();
                         $drawing->setName('Photo_' . ($idx + 1));
@@ -916,30 +944,36 @@ class Order extends Base
                         $drawing->setWorksheet($sheet);
                         $photoInserted = true;
                     } catch (\Throwable $e) {
-                        // 图片插入失败，回退为文字
+                        Log::error('Excel导出: Drawing插入失败 - ' . $e->getMessage() . ' | path: ' . $photoPath);
                     }
+                } else {
+                    Log::warning('Excel导出: 图片文件不存在 - ' . $photoPath . ' (photo_url=' . $photoUrl . ')');
                 }
             }
             if (!$photoInserted) {
                 $sheet->setCellValue('B' . $row, $item['goods_name'] ?? '');
             }
 
-            // C = 产品描述
-            $desc = trim(($item['goods_name'] ?? '') . ($item['remark'] ? "\n" . $item['remark'] : ''));
-            $sheet->setCellValue('C' . $row, $desc);
+            // C = 货品名称
+            $sheet->setCellValue('C' . $row, $item['goods_name'] ?? '');
             $sheet->getStyle('C' . $row)->getAlignment()->setWrapText(true);
 
-            // D~I = 件数、装箱数、单价、总金额、体积、总体积
-            $sheet->setCellValue('D' . $row, $pieces ?: '');
-            $sheet->setCellValue('E' . $row, $perQty ?: '');
-            $sheet->setCellValue('F' . $row, $price ?: '');
-            $sheet->setCellValue('G' . $row, $rowAmt > 0 ? round($rowAmt, 2) : '');
-            $sheet->setCellValue('H' . $row, $volume ?: '');
-            $sheet->setCellValue('I' . $row, $rowVol > 0 ? round($rowVol, 4) : '');
+            // D = 产品描述
+            $desc = trim(($item['goods_name'] ?? '') . ($item['remark'] ? "\n" . $item['remark'] : ''));
+            $sheet->setCellValue('D' . $row, $desc);
+            $sheet->getStyle('D' . $row)->getAlignment()->setWrapText(true);
+
+            // E~J = 件数、装箱数、单价、总金额、体积、总体积
+            $sheet->setCellValue('E' . $row, $pieces ?: '');
+            $sheet->setCellValue('F' . $row, $perQty ?: '');
+            $sheet->setCellValue('G' . $row, $price ?: '');
+            $sheet->setCellValue('H' . $row, $rowAmt > 0 ? round($rowAmt, 2) : '');
+            $sheet->setCellValue('I' . $row, $volume ?: '');
+            $sheet->setCellValue('J' . $row, $rowVol > 0 ? round($rowVol, 4) : '');
 
             // 每行字体
-            $sheet->getStyle('A' . $row . ':I' . $row)->getFont()->setName($fontName)->setSize(12);
-            $sheet->getStyle('A' . $row . ':I' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle('A' . $row . ':J' . $row)->getFont()->setName($fontName)->setSize(12);
+            $sheet->getStyle('A' . $row . ':J' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 
             $row++;
         }
@@ -947,23 +981,23 @@ class Order extends Base
         // 货品区边框
         $lastItemRow = $row - 1;
         if ($lastItemRow >= $itemStartRow) {
-            $sheet->getStyle('A' . $itemStartRow . ':I' . $lastItemRow)->getBorders()->getAllBorders()
+            $sheet->getStyle('A' . $itemStartRow . ':J' . $lastItemRow)->getBorders()->getAllBorders()
                 ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('999999');
         }
 
         // ==================== 汇总行 ====================
         $sumRow = $row;
-        $sheet->mergeCells('A' . $sumRow . ':I' . $sumRow);
+        $sheet->mergeCells('A' . $sumRow . ':J' . $sumRow);
         $sheet->setCellValue('A' . $sumRow, '总件数：' . $totalPieces . '    总金额：¥' . number_format($totalAmount, 2) . '    总体积：' . round($totalVolume, 4) . ' m³');
         $sheet->getRowDimension($sumRow)->setRowHeight(36);
-        $sheet->getStyle('A' . $sumRow . ':I' . $sumRow)->getFont()->setName($fontName)->setSize(12)->setBold(true);
+        $sheet->getStyle('A' . $sumRow . ':J' . $sumRow)->getFont()->setName($fontName)->setSize(12)->setBold(true);
         $sheet->getStyle('A' . $sumRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 录单信息 ====================
         $noteRow = $sumRow + 1;
-        $sheet->mergeCells('A' . $noteRow . ':I' . $noteRow);
+        $sheet->mergeCells('A' . $noteRow . ':J' . $noteRow);
         $sheet->setCellValue('A' . $noteRow, '录单人：' . $creatorName . '    录单时间：' . ($order->create_time ?? ''));
-        $sheet->getStyle('A' . $noteRow . ':I' . $noteRow)->getFont()->setName($fontName)->setSize(11);
+        $sheet->getStyle('A' . $noteRow . ':J' . $noteRow)->getFont()->setName($fontName)->setSize(11);
         $sheet->getStyle('A' . $noteRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
 
         // ==================== 输出下载 ====================
@@ -980,6 +1014,11 @@ class Order extends Base
         header('Content-Disposition: attachment;filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
         $writer->save('php://output');
+
+        // 清理临时下载的图片文件
+        foreach ($tempFiles as $tf) {
+            @unlink($tf);
+        }
         exit;
     }
 
